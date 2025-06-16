@@ -28,7 +28,7 @@ const Orb: React.FC<OrbProps> = ({
   const [isHovering, setIsHovering] = useState(false);
 
   useEffect(() => {
-    console.log("Initializing visualization...");
+    // console.log("Initializing visualization...");
     initViz();
     window.addEventListener("resize", onWindowResize);
     return () => {
@@ -38,7 +38,7 @@ const Orb: React.FC<OrbProps> = ({
 
   useEffect(() => {
     if (isSessionActive && ballRef.current) {
-      console.log("Session is active, morphing the ball");
+      // console.log("Session is active, morphing the ball");
       updateBallMorph(ballRef.current, volumeLevel);
       
       // Change orb color during active session
@@ -52,7 +52,7 @@ const Orb: React.FC<OrbProps> = ({
       ballRef.current &&
       originalPositionsRef.current
     ) {
-      console.log("Session ended, resetting the ball");
+      // console.log("Session ended, resetting the ball");
       resetBallMorph(ballRef.current, originalPositionsRef.current);
       
       // Reset color when inactive
@@ -80,7 +80,7 @@ const Orb: React.FC<OrbProps> = ({
   }, [isHovering, isSessionActive]);
 
   const initViz = () => {
-    console.log("Initializing Three.js visualization...");
+    // console.log("Initializing Three.js visualization...");
     const scene = new THREE.Scene();
     const group = new THREE.Group();
     const camera = new THREE.PerspectiveCamera(
@@ -220,7 +220,7 @@ const Orb: React.FC<OrbProps> = ({
   };
 
   const updateBallMorph = (mesh: THREE.Mesh, volume: number) => {
-    console.log("Morphing the ball with volume:", volume);
+    // console.log("Morphing the ball with volume:", volume);
     const geometry = mesh.geometry as THREE.BufferGeometry;
     const positionAttribute = geometry.getAttribute("position");
 
@@ -259,7 +259,7 @@ const Orb: React.FC<OrbProps> = ({
     mesh: THREE.Mesh,
     originalPositions: Float32Array,
   ) => {
-    console.log("Resetting the ball to its original shape");
+    // console.log("Resetting the ball to its original shape");
     const geometry = mesh.geometry as THREE.BufferGeometry;
     const positionAttribute = geometry.getAttribute("position");
 
@@ -289,8 +289,8 @@ const Orb: React.FC<OrbProps> = ({
       {isSessionActive && (
         <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
           <div className="flex gap-1.5 items-center">
-            <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
-            <span className="text-sm text-white/70">Recording in progress</span>
+            {/* <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span> */}
+            {/* <span className="text-sm text-white/70">Recording in progress</span> */}
           </div>
         </div>
       )}

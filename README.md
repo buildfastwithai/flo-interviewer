@@ -1,77 +1,73 @@
-# AI Voice Interview App with Transcript
+# Flo Interviewer
 
-This is a Next.js application that uses the Vapi AI voice API to create an interactive voice interview with real-time transcript.
+A voice-based AI interviewer application built with Next.js and Vapi.ai.
 
 ## Features
 
-- Interactive 3D Orb visualization that responds to voice input
-- Real-time voice-based AI interviews
-- Live transcript of the entire conversation
-- Ability to mute/unmute the microphone
-- Show/hide transcript panel
-- Responsive design
+- Conduct AI-powered voice interviews
+- Real-time transcription of conversations
+- Post-interview analysis with summary, success evaluation, and structured data
+- Feedback page with detailed interview results
 
-## Getting Started
-
-### Prerequisites
-
-- Node.js 16+ 
-- A Vapi.ai account and API keys
-
-### Setup
+## Setup
 
 1. Clone the repository
 2. Install dependencies:
-
-```bash
-npm install
-# or
-yarn
-# or
-pnpm install
-```
-
-3. Create a `.env.local` file in the root of the project with your Vapi API keys:
-
-```
-NEXT_PUBLIC_VAPI_PUBLIC_KEY=your_vapi_public_key
-NEXT_PUBLIC_VAPI_ASSISTANT_ID=your_vapi_assistant_id
-```
-
-You can get these keys by:
-- Signing up at [vapi.ai](https://vapi.ai)
-- Creating an assistant
-- Copying the public key and assistant ID
-
+   ```bash
+   npm install
+   ```
+3. Create a `.env.local` file in the root directory with the following variables:
+   ```
+   NEXT_PUBLIC_VAPI_PUBLIC_KEY=your_vapi_public_key
+   NEXT_PUBLIC_VAPI_ASSISTANT_ID=your_vapi_assistant_id
+   ```
 4. Run the development server:
+   ```bash
+   npm run dev
+   ```
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-```
+## How It Works
 
-5. Open [http://localhost:3000](http://localhost:3000) in your browser to see the application.
+### 1. Interview Setup
 
-## How to Use
+Fill out the form with:
+- Candidate name
+- Position
+- Interview duration
+- Job description
+- Required skills
 
-1. Click the "Start Interview" button or the orb to begin the interview
-2. Speak clearly when answering questions
-3. Your conversation will be transcribed in real-time on the right panel
-4. Use the mute button if you need privacy
-5. The orb will visually respond to your voice input
-6. Click "End Interview" when you're done
+This information is used to customize the interview experience.
 
-## Technology Stack
+### 2. Conducting the Interview
 
-- Next.js
+- Click "Start Interview" to begin the voice conversation
+- The orb visualizes voice activity
+- Real-time transcript appears on the right side
+- Click "End Interview" when finished
+
+### 3. Feedback and Analysis
+
+After the interview ends, you'll be redirected to the feedback page showing:
+- Interview summary
+- Success evaluation
+- Structured data with detailed analysis
+
+## Vapi Call Analysis
+
+The application leverages Vapi's call analysis features:
+
+- **Summary**: A concise overview of the interview conversation
+- **Success Evaluation**: Determines if the interview was successful based on predefined criteria
+- **Structured Data**: Extracts specific data points from the interview based on a JSON schema
+
+## Technologies Used
+
+- Next.js 13+ (App Router)
 - React
-- Three.js (for 3D visualization)
-- Vapi API (for voice AI)
-- Tailwind CSS (for styling)
+- Vapi.ai for voice AI
+- Tailwind CSS for styling
 
-## License
+## Customization
 
-MIT
+To customize the interview assistant behavior, you'll need to configure your Vapi assistant through the Vapi dashboard.

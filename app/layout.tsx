@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 
@@ -13,7 +13,11 @@ export const metadata: Metadata = {
   },
   authors: [{ name: 'AI Voice Interview' }],
   keywords: ['interview', 'AI', 'voice', 'transcript', 'interview practice'],
-  viewport: 'width=device-width, initial-scale=1',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
   themeColor: '#1e293b',
 };
 
