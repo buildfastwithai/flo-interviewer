@@ -84,7 +84,7 @@ export default function Home() {
       if (currentGroup && message.role === currentGroup.role) {
         // Only combine if the current message is final or both are not final
         if (message.isFinal || (!message.isFinal && !currentGroup.isFinal)) {
-          currentGroup.text += '\n\n' + message.text;
+          currentGroup.text += '' + message.text;
           currentGroup.timestamp = message.timestamp; // Update to the latest timestamp
           currentGroup.isFinal = currentGroup.isFinal && message.isFinal; // Only final if both are final
         } else {

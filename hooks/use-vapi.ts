@@ -70,14 +70,14 @@ const useVapi = () => {
         setConversation([]); // Reset conversation on call end
         interviewContextRef.current = null; // Reset interview context
         
-        // Redirect to feedback page if this was an interview call
-        if (shouldRedirectRef.current) {
-          shouldRedirectRef.current = false;
-          // Use a small timeout to ensure analysis data is processed
-          setTimeout(() => {
-            router.push("/feedback");
-          }, 1000);
-        }
+        // // Redirect to feedback page if this was an interview call
+        // if (shouldRedirectRef.current) {
+        //   shouldRedirectRef.current = false;
+        //   // Use a small timeout to ensure analysis data is processed
+        //   setTimeout(() => {
+        //     router.push("/feedback");
+        //   }, 1000);
+        // }
       });
 
       vapiInstance.on("volume-level", (volume: number) => {
