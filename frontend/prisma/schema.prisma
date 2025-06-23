@@ -1,0 +1,170 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model SkillRecord {
+  id             String    @id @default(uuid())
+  jobTitle       String
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  skills         Skill[]
+  questions      Question[]
+  interviewLength Int?     // Interview length in minutes
+  rawJobDescription String? @db.Text // Raw job description text
+  globalFeedback GlobalFeedback?
+  regenerations  Regeneration[]
+  excelQuestionSets ExcelQuestionSet[]
+  interviews     Interview[]  // Add this relation
+}
+
+model Skill {
+  id           String       @id @default(uuid())
+  name         String
+  level        SkillLevel   @default(INTERMEDIATE)
+  requirement  Requirement  @default(OPTIONAL)
+  numQuestions Int          @default(0)
+  difficulty   String?      
+  recordId     String
+  record       SkillRecord  @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  questions    Question[]
+  feedbacks    Feedback[]
+  regenerations Regeneration[]
+  priority     Int?         // Priority order for sequencing questions
+  category     SkillCategory? @default(TECHNICAL)
+  questionFormat String?    @default("Scenario based")
+  
+  @@unique([name, recordId])
+}
+
+model Question {
+  id           String       @id @default(uuid())
+  content      String
+  skillId      String
+  skill        Skill        @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  recordId     String
+  record       SkillRecord  @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  liked        LikeStatus?  @default(NONE)
+  feedback     String?      @db.Text
+  coding       Boolean      @default(false) // Whether this question involves coding
+  regenerations Regeneration[] @relation("OriginalQuestion")
+  regeneratedFrom Regeneration[] @relation("RegeneratedQuestion")
+}
+
+model Feedback {
+  id           String       @id @default(uuid())
+  content      String
+  skillId      String
+  skill        Skill        @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model GlobalFeedback {
+  id           String       @id @default(uuid())
+  content      String       @db.Text
+  recordId     String       @unique
+  record       SkillRecord  @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model Regeneration {
+  id                String       @id @default(uuid())
+  originalQuestionId String
+  originalQuestion   Question     @relation("OriginalQuestion", fields: [originalQuestionId], references: [id], onDelete: Cascade)
+  newQuestionId     String
+  newQuestion       Question     @relation("RegeneratedQuestion", fields: [newQuestionId], references: [id], onDelete: Cascade)
+  reason            String?      @db.Text // Reason for regeneration
+  userFeedback      String?      @db.Text // User's feedback on the regeneration
+  liked             LikeStatus?  @default(NONE) // User's preference for the new question
+  skillId           String
+  skill             Skill        @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  recordId          String
+  record            SkillRecord  @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  
+  @@unique([originalQuestionId, newQuestionId])
+}
+
+model ExcelQuestionSet {
+  id               String       @id @default(uuid())
+  jobTitle         String
+  experienceRange  String       @default("8 to 10 years")
+  totalQuestions   Int
+  skillsExtracted  String[]     // Array of skill names
+  recordId         String?      // Optional link to SkillRecord
+  record           SkillRecord? @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  rawJobDescription String      @db.Text
+  questions        ExcelQuestion[]
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+}
+
+model ExcelQuestion {
+  id                 String           @id @default(uuid())
+  slNo               Int
+  skill              String
+  questionTitle      String           @db.Text
+  questionDescription String          @db.Text
+  idealAnswer        String           @db.Text
+  coding             Boolean          @default(false) // Whether this question involves coding
+  setId              String
+  set                ExcelQuestionSet @relation(fields: [setId], references: [id], onDelete: Cascade)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+}
+
+model Interview {
+  id          String       @id @default(uuid())
+  roomId      String       @unique
+  accessCode  String       @unique
+  jobTitle    String?
+  record      SkillRecord  @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  recordId    String
+  status      String       @default("ACTIVE") // ACTIVE, COMPLETED, CANCELLED
+  candidateName String?
+  feedback    Json?        // For storing interview feedback and scores
+  results     String?      // Summary of interview results
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([recordId])
+  @@index([accessCode])
+}
+
+enum SkillLevel {
+  BEGINNER
+  INTERMEDIATE
+  PROFESSIONAL
+  EXPERT
+}
+
+enum Requirement {
+  MANDATORY
+  OPTIONAL
+}
+
+enum LikeStatus {
+  LIKED
+  DISLIKED
+  NONE
+}
+
+enum SkillCategory {
+  TECHNICAL
+  FUNCTIONAL
+  BEHAVIORAL
+  COGNITIVE
+}
