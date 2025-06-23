@@ -13,6 +13,7 @@ import {
   GripVertical,
   MessageSquare,
   FileSpreadsheet,
+  Plus,
 } from "lucide-react";
 import PDFDoc from "./PDFDocument";
 import { Question as PDFQuestion } from "./ui/questions-display";
@@ -1385,6 +1386,10 @@ export default function SkillRecordEditor({ record }: SkillRecordEditorProps) {
               <>Auto-Generate All</>
             )}
           </Button> */}
+          <Button variant="outline" onClick={() => router.push("/create-interview")}>
+            <Plus className="mr-2 h-4 w-4" />
+            Create Interview
+          </Button>
           <Button
             onClick={handleGenerateExcel}
             disabled={
