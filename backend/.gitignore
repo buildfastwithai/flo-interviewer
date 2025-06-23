@@ -1,0 +1,91 @@
+# Environment files
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# OS files
+.DS_Store
+.DS_Store?
+
+# Credentials and secrets
+google-credentials.json
+*.pem
+*.key
+service-account*.json
+
+# Application specific
+logs/
+*.log
+
+# ML models and data
+*.pkl
+*.pickle
+*.model
+data/
+models/
+
+# Temporary files
+*.tmp
+*.temp
