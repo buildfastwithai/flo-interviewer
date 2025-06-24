@@ -268,8 +268,21 @@ export default function HomePage() {
                 icon: <Users className="w-8 h-8" />,
                 gradient: "from-blue-500 to-cyan-500",
                 bgGradient: "from-blue-500/20 to-cyan-500/20",
-                link: "https://octopus-app-fp22q.ondigitalocean.app",
+                link: "/jd-qna",
                 launch: true,
+                self: true,
+              },
+
+              {
+                title: "AI Interviewer",
+                description:
+                  "Simulates real-time technical interviews with contextual follow-ups and live coding evaluation — freeing up your internal team.",
+                icon: <Video className="w-8 h-8" />,
+                gradient: "from-orange-500 to-red-500",
+                bgGradient: "from-orange-500/20 to-red-500/20",
+                link: "/create-interview",
+                launch: true,
+                self: true,
               },
               {
                 title: "AI Interview Evaluation",
@@ -279,17 +292,8 @@ export default function HomePage() {
                 gradient: "from-green-500 to-emerald-500",
                 bgGradient: "from-green-500/20 to-emerald-500/20",
                 link: "https://interview-evaluation-jpnua.ondigitalocean.app",
-                launch: true,
-              },
-              {
-                title: "AI Interviewer",
-                description:
-                  "Simulates real-time technical interviews with contextual follow-ups and live coding evaluation — freeing up your internal team.",
-                icon: <Video className="w-8 h-8" />,
-                gradient: "from-orange-500 to-red-500",
-                bgGradient: "from-orange-500/20 to-red-500/20",
-                link: "https://interview-evaluation-jpnua.ondigitalocean.app",
                 launch: false,
+                self: false,
               },
             ].map((feature, i) => (
               <motion.div
@@ -324,7 +328,7 @@ export default function HomePage() {
                     {feature.launch ? (
                       <Link
                         href={feature.link}
-                        target="_blank"
+                        target={feature.self ? "_self" : "_blank"}
                         className="flex items-center gap-2 text-blue-400 font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                       >
                         Learn more <ArrowRight className="w-4 h-4" />

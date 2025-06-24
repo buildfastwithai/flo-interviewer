@@ -1386,7 +1386,10 @@ export default function SkillRecordEditor({ record }: SkillRecordEditorProps) {
               <>Auto-Generate All</>
             )}
           </Button> */}
-          <Button variant="outline" onClick={() => router.push("/create-interview")}>
+          <Button
+            variant="outline"
+            onClick={() => router.push("/create-interview")}
+          >
             <Plus className="mr-2 h-4 w-4" />
             Create Interview
           </Button>
@@ -1792,10 +1795,10 @@ export default function SkillRecordEditor({ record }: SkillRecordEditorProps) {
                       <p>
                         Questions are generated for mandatory skills and
                         optional skills with questions count &gt; 0. Select
-                        "Generate Questions" to create questions for skills that
-                        don't have any yet. Use "Regenerate All Questions" to
-                        create new questions for all skills, replacing existing
-                        ones.
+                        &quot;Generate Questions&quot; to create questions for
+                        skills that don&apos;t have any yet. Use
+                        &quot;Regenerate All Questions&quot; to create new
+                        questions for all skills, replacing existing ones.
                       </p>
                     </TooltipContent>
                   </Tooltip>

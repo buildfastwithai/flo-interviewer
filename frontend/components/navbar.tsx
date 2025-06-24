@@ -40,7 +40,7 @@ export default function Navbar() {
           </span>
         </Link>
         <div className="hidden md:flex gap-6 text-sm font-medium">
-          <Link href="#workflow" className="hover:text-orange-500 transition">
+          <Link href="/workflow" className="hover:text-orange-500 transition">
             Workflow
           </Link>
           <Link href="#features" className="hover:text-orange-500 transition">

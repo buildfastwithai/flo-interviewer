@@ -48,17 +48,23 @@ const useVapi = () => {
         console.log("vapiRef.current", vapiRef.current);
         // Store callId for later use with analysis
         if (event && event.callId) {
-          setCallAnalysis(prev => ({ ...prev, callId: vapiRef.current.call.callClientId }));
+          setCallAnalysis((prev) => ({
+            ...prev,
+            callId: vapiRef.current.call.callClientId,
+          }));
         }
 
         console.log("call id", vapiRef.current.call.callClientId);
-        
+
         // If we have interview context, send it to the assistant at the start of the call
         if (interviewContextRef.current) {
           setTimeout(() => {
             vapiInstance.send({
               type: "add-message",
-              message: { role: "system", content: interviewContextRef.current },
+              message: {
+                role: "system",
+                content: interviewContextRef.current || "",
+              },
             });
           }, 500);
         }
@@ -69,7 +75,7 @@ const useVapi = () => {
         // Don't reset callAnalysis here as we need it for the feedback page
         setConversation([]); // Reset conversation on call end
         interviewContextRef.current = null; // Reset interview context
-        
+
         // // Redirect to feedback page if this was an interview call
         // if (shouldRedirectRef.current) {
         //   shouldRedirectRef.current = false;
@@ -92,7 +98,7 @@ const useVapi = () => {
             if (message.transcriptType === "final") {
               // Find the partial message to replace it with the final one
               const partialIndex = updatedConversation.findIndex(
-                (msg) => msg.role === message.role && !msg.isFinal,
+                (msg) => msg.role === message.role && !msg.isFinal
               );
               if (partialIndex !== -1) {
                 updatedConversation[partialIndex] = {
@@ -112,7 +118,7 @@ const useVapi = () => {
             } else {
               // Add partial message or update the existing one
               const partialIndex = updatedConversation.findIndex(
-                (msg) => msg.role === message.role && !msg.isFinal,
+                (msg) => msg.role === message.role && !msg.isFinal
               );
               if (partialIndex !== -1) {
                 updatedConversation[partialIndex] = {
@@ -145,14 +151,14 @@ const useVapi = () => {
             console.error("Unknown route:", command);
           }
         }
-        
+
         // Handle call analysis data
         if (message.type === "analysis") {
-          setCallAnalysis(prev => ({
+          setCallAnalysis((prev) => ({
             ...prev,
             summary: message.analysis?.summary,
             success: message.analysis?.success,
-            structuredData: message.analysis?.structuredData
+            structuredData: message.analysis?.structuredData,
           }));
         }
       });
@@ -194,7 +200,7 @@ const useVapi = () => {
       // Store system messages in ref for reuse on call start
       interviewContextRef.current = content;
     }
-    
+
     if (vapiRef.current && isSessionActive) {
       // If call is active, send message immediately
       vapiRef.current.send({
@@ -202,7 +208,7 @@ const useVapi = () => {
         message: { role, content },
       });
     } else if (role === "system") {
-      // If it's a system message and call isn't active yet, 
+      // If it's a system message and call isn't active yet,
       // we'll send it when the call starts (handled in call-start event)
       console.log("System message stored for next call start");
     } else {
@@ -223,7 +229,7 @@ const useVapi = () => {
       setIsMuted(newMuteState);
     }
   };
-  
+
   // Function to fetch call analysis manually if needed
   const fetchCallAnalysis = async (callId?: string) => {
     const id = callId || callAnalysis.callId;
@@ -231,18 +237,18 @@ const useVapi = () => {
       console.error("No call ID available to fetch analysis");
       return;
     }
-    
+
     try {
       // This would require a backend endpoint that uses Vapi API to fetch call analysis
       // For client-side implementation, you'd need to set up a proxy endpoint
       const response = await fetch(`/api/call-analysis/${id}`);
       if (response.ok) {
         const data = await response.json();
-        setCallAnalysis(prev => ({
+        setCallAnalysis((prev) => ({
           ...prev,
           summary: data.summary,
           success: data.success,
-          structuredData: data.structuredData
+          structuredData: data.structuredData,
         }));
         return data;
       }

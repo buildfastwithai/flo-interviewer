@@ -25,17 +25,17 @@ import {
 import { QuestionsDisplay, Question } from "./ui/questions-display";
 import { FileInput } from "./ui/file-input";
 import { Spinner } from "./ui/spinner";
-import { 
-  Download, 
-  FileText, 
-  Zap, 
-  RefreshCw, 
-  ArrowRight, 
-  Clock, 
-  Sparkles, 
-  FileUp, 
-  PenLine, 
-  CheckCircle2
+import {
+  Download,
+  FileText,
+  Zap,
+  RefreshCw,
+  ArrowRight,
+  Clock,
+  Sparkles,
+  FileUp,
+  PenLine,
+  CheckCircle2,
 } from "lucide-react";
 import PDFDoc from "./PDFDocument";
 import { pdf } from "@react-pdf/renderer";
@@ -76,11 +76,11 @@ type FormValues = z.infer<typeof formSchema>;
 // Motion animations
 const fadeInUp = {
   hidden: { opacity: 0, y: 20 },
-  visible: { 
-    opacity: 1, 
+  visible: {
+    opacity: 1,
     y: 0,
-    transition: { duration: 0.5 }
-  }
+    transition: { duration: 0.5 },
+  },
 };
 
 export function JDQnaForm() {
@@ -126,12 +126,12 @@ export function JDQnaForm() {
     const watchJobRole = form.watch("jobRole");
     const watchInterviewLength = form.watch("interviewLength");
     const hasJobDescription = pdfContent || form.watch("jobDescriptionText");
-    
+
     let progress = 0;
     if (watchJobRole) progress += 33;
     if (watchInterviewLength) progress += 33;
     if (hasJobDescription) progress += 34;
-    
+
     setFormProgress(progress);
   }, [form, pdfContent]);
 
@@ -162,7 +162,7 @@ export function JDQnaForm() {
       toast.info("Extracting content from PDF...", {
         duration: 3000,
       });
-      
+
       const extractResponse = await fetch("/api/pdf-extract", {
         method: "POST",
         headers: {
@@ -184,7 +184,8 @@ export function JDQnaForm() {
     } catch (error) {
       console.error("Error uploading or extracting file:", error);
       toast.error("Error processing file. Please try again.", {
-        description: "There was an issue with your PDF. Try a different file or paste text directly.",
+        description:
+          "There was an issue with your PDF. Try a different file or paste text directly.",
       });
     } finally {
       setUploading(false);
@@ -208,7 +209,7 @@ export function JDQnaForm() {
         description: "Extracting key skills and requirements.",
         duration: 5000,
       });
-      
+
       const response = await fetch("/api/extract-skills", {
         method: "POST",
         headers: {
@@ -246,7 +247,8 @@ export function JDQnaForm() {
     } catch (error) {
       console.error("Error extracting skills:", error);
       toast.error("Error extracting skills. Please try again.", {
-        description: "We couldn't process the job description. Please check your input and try again.",
+        description:
+          "We couldn't process the job description. Please check your input and try again.",
       });
     } finally {
       setExtractingSkills(false);
@@ -260,7 +262,8 @@ export function JDQnaForm() {
 
     if (!jobDescription || skills.length === 0) {
       toast.error("Please extract skills first", {
-        description: "We need to analyze the job description before generating questions.",
+        description:
+          "We need to analyze the job description before generating questions.",
       });
       return;
     }
@@ -335,7 +338,8 @@ export function JDQnaForm() {
     } catch (error) {
       console.error("Error generating questions:", error);
       toast.error("Error generating questions. Please try again.", {
-        description: "There was an issue creating interview questions. Please try again.",
+        description:
+          "There was an issue creating interview questions. Please try again.",
       });
     } finally {
       setLoading(false);
@@ -464,9 +468,12 @@ export function JDQnaForm() {
       }
     } catch (error) {
       console.error("Error auto-generating:", error);
-      toast.error("Error auto-generating skills and questions. Please try again.", {
-        description: "There was an issue processing your request.",
-      });
+      toast.error(
+        "Error auto-generating skills and questions. Please try again.",
+        {
+          description: "There was an issue processing your request.",
+        }
+      );
     } finally {
       setLoading(false);
       setQuestionGenerationDialogOpen(false);
@@ -480,22 +487,20 @@ export function JDQnaForm() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl mx-auto p-4">
-      <motion.div
-        initial="hidden"
-        animate="visible"
-        variants={fadeInUp}
-      >
+      <motion.div initial="hidden" animate="visible" variants={fadeInUp}>
         <Card className="shadow-md border border-border hover:shadow-lg transition-shadow duration-300 h-full">
           <CardHeader className="space-y-2 border-b border-border/40 bg-card/70">
             <div className="flex items-center space-x-2">
               <Sparkles className="h-5 w-5 text-primary" />
-              <CardTitle className="text-2xl font-serif text-foreground">Job Description Details</CardTitle>
+              <CardTitle className="text-2xl font-serif text-foreground">
+                Job Description Details
+              </CardTitle>
             </div>
             <CardDescription className="text-muted-foreground">
               Upload a job description PDF or paste text to extract skills and
               generate interview questions.
             </CardDescription>
-            
+
             <div className="pt-2">
               <div className="flex justify-between items-center text-xs text-muted-foreground mb-1">
                 <span>Form completion</span>
@@ -504,10 +509,13 @@ export function JDQnaForm() {
               <Progress value={formProgress} className="h-1 bg-muted/50" />
             </div>
           </CardHeader>
-          
+
           <CardContent className="pt-6">
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-6"
+              >
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -515,7 +523,12 @@ export function JDQnaForm() {
                     render={({ field }) => (
                       <FormItem className="space-y-2">
                         <FormLabel className="font-medium flex items-center">
-                          <Badge variant="outline" className="mr-2 bg-primary/5 text-primary border-primary/20">Required</Badge>
+                          <Badge
+                            variant="outline"
+                            className="mr-2 bg-primary/5 text-primary border-primary/20"
+                          >
+                            Required
+                          </Badge>
                           Job Role
                         </FormLabel>
                         <FormControl>
@@ -536,7 +549,12 @@ export function JDQnaForm() {
                     render={({ field }) => (
                       <FormItem className="space-y-2">
                         <FormLabel className="font-medium flex items-center">
-                          <Badge variant="outline" className="mr-2 bg-primary/5 text-primary border-primary/20">Required</Badge>
+                          <Badge
+                            variant="outline"
+                            className="mr-2 bg-primary/5 text-primary border-primary/20"
+                          >
+                            Required
+                          </Badge>
                           Interview Length
                         </FormLabel>
                         <div className="relative">
@@ -551,7 +569,9 @@ export function JDQnaForm() {
                             />
                           </FormControl>
                           <Clock className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                          <div className="absolute right-3 top-2.5 text-xs text-muted-foreground">minutes</div>
+                          <div className="absolute right-3 top-2.5 text-xs text-muted-foreground">
+                            minutes
+                          </div>
                         </div>
                         <FormMessage className="text-destructive text-sm" />
                       </FormItem>
@@ -565,7 +585,12 @@ export function JDQnaForm() {
                   render={({ field }) => (
                     <FormItem className="space-y-2">
                       <FormLabel className="font-medium flex items-center">
-                        <Badge variant="outline" className="mr-2 bg-secondary/20 text-muted-foreground border-secondary/20">Optional</Badge>
+                        <Badge
+                          variant="outline"
+                          className="mr-2 bg-secondary/20 text-muted-foreground border-secondary/20"
+                        >
+                          Optional
+                        </Badge>
                         Custom Instructions
                       </FormLabel>
                       <FormControl>
@@ -576,7 +601,8 @@ export function JDQnaForm() {
                         />
                       </FormControl>
                       <p className="text-xs text-muted-foreground italic">
-                        E.g., "Focus on system design questions" or "Include behavioral questions about teamwork"
+                        E.g., &quot;Focus on system design questions&quot; or
+                        &quot;Include behavioral questions about teamwork&quot;
                       </p>
                       <FormMessage className="text-destructive text-sm" />
                     </FormItem>
@@ -585,10 +611,14 @@ export function JDQnaForm() {
 
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2 mb-1">
-                    <Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-none">Step 2</Badge>
-                    <h3 className="text-sm font-medium text-foreground">Provide Job Description</h3>
+                    <Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-none">
+                      Step 2
+                    </Badge>
+                    <h3 className="text-sm font-medium text-foreground">
+                      Provide Job Description
+                    </h3>
                   </div>
-                  
+
                   <Tabs
                     defaultValue="file"
                     onValueChange={(value) =>
@@ -597,11 +627,17 @@ export function JDQnaForm() {
                     className="w-full"
                   >
                     <TabsList className="grid grid-cols-2 w-full mb-2 px-2 bg-muted/50 border border-border/50 rounded-md h-12">
-                      <TabsTrigger value="file" className="text-sm font-medium data-[state=active]:bg-card data-[state=active]:shadow-sm">
+                      <TabsTrigger
+                        value="file"
+                        className="text-sm font-medium data-[state=active]:bg-card data-[state=active]:shadow-sm"
+                      >
                         <FileUp className="mr-2 h-4 w-4" />
                         Upload PDF
                       </TabsTrigger>
-                      <TabsTrigger value="text" className="text-sm font-medium data-[state=active]:bg-card data-[state=active]:shadow-sm">
+                      <TabsTrigger
+                        value="text"
+                        className="text-sm font-medium data-[state=active]:bg-card data-[state=active]:shadow-sm"
+                      >
                         <PenLine className="mr-2 h-4 w-4" />
                         Paste Text
                       </TabsTrigger>
@@ -615,7 +651,9 @@ export function JDQnaForm() {
                           field: { value, onChange, ...fieldProps },
                         }) => (
                           <FormItem className="space-y-2">
-                            <FormLabel className="font-medium">Job Description PDF</FormLabel>
+                            <FormLabel className="font-medium">
+                              Job Description PDF
+                            </FormLabel>
                             <FormControl>
                               <FileInput
                                 accept=".pdf"
@@ -645,7 +683,7 @@ export function JDQnaForm() {
                       )}
 
                       {fileName && !uploading && pdfContent && (
-                        <motion.div 
+                        <motion.div
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.3 }}
@@ -655,7 +693,9 @@ export function JDQnaForm() {
                             <FileText className="mr-2 h-4 w-4 text-primary" />
                             Uploaded PDF
                           </h3>
-                          <p className="text-sm text-muted-foreground mb-2">{fileName}</p>
+                          <p className="text-sm text-muted-foreground mb-2">
+                            {fileName}
+                          </p>
                           <div className="text-sm text-primary flex items-center">
                             <span className="bg-primary/10 text-primary px-2 py-1 rounded-md flex items-center">
                               <CheckCircle2 className="h-4 w-4 mr-1" />
@@ -672,7 +712,9 @@ export function JDQnaForm() {
                         name="jobDescriptionText"
                         render={({ field }) => (
                           <FormItem className="space-y-2">
-                            <FormLabel className="font-medium">Paste Job Description</FormLabel>
+                            <FormLabel className="font-medium">
+                              Paste Job Description
+                            </FormLabel>
                             <FormControl>
                               <Textarea
                                 value={field.value || ""}
@@ -739,15 +781,21 @@ export function JDQnaForm() {
                     )}
                   </Button>
                 </div>
-                
+
                 <div className="text-xs text-muted-foreground/70 pt-2">
                   <p className="flex items-center">
                     <Zap className="h-3 w-3 mr-1 inline" />
-                    <span><strong>Auto-Generate:</strong> Creates both skills and questions in one step</span>
+                    <span>
+                      <strong>Auto-Generate:</strong> Creates both skills and
+                      questions in one step
+                    </span>
                   </p>
                   <p className="flex items-center mt-1">
                     <ArrowRight className="h-3 w-3 mr-1 inline" />
-                    <span><strong>Extract Skills:</strong> Lets you review skills before generating questions</span>
+                    <span>
+                      <strong>Extract Skills:</strong> Lets you review skills
+                      before generating questions
+                    </span>
                   </p>
                 </div>
               </form>
@@ -772,11 +820,12 @@ export function JDQnaForm() {
                     {form.getValues().jobRole} - Interview Questions
                   </CardTitle>
                   <CardDescription className="text-muted-foreground">
-                    {questions.length} questions generated ({form.getValues().interviewLength} minute interview)
+                    {questions.length} questions generated (
+                    {form.getValues().interviewLength} minute interview)
                   </CardDescription>
                 </div>
-                <Button 
-                  onClick={handleGeneratePDF} 
+                <Button
+                  onClick={handleGeneratePDF}
                   disabled={pdfLoading}
                   className="bg-accent text-accent-foreground hover:bg-accent/90 shadow-sm"
                 >
@@ -799,11 +848,12 @@ export function JDQnaForm() {
             </CardContent>
             <CardFooter className="border-t border-border/40 pt-4 flex justify-between items-center">
               <p className="text-xs text-muted-foreground">
-                These questions are tailored based on the provided job description and skills
+                These questions are tailored based on the provided job
+                description and skills
               </p>
-              <Button 
-                variant="outline" 
-                onClick={handleReset} 
+              <Button
+                variant="outline"
+                onClick={handleReset}
                 className="flex items-center"
               >
                 <RefreshCw className="mr-2 h-4 w-4" />
