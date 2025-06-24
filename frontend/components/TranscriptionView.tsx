@@ -1,13 +1,40 @@
 import useCombinedTranscriptions from "@/hooks/useCombinedTranscriptions";
 import * as React from "react";
+import { useEffect, useState } from "react";
 
-export default function TranscriptionView() {
+export default function TranscriptionView({ interviewId, onTranscriptUpdate }: { 
+  interviewId?: string, 
+  onTranscriptUpdate?: (transcriptions: any[]) => void 
+}) {
   const combinedTranscriptions = useCombinedTranscriptions();
   const bottomRef = React.useRef<HTMLDivElement>(null);
+  
+  // Format transcriptions with timestamps
+  const [formattedTranscriptions, setFormattedTranscriptions] = useState<any[]>([]);
+  
   // scroll to bottom when new transcription is added
   React.useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [combinedTranscriptions]);
+  
+  // Format and store transcriptions with timestamps
+  useEffect(() => {
+    if (combinedTranscriptions.length > 0) {
+      const newFormatted = combinedTranscriptions.map(segment => ({
+        id: segment.id,
+        timestamp: new Date().toISOString(),
+        speaker: segment.role === "assistant" ? "interviewer" : "candidate",
+        text: segment.text
+      }));
+      
+      setFormattedTranscriptions(newFormatted);
+      
+      // Call the parent component's callback with the updated transcriptions
+      if (onTranscriptUpdate) {
+        onTranscriptUpdate(newFormatted);
+      }
+    }
+  }, [combinedTranscriptions, onTranscriptUpdate]);
 
   return (
     <div className="relative w-full max-w-[90vw] mx-auto">

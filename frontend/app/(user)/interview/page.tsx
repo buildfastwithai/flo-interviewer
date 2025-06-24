@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Room, RoomEvent } from "livekit-client";
 import {
   BarVisualizer,
@@ -29,12 +29,22 @@ interface UserFormData {
   accessCode: string;
 }
 
+interface InterviewData {
+  interviewId: string;
+  roomId: string;
+  startTime: string;
+  transcript: any[];
+}
+
 export default function InterviewPage() {
   const [room] = useState(new Room());
   const [userData, setUserData] = useState<UserFormData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const [interviewData, setInterviewData] = useState<InterviewData | null>(null);
+  const [transcriptions, setTranscriptions] = useState<any[]>([]);
+  const startTimeRef = useRef<string>(new Date().toISOString());
 
   const onJoinInterview = useCallback(
     async (formData: UserFormData) => {
@@ -91,6 +101,35 @@ export default function InterviewPage() {
         await room.localParticipant.setMicrophoneEnabled(true);
         console.log("Microphone enabled");
         
+        // Initialize interview data
+        startTimeRef.current = new Date().toISOString();
+        
+        // Set interview data
+        if (connectionDetails.interviewId && connectionDetails.roomId) {
+          setInterviewData({
+            interviewId: connectionDetails.interviewId,
+            roomId: connectionDetails.roomId,
+            startTime: startTimeRef.current,
+            transcript: []
+          });
+          
+          // Create initial interview data in the database
+          try {
+            await createInterviewData({
+              interviewId: connectionDetails.interviewId,
+              transcript: "[]",
+              startTime: startTimeRef.current,
+              endTime: null,
+              duration: 0,
+              analysis: {},
+              questionAnswers: []
+            });
+            console.log("Created initial interview data");
+          } catch (error) {
+            console.error("Failed to create initial interview data:", error);
+          }
+        }
+        
         // Save user data to state
         setUserData(formData);
       } catch (error) {
@@ -114,6 +153,176 @@ export default function InterviewPage() {
     };
   }, [room]);
 
+  // Function to create interview data in the database
+  const createInterviewData = async (data: any) => {
+    try {
+      // Process the data to ensure valid dates
+      const processedData = {
+        ...data,
+        // Only include endTime if it's a non-empty string
+        endTime: data.endTime && data.endTime.trim() !== "" 
+          ? new Date(data.endTime) 
+          : undefined, // Set to undefined so Prisma will ignore it
+        startTime: new Date(data.startTime),
+      };
+
+      const response = await fetch('/api/interview-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(processedData),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to create interview data');
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error creating interview data:', error);
+      throw error;
+    }
+  };
+  
+  // Function to update interview data in the database
+  const updateInterviewData = async (data: any) => {
+    try {
+      // Process the data to ensure valid dates
+      const processedData = {
+        ...data,
+        // Only include endTime if it's a non-empty string
+        endTime: data.endTime && data.endTime.trim() !== "" 
+          ? new Date(data.endTime) 
+          : undefined, // Set to undefined so Prisma will ignore it
+        startTime: new Date(data.startTime),
+      };
+
+      const response = await fetch('/api/interview-data', {
+        method: 'POST', // The API uses POST for both create and update
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(processedData),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update interview data');
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error updating interview data:', error);
+      throw error;
+    }
+  };
+  
+  // Handle transcript updates from TranscriptionView
+  const handleTranscriptUpdate = useCallback((newTranscriptions: any[]) => {
+    setTranscriptions(newTranscriptions);
+  }, []);
+  
+  // Save transcripts periodically or when disconnecting
+  useEffect(() => {
+    if (interviewData && transcriptions.length > 0) {
+      const saveTranscriptInterval = setInterval(() => {
+        updateInterviewData({
+          interviewId: interviewData.interviewId,
+          transcript: JSON.stringify(transcriptions),
+          startTime: interviewData.startTime,
+          endTime: null,
+          duration: calculateDuration(interviewData.startTime),
+          analysis: {},
+          questionAnswers: extractQuestionAnswers(transcriptions)
+        }).catch(error => {
+          console.error('Failed to update transcript:', error);
+        });
+      }, 30000); // Update every 30 seconds
+      
+      return () => clearInterval(saveTranscriptInterval);
+    }
+  }, [interviewData, transcriptions]);
+  
+  // Calculate duration in minutes
+  const calculateDuration = (startTime: string): number => {
+    const start = new Date(startTime).getTime();
+    const now = new Date().getTime();
+    return Math.floor((now - start) / (1000 * 60)); // Minutes
+  };
+  
+  // Extract question-answer pairs from transcriptions
+  const extractQuestionAnswers = (transcript: any[]): any[] => {
+    const qa: any[] = [];
+    let currentQuestion = null;
+    let currentAnswers: string[] = [];
+    
+    for (let i = 0; i < transcript.length; i++) {
+      const entry = transcript[i];
+      
+      if (entry.speaker === 'interviewer') {
+        // If we have a previous Q&A pair, save it
+        if (currentQuestion && currentAnswers.length > 0) {
+          qa.push({
+            question: currentQuestion,
+            answer: currentAnswers.join(' ')
+          });
+        }
+        
+        // Start a new Q&A pair
+        currentQuestion = entry.text;
+        currentAnswers = [];
+      } else if (entry.speaker === 'candidate' && currentQuestion) {
+        currentAnswers.push(entry.text);
+      }
+    }
+    
+    // Add the last Q&A pair if it exists
+    if (currentQuestion && currentAnswers.length > 0) {
+      qa.push({
+        question: currentQuestion,
+        answer: currentAnswers.join(' ')
+      });
+    }
+    
+    return qa;
+  };
+  
+  // Handle room disconnect and save final data
+  const handleDisconnect = useCallback(async () => {
+    if (interviewData) {
+      const endTime = new Date().toISOString();
+      try {
+        await updateInterviewData({
+          interviewId: interviewData.interviewId,
+          transcript: JSON.stringify(transcriptions),
+          startTime: interviewData.startTime,
+          endTime,
+          duration: calculateDuration(interviewData.startTime),
+          analysis: {},
+          questionAnswers: extractQuestionAnswers(transcriptions)
+        });
+        console.log('Successfully saved interview data on disconnect');
+      } catch (error) {
+        console.error('Failed to save interview data on disconnect:', error);
+      }
+    }
+  }, [interviewData, transcriptions]);
+  
+  // Set up disconnect handler
+  useEffect(() => {
+    if (room) {
+      const handleRoomDisconnect = () => {
+        handleDisconnect();
+      };
+      
+      room.on(RoomEvent.Disconnected, handleRoomDisconnect);
+      
+      return () => {
+        room.off(RoomEvent.Disconnected, handleRoomDisconnect);
+      };
+    }
+  }, [room, handleDisconnect]);
+
   return (
     <div data-lk-theme="default" className="flex h-screen bg-background">
       {!userData ? (
@@ -124,7 +333,11 @@ export default function InterviewPage() {
         />
       ) : (
         <RoomContext.Provider value={room}>
-          <InterviewInterface isDemoMode={isDemoMode} />
+          <InterviewInterface 
+            isDemoMode={isDemoMode} 
+            interviewId={interviewData?.interviewId}
+            onTranscriptUpdate={handleTranscriptUpdate}
+          />
           <RoomAudioRenderer />
         </RoomContext.Provider>
       )}
@@ -203,7 +416,7 @@ function UserForm({
   );
 }
 
-function InterviewInterface({ isDemoMode = false }: { isDemoMode?: boolean }) {
+function InterviewInterface({ isDemoMode = false, interviewId, onTranscriptUpdate }: { isDemoMode?: boolean, interviewId?: string, onTranscriptUpdate: (newTranscriptions: any[]) => void }) {
   const { state: agentState, audioTrack } = useVoiceAssistant();
   const transcriptions = useCombinedTranscriptions();
 
@@ -318,7 +531,10 @@ function InterviewInterface({ isDemoMode = false }: { isDemoMode?: boolean }) {
         <ScrollArea className="flex-1 p-4">
           <div className="space-y-4 max-w-4xl mx-auto">
             {isConnected ? (
-              <TranscriptionView />
+              <TranscriptionView 
+                interviewId={interviewId}
+                onTranscriptUpdate={onTranscriptUpdate}
+              />
             ) : (
               <div className="flex items-center justify-center h-full">
                 <p className="text-muted-foreground text-center">

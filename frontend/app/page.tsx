@@ -291,9 +291,9 @@ export default function HomePage() {
                 icon: <Star className="w-8 h-8" />,
                 gradient: "from-green-500 to-emerald-500",
                 bgGradient: "from-green-500/20 to-emerald-500/20",
-                link: "https://interview-evaluation-jpnua.ondigitalocean.app",
-                launch: false,
-                self: false,
+                link: "/interview-evaluation",
+                launch: true,
+                self: true,
               },
             ].map((feature, i) => (
               <motion.div

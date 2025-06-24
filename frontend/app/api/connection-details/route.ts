@@ -9,10 +9,6 @@ const API_KEY = process.env.LIVEKIT_API_KEY;
 const API_SECRET = process.env.LIVEKIT_API_SECRET;
 const LIVEKIT_URL = process.env.LIVEKIT_URL;
 
-// Default LiveKit credentials for development/demo
-const DEMO_API_KEY = "devkey";  
-const DEMO_API_SECRET = "secret";
-const DEMO_SERVER_URL = "wss://demo.livekit.cloud";
 
 // don't cache the results
 export const revalidate = 0;
@@ -23,6 +19,8 @@ export interface ConnectionDetails {
   roomName: string;
   participantName: string;
   demoMode?: boolean;
+  interviewId?: string;
+  roomId?: string;
 }
 
 export async function GET(request: NextRequest) {
@@ -100,11 +98,15 @@ export async function GET(request: NextRequest) {
         
         // Include record ID in metadata for the agent to use
         metadata = {
-          role: interview.record?.jobTitle || (role || "Technical Interview"),
+          role: interview.record?.jobTitle || (role || "Software Engineer"),
           candidateName: name,
           recordId: interview.recordId,
           skill: skillLevel || "mid",
+          interviewId: interview.id,
+          interviewStatus: interview.status,
+          roomId: interview.roomId,
         };
+        console.log(`Metadata: ${JSON.stringify(metadata)}`);
       } catch (dbError) {
         console.error("Database error while looking up interview:", dbError);
         return NextResponse.json(
@@ -151,6 +153,8 @@ export async function GET(request: NextRequest) {
         participantToken,
         participantName: name,
         demoMode: isDemoMode,
+        interviewId: metadata.interviewId,
+        roomId: metadata.roomId,
       };
 
       return NextResponse.json(data, { headers });

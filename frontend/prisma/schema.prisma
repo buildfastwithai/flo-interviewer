@@ -139,9 +139,27 @@ model Interview {
   results     String?      // Summary of interview results
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
+  interviewData InterviewData?  // Relation to detailed interview data
 
   @@index([recordId])
   @@index([accessCode])
+}
+
+model InterviewData {
+  id              String    @id @default(uuid())
+  interview       Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  interviewId     String    @unique
+  transcript      String    @db.Text
+  startTime       DateTime
+  endTime         DateTime?
+  duration        Int       // Duration in minutes
+  analysis        Json?     // JSON data for AI analysis of the interview
+  aiEvaluation    Json?     // AI-generated evaluation and scores
+  questionAnswers Json?     // Questions and answers in the interview
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([interviewId])
 }
 
 enum SkillLevel {
