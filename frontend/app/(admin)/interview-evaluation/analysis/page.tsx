@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Card,
@@ -34,7 +34,8 @@ import Link from "next/link";
 import { SkillAssessment, QuestionAnswer, InterviewInsights, AnalysisResponse } from "@/components/interview-analysis";
 import { generateInterviewPDF } from "@/components/interview-analysis-pdf";
 
-export default function AnalysisResultPage() {
+// Create a client component to handle search params
+function AnalysisContent() {
   const searchParams = useSearchParams();
   const interviewId = searchParams.get("id");
   const analysisId = searchParams.get("analysisId");
@@ -894,5 +895,21 @@ export default function AnalysisResultPage() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+// Main page component
+export default function AnalysisResultPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto p-6 flex items-center justify-center min-h-[50vh]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4">Loading analysis...</p>
+        </div>
+      </div>
+    }>
+      <AnalysisContent />
+    </Suspense>
   );
 } 
