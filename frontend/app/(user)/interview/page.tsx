@@ -122,7 +122,8 @@ export default function InterviewPage() {
               endTime: null,
               duration: 0,
               analysis: {},
-              questionAnswers: []
+              questionAnswers: [],
+              candidateName: formData.name
             });
             console.log("Created initial interview data");
           } catch (error) {
@@ -166,12 +167,16 @@ export default function InterviewPage() {
         startTime: new Date(data.startTime),
       };
 
+      // Include the updated flag to ensure we always update if an entry exists
       const response = await fetch('/api/interview-data', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(processedData),
+        body: JSON.stringify({
+          ...processedData,
+          updateIfExists: true
+        }),
       });
       
       if (!response.ok) {
@@ -196,6 +201,8 @@ export default function InterviewPage() {
           ? new Date(data.endTime) 
           : undefined, // Set to undefined so Prisma will ignore it
         startTime: new Date(data.startTime),
+        candidateName: userData?.name || data.candidateName, // Always include candidate name
+        updateIfExists: true // Always update existing records
       };
 
       const response = await fetch('/api/interview-data', {
@@ -233,7 +240,8 @@ export default function InterviewPage() {
           endTime: null,
           duration: calculateDuration(interviewData.startTime),
           analysis: {},
-          questionAnswers: extractQuestionAnswers(transcriptions)
+          questionAnswers: extractQuestionAnswers(transcriptions),
+          candidateName: userData?.name || "" // Always include candidate name
         }).catch(error => {
           console.error('Failed to update transcript:', error);
         });
@@ -241,7 +249,7 @@ export default function InterviewPage() {
       
       return () => clearInterval(saveTranscriptInterval);
     }
-  }, [interviewData, transcriptions]);
+  }, [interviewData, transcriptions, userData]);
   
   // Calculate duration in minutes
   const calculateDuration = (startTime: string): number => {
@@ -299,14 +307,15 @@ export default function InterviewPage() {
           endTime,
           duration: calculateDuration(interviewData.startTime),
           analysis: {},
-          questionAnswers: extractQuestionAnswers(transcriptions)
+          questionAnswers: extractQuestionAnswers(transcriptions),
+          candidateName: userData?.name || "" // Always include candidate name
         });
         console.log('Successfully saved interview data on disconnect');
       } catch (error) {
         console.error('Failed to save interview data on disconnect:', error);
       }
     }
-  }, [interviewData, transcriptions]);
+  }, [interviewData, transcriptions, userData]);
   
   // Set up disconnect handler
   useEffect(() => {
@@ -538,7 +547,7 @@ function InterviewInterface({ isDemoMode = false, interviewId, onTranscriptUpdat
             ) : (
               <div className="flex items-center justify-center h-full">
                 <p className="text-muted-foreground text-center">
-                  Connection error. Please reload the page and try again.
+                  Interview ended. Please reload the page.
                 </p>
               </div>
             )}

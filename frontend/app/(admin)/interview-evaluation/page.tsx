@@ -43,13 +43,14 @@ interface InterviewData {
   endTime?: string;
   duration: number;
   analysis?: any;
+  candidateName?: string;
   createdAt: string;
   updatedAt: string;
   interview: {
     id: string;
     roomId: string;
     jobTitle: string;
-    candidateName: string;
+    candidateName?: string;
     status: string;
     record: {
       id: string;
@@ -227,7 +228,7 @@ export default function InterviewEvaluationPage() {
                     <CardHeader className="pb-2">
                       <div className="flex justify-between items-start">
                         <div>
-                          <CardTitle className="text-xl">{interview.interview.candidateName || 'Unnamed Candidate'}</CardTitle>
+                          <CardTitle className="text-xl">{interview.candidateName || interview.interview.candidateName || 'Unnamed Candidate'}</CardTitle>
                           <CardDescription>{interview.interview.jobTitle || 'Unknown Position'}</CardDescription>
                         </div>
                         <Badge 
@@ -331,7 +332,7 @@ export default function InterviewEvaluationPage() {
                         return (
                           <TableRow key={interview.id}>
                             <TableCell className="font-medium">
-                              {interview.interview.candidateName || 'Unnamed'}
+                              {interview.candidateName || interview.interview.candidateName || 'Unnamed'}
                             </TableCell>
                             <TableCell>{interview.interview.jobTitle || 'Unknown'}</TableCell>
                             <TableCell>

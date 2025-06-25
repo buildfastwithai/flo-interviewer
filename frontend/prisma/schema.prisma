@@ -133,13 +133,9 @@ model Interview {
   jobTitle    String?
   record      SkillRecord  @relation(fields: [recordId], references: [id], onDelete: Cascade)
   recordId    String
-  status      String       @default("ACTIVE") // ACTIVE, COMPLETED, CANCELLED
-  candidateName String?
-  feedback    Json?        // For storing interview feedback and scores
-  results     String?      // Summary of interview results
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
-  interviewData InterviewData?  // Relation to detailed interview data
+  interviewData InterviewData[]  // Changed to array for one-to-many relationship
 
   @@index([recordId])
   @@index([accessCode])
@@ -148,10 +144,11 @@ model Interview {
 model InterviewData {
   id              String    @id @default(uuid())
   interview       Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
-  interviewId     String    @unique
+  interviewId     String    // Removed @unique constraint
   transcript      String    @db.Text
   startTime       DateTime
   endTime         DateTime?
+  candidateName String?
   duration        Int       // Duration in minutes
   analysis        Json?     // JSON data for AI analysis of the interview
   aiEvaluation    Json?     // AI-generated evaluation and scores

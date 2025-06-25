@@ -10,9 +10,11 @@ export async function POST(req: NextRequest) {
       startTime, 
       endTime,
       duration,
+      candidateName,
       analysis = {},
       aiEvaluation = {},
-      questionAnswers = {}
+      questionAnswers = {},
+      updateIfExists = true // Default to true to prefer updating over creating
     } = data;
     
     if (!interviewId) {
@@ -34,22 +36,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Update interview status to COMPLETED only if endTime is provided
-    if (endTime) {
-      await prisma.interview.update({
-        where: { id: interviewId },
-        data: { 
-          status: 'COMPLETED',
-          updatedAt: new Date()
-        }
-      });
-    }
-
-    // Check if interview data already exists
-    const existingData = await prisma.interviewData.findUnique({
-      where: { interviewId }
-    });
-
     // Prepare data object with conditional fields
     const dataToSave: any = {
       transcript,
@@ -57,35 +43,67 @@ export async function POST(req: NextRequest) {
       duration,
       analysis,
       aiEvaluation,
-      questionAnswers,
-      updatedAt: new Date()
+      questionAnswers
     };
     
-    // Only add endTime if it's defined
+    // Add optional fields if they're defined
     if (endTime) {
       dataToSave.endTime = new Date(endTime);
     }
-
-    let interviewData;
     
-    if (existingData) {
-      // Update existing interview data
-      interviewData = await prisma.interviewData.update({
-        where: { interviewId },
-        data: dataToSave
-      });
-    } else {
-      // Create new interview data with required fields
-      interviewData = await prisma.interviewData.create({
-        data: {
-          interviewId,
-          ...dataToSave,
-          createdAt: new Date()
-        }
-      });
+    if (candidateName) {
+      dataToSave.candidateName = candidateName;
     }
 
-    return NextResponse.json({ success: true, data: interviewData });
+    // Always check first if any record exists
+    const existingInterviewData = await prisma.interviewData.findFirst({
+      where: {
+        interview: { id: interviewId }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    let result;
+    
+    if (existingInterviewData) {
+      // Update existing record
+      result = await prisma.interviewData.update({
+        where: {
+          id: existingInterviewData.id
+        },
+        data: {
+          ...dataToSave,
+          // Ensure we don't lose the candidate name if it exists
+          candidateName: candidateName || existingInterviewData.candidateName
+        }
+      });
+      
+      return NextResponse.json({ 
+        success: true, 
+        data: result, 
+        updated: true
+      });
+    } else {
+      // Create new record only if no record exists
+      result = await prisma.interviewData.create({
+        data: {
+          interview: {
+            connect: {
+              id: interviewId
+            }
+          },
+          ...dataToSave
+        }
+      });
+      
+      return NextResponse.json({ 
+        success: true, 
+        data: result, 
+        created: true 
+      });
+    }
   } catch (error) {
     console.error('Error storing interview data:', error);
     return NextResponse.json(
@@ -107,25 +125,36 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const interviewData = await prisma.interviewData.findUnique({
-      where: { interviewId },
+    const interviewDataRecords = await prisma.interviewData.findMany({
+      where: { 
+        interview: {
+          id: interviewId
+        }
+      },
       include: {
         interview: {
           include: {
-            record: true
+            record: {
+              include: {
+                skills: true  // Include skills from the SkillRecord
+              }
+            }
           }
         }
+      },
+      orderBy: {
+        createdAt: 'desc'
       }
     });
 
-    if (!interviewData) {
+    if (!interviewDataRecords || interviewDataRecords.length === 0) {
       return NextResponse.json(
         { error: 'Interview data not found' },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ success: true, data: interviewData });
+    return NextResponse.json({ success: true, data: interviewDataRecords });
   } catch (error) {
     console.error('Error retrieving interview data:', error);
     return NextResponse.json(

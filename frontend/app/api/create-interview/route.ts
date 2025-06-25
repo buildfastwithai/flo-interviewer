@@ -48,7 +48,6 @@ export async function POST(request: NextRequest) {
         jobTitle: record.jobTitle,
         roomId: roomName,
         accessCode,
-        status: "ACTIVE",
       }
     });
 

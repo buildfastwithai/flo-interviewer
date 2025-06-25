@@ -42,8 +42,11 @@ export default function AnalysisResultPage() {
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [interviewData, setInterviewData] = useState<any>(null);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResponse | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [progressStage, setProgressStage] = useState('');
 
   useEffect(() => {
     if (!interviewId) {
@@ -59,34 +62,70 @@ export default function AnalysisResultPage() {
           throw new Error("Failed to fetch interview data");
         }
         const result = await response.json();
-        setInterviewData(result.data);
         
-        // First check if there's an existing analysis in the database
-        const analysisResponse = await fetch(`/api/interview-data/${interviewId}/analysis`);
-        if (analysisResponse.ok) {
-          // If analysis exists in the database, use it
-          const analysisData = await analysisResponse.json();
-          setAnalysisResult(analysisData.data);
-          setLoading(false);
-          return;
-        }
-        console.log("analysisId", analysisId);
+        // Handle the potential array of interview data records
+        // Use the most recent interview data if multiple records exist
+        const interviewDataRecord = Array.isArray(result.data) 
+          ? result.data.sort((a: any, b: any) => 
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            )[0]
+          : result.data;
+          
+        setInterviewData(interviewDataRecord);
         
-        // If no analysis exists or we need a new one
-        if (analysisId && analysisId !== 'new') {
-          // Fetch existing analysis by ID if specified
-          const specificAnalysisResponse = await fetch(`/api/interview-analysis/${analysisId}`);
-          if (specificAnalysisResponse.ok) {
-            const analysisData = await specificAnalysisResponse.json();
-            setAnalysisResult(analysisData);
+        // Check for existing analysis in the database
+        try {
+          console.log(`Checking for existing analysis for interview ${interviewId}`);
+          const analysisResponse = await fetch(`/api/interview-data/${interviewId}/analysis`);
+          
+          if (analysisResponse.ok) {
+            // If analysis exists in the database, use it
+            const analysisData = await analysisResponse.json();
+            console.log('Found existing analysis in database:', analysisData.success);
+            if (analysisData.success && analysisData.data) {
+              setAnalysisResult(analysisData.data);
+              setLoading(false);
+              return;
+            }
           }
+          
+          // If we got here, no analysis exists in the database
+          console.log('No existing analysis found in database');
+        } catch (analysisError) {
+          console.error('Error fetching existing analysis:', analysisError);
+          // Continue with the flow to check for specified analysis ID or generate new
+        }
+        
+        // If specific analysisId is provided and not 'new', try to fetch it
+        if (analysisId && analysisId !== 'new') {
+          try {
+            console.log(`Fetching specific analysis with ID: ${analysisId}`);
+            const specificAnalysisResponse = await fetch(`/api/interview-analysis/${analysisId}`);
+            if (specificAnalysisResponse.ok) {
+              const analysisData = await specificAnalysisResponse.json();
+              setAnalysisResult(analysisData);
+              setLoading(false);
+              return;
+            } else {
+              console.error('Failed to fetch specified analysis, will generate new');
+            }
+          } catch (specificAnalysisError) {
+            console.error('Error fetching specific analysis:', specificAnalysisError);
+          }
+        }
+        
+        // If we get here, either no analysis exists, analysis ID is 'new', 
+        // or we failed to fetch a specific analysis
+        if (interviewDataRecord) {
+          console.log('Starting new analysis generation');
+          performAnalysis(interviewDataRecord);
         } else {
-          // Start a new analysis if none exists
-          performAnalysis(result.data);
+          setError('No interview data found');
+          setLoading(false);
         }
       } catch (err) {
+        console.error("Error retrieving interview data:", err);
         setError(err instanceof Error ? err.message : "An error occurred");
-      } finally {
         setLoading(false);
       }
     };
@@ -98,6 +137,11 @@ export default function AnalysisResultPage() {
     if (!data || !data.transcript) return;
     
     setAnalyzing(true);
+    setProgress(5);
+    setProgressStage('Initializing analysis...');
+    setError(null);
+    setSuccess(null);
+
     try {
       // Format transcript for analysis
       let transcript = data.transcript;
@@ -108,9 +152,13 @@ export default function AnalysisResultPage() {
           `${entry.speaker === 'interviewer' ? 'Interviewer' : 'Candidate'}: ${entry.text}`
         ).join('\n\n');
         console.log("Successfully formatted transcript from JSON");
+        setProgress(15);
+        setProgressStage('Transcript formatted');
       } catch (e) {
         console.error("Error parsing transcript JSON:", e);
         // If we can't parse as JSON, use as is
+        setProgress(15);
+        setProgressStage('Using raw transcript');
       }
       
       // Create form data for analysis
@@ -118,10 +166,51 @@ export default function AnalysisResultPage() {
       const textBlob = new Blob([transcript], { type: 'text/plain' });
       formData.append('file', textBlob, 'transcript.txt');
       
+      // Directly fetch skills from the interview record
+      let skillsToAssess = '';
+      
+      setProgress(20);
+      setProgressStage('Fetching skills to assess...');
+      
+      try {
+        // Fetch the full interview data with skills
+        const interviewResponse = await fetch(`/api/interview/${data.interview.id}`);
+        if (interviewResponse.ok) {
+          const interviewData = await interviewResponse.json();
+          console.log("Interview data with skills:", interviewData);
+          
+          if (interviewData.data.record?.skills && interviewData.data.record.skills.length > 0) {
+            skillsToAssess = interviewData.data.record.skills
+              .map((skill: any) => skill.name)
+              .join(', ');
+            console.log("Skills extracted from record:", skillsToAssess);
+          }
+        }
+        setProgress(25);
+        setProgressStage('Skills retrieved');
+      } catch (err) {
+        console.error("Error fetching skills:", err);
+        setProgress(25);
+        setProgressStage('Using default skills');
+      }
+      
+      // If skills couldn't be fetched, use default
+      if (!skillsToAssess) {
+        skillsToAssess = 'Communication, Technical Knowledge, Problem Solving, Collaboration, Leadership';
+        console.log("Using default skills");
+      }
+      
       // Add other fields
-      formData.append('skills_to_assess', 'Communication, Technical Knowledge, Problem Solving, Collaboration, Leadership');
+      formData.append('skills_to_assess', skillsToAssess);
       formData.append('job_role', data.interview?.jobTitle || 'Software Engineer');
       formData.append('company_name', 'Your Company');
+      
+      // Send request to analysis API
+      setProgress(30);
+      setProgressStage('Sending data for AI analysis...');
+      
+      // Start progress simulation
+      const progressInterval = startProgressSimulation();
       
       // Send request to analysis API
       const response = await fetch('/api/analyze-interview', {
@@ -129,26 +218,93 @@ export default function AnalysisResultPage() {
         body: formData,
       });
       
+      // Clear the progress simulation when the real response arrives
+      clearInterval(progressInterval);
+      
       if (!response.ok) {
         throw new Error('Analysis failed');
       }
+      
+      setProgress(95);
+      setProgressStage('Processing results...');
       
       const result = await response.json();
       
       setAnalysisResult(result);
       
+      setProgress(98);
+      setProgressStage('Saving analysis results to database...');
+      
       // Store analysis result
-      await fetch(`/api/interview-data/${interviewId}/analysis`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ analysis: result }),
-      });
+      try {
+        const saveResponse = await fetch(`/api/interview-data/${interviewId}/analysis`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ analysis: result }),
+        });
+        
+        if (!saveResponse.ok) {
+          console.error('Error saving analysis to database:', await saveResponse.text());
+          throw new Error('Failed to save analysis to database');
+        }
+        
+        const saveResult = await saveResponse.json();
+        console.log('Analysis saved to database:', saveResult);
+        setSuccess('Analysis successfully generated and saved to database!');
+      } catch (saveError) {
+        console.error('Error saving analysis:', saveError);
+        // We still continue since the analysis is available in the UI
+        // but we should notify the user about the issue
+        setError("Analysis completed, but couldn't save to the database. Your results are available but not permanently stored.");
+      }
+      
+      setProgress(100);
+      setProgressStage('Analysis complete!');
       
     } catch (err) {
       setError(err instanceof Error ? err.message : "Analysis failed");
     } finally {
-      setAnalyzing(false);
+      setTimeout(() => {
+        setAnalyzing(false);
+        setProgress(0);
+        setProgressStage('');
+      }, 1000); // Keep the 100% progress visible for a moment
     }
+  };
+
+  // Function to simulate progress during analysis
+  const startProgressSimulation = () => {
+    // Define the different stages of analysis with their respective progress ranges
+    const stages = [
+      { range: [30, 40], message: 'Formatting transcript...' },
+      { range: [40, 55], message: 'Analyzing skills...' },
+      { range: [55, 70], message: 'Analyzing question-answer pairs...' },
+      { range: [70, 85], message: 'Generating interview insights...' },
+      { range: [85, 95], message: 'Creating summary...' }
+    ];
+    
+    let currentStageIndex = 0;
+    
+    return setInterval(() => {
+      if (currentStageIndex < stages.length) {
+        const stage = stages[currentStageIndex];
+        const [min, max] = stage.range;
+        
+        // Calculate a new progress value within the current stage's range
+        if (progress < min) {
+          setProgress(min);
+          setProgressStage(stage.message);
+        } else if (progress < max) {
+          // Slowly increment progress within the stage
+          setProgress(prev => Math.min(prev + 0.5, max));
+          
+          // If we've reached the max for this stage, move to the next one
+          if (progress >= max - 0.5) {
+            currentStageIndex++;
+          }
+        }
+      }
+    }, 300); // Update progress every 300ms
   };
 
   const getPerformanceColor = (score: number) => {
@@ -256,9 +412,15 @@ export default function AnalysisResultPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-              <div className="h-full bg-blue-500 rounded-full animate-pulse" style={{ width: '60%' }}></div>
+              <div 
+                className="h-full bg-blue-500 rounded-full transition-all duration-300 ease-in-out" 
+                style={{ width: `${progress}%` }}
+              ></div>
             </div>
-            <p className="text-sm text-gray-500 animate-pulse">Extracting insights from the interview...</p>
+            <div className="flex justify-between items-center">
+              <p className="text-sm text-gray-500">{progressStage}</p>
+              <span className="text-sm font-medium">{Math.round(progress)}%</span>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -298,7 +460,7 @@ export default function AnalysisResultPage() {
     <div className="container mx-auto p-6">
       <div className="mb-6 flex justify-between items-center">
         <Button asChild variant="outline">
-          <Link href="..">
+          <Link href="/interview-evaluation">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Interviews
           </Link>
@@ -313,16 +475,32 @@ export default function AnalysisResultPage() {
             <Download className="h-4 w-4" />
             Download PDF
           </Button>
-          {/* <Button 
-            variant="default" 
-            onClick={() => downloadPDF(true)}
+          <Button 
+            variant="outline" 
+            onClick={() => performAnalysis(interviewData)}
             className="flex items-center gap-2"
           >
             <FileText className="h-4 w-4" />
-            Download with Transcript
-          </Button> */}
+            Generate Analysis
+          </Button> 
         </div>
       </div>
+      
+      {/* Success message */}
+      {success && (
+        <Alert className="mb-6 bg-green-50 border-green-200 text-green-800">
+          <CheckCircle className="h-4 w-4" />
+          <AlertDescription>{success}</AlertDescription>
+        </Alert>
+      )}
+      
+      {/* Error message */}
+      {error && error !== "No interview ID provided" && (
+        <Alert className="mb-6" variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
       
       {/* Interview Info Card */}
       {interviewData && (
@@ -336,7 +514,7 @@ export default function AnalysisResultPage() {
                 <div className="flex items-center text-sm">
                   <User className="mr-2 h-4 w-4 text-muted-foreground" />
                   <span className="font-medium">Candidate:</span>
-                  <span className="ml-2">{interviewData.interview?.candidateName || 'Unknown'}</span>
+                  <span className="ml-2">{interviewData.candidateName || 'Unknown'}</span>
                 </div>
                 <div className="flex items-center text-sm">
                   {/* <Briefcase className="mr-2 h-4 w-4 text-muted-foreground" /> */}

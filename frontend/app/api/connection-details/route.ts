@@ -85,13 +85,6 @@ export async function GET(request: NextRequest) {
           );
         }
 
-        if (interview.status !== "ACTIVE") {
-          console.log(`Interview found but status is ${interview.status}`);
-          return NextResponse.json(
-            { error: "This interview is no longer active" },
-            { status: 403 }
-          );
-        }
 
         console.log(`Found interview room: ${interview.roomId}`);
         roomName = interview.roomId;
@@ -103,7 +96,6 @@ export async function GET(request: NextRequest) {
           recordId: interview.recordId,
           skill: skillLevel || "mid",
           interviewId: interview.id,
-          interviewStatus: interview.status,
           roomId: interview.roomId,
         };
         console.log(`Metadata: ${JSON.stringify(metadata)}`);

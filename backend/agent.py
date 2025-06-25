@@ -86,7 +86,7 @@ YOU MUST FOLLOW THESE RULES:
 2. NEVER create your own questions or substitute different questions
 3. After each candidate answer, briefly acknowledge their response
 4. Then immediately proceed to the next question in the numbered list
-5. If the candidate says they don't know, provide a brief hint and move to the next question
+5. If the candidate says they don't know, move to the next question
 6. DO NOT SKIP QUESTIONS under any circumstances
 7. DO NOT MODIFY THE WORDING of any question
 8. STRICTLY FOLLOW THE NUMBERED ORDER - after question 1, ask question 2, then 3, and so on
@@ -96,6 +96,9 @@ INTERVIEW FLOW:
 - Immediately ask Question #1 exactly as written above
 - After the candidate answers, acknowledge and move to Question #2
 - Continue in exact order through all questions
+- After the last question, ask the candidate if they have any questions for you
+- If they have questions, answer them
+- If they don't have questions, thank them for their time and ask them to end the interview and say goodbye and don't speak any more
 
 The candidate's name is {candidate_name}.
 The role is {role}.
@@ -130,8 +133,8 @@ FAILURE TO FOLLOW THESE INSTRUCTIONS WILL RESULT IN TERMINATION.
         self.all_questions = all_questions or []
         self.questions_list = questions_list
         
-        # The interview data is now primarily managed by the frontend
-        # This is kept for compatibility with existing code
+        # NOTE: Interview data storage is handled by the frontend
+        # This is kept only for local logging/tracking, not for database storage
         self.interview_data = {
             "start_time": datetime.now().isoformat(),
             "role": role,
@@ -349,7 +352,6 @@ async def entrypoint(ctx: JobContext):
     record_id = None
     room_id = None
     interview_id = None
-    interview_status = None
     
     # Option 1: Parse from room name (format: interview-name-skill-timestamp)
     # room_parts = ctx.room.name.split('-')
@@ -367,7 +369,6 @@ async def entrypoint(ctx: JobContext):
             candidate_name = metadata.get('candidateName', candidate_name)
             room_id = metadata.get('roomId', room_id)
             interview_id = metadata.get('interviewId', interview_id)
-            interview_status = metadata.get('interviewStatus', interview_status)
             logger.info(f"Using metadata - Role: {role}, Skill: {skill_level}, Record ID: {record_id}, Room ID: {room_id}, Interview ID: {interview_id}")
         except json.JSONDecodeError:
             logger.warning("Failed to parse participant metadata")
