@@ -9,9 +9,6 @@ export async function GET(request: NextRequest) {
     
     // Get interviews from database
     const interviews = await prisma.interview.findMany({
-      where: {
-        status: "ACTIVE",
-      },
       orderBy: {
         createdAt: "desc",
       },
@@ -34,7 +31,6 @@ export async function GET(request: NextRequest) {
       jobTitle: interview.jobTitle || interview.record?.jobTitle || "Untitled Interview",
       roomId: interview.roomId,
       accessCode: interview.accessCode,
-      status: interview.status,
       createdAt: interview.createdAt,
       updatedAt: interview.updatedAt,
     }));
