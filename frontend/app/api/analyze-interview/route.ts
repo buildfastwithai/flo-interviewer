@@ -274,8 +274,11 @@ Example response format:
   ]
 }
 
-Transcript:
-${transcript}`
+IMPORTANT: Use the transcript to assess the skills. Do not make up any information.
+
+Transcript starts here:
+${transcript}
+Transcript ends here`
         }
       ],
       response_format: { type: "json_object" },
@@ -361,8 +364,12 @@ Example response format:
   ]
 }
 
-Transcript:
-${transcript}`
+IMPORTANT: Use the transcript to assess the Q&A pairs. Do not make up any information.
+
+Transcript starts here:
+${transcript}
+Transcript ends here:
+`
         }
       ],
       response_format: { type: "json_object" },
@@ -468,8 +475,12 @@ Example response format:
   ]
 }
 
-Transcript:
-${transcript}`
+IMPORTANT: Use the transcript to assess the interview insights. Do not make up any information.
+
+Transcript starts here:
+${transcript}
+Transcript ends here:
+`
         }
       ],
       response_format: { type: "json_object" },
@@ -506,7 +517,8 @@ async function generateAnalysisSummaryWithOpenAI(
   skillAssessments: SkillAssessment[],
   qaAnswers: QuestionAnswer[],
   insights: InterviewInsights,
-  jobRole: string = "Software Developer"
+  jobRole: string = "Software Developer",
+  transcript: string
 ): Promise<string> {
   try {
     // Calculate averages
@@ -539,7 +551,14 @@ Key Strengths: ${insights.strengths.slice(0, 3).join(', ')}
 Key Weaknesses: ${insights.weaknesses.slice(0, 3).join(', ')}
 Hiring Recommendation: ${insights.hiring_recommendation}
 
-Please provide a 2-3 paragraph executive summary suitable for hiring managers. Focus on being clear, concise, and actionable.`
+Please provide a 2-3 paragraph executive summary suitable for hiring managers. Focus on being clear, concise, and actionable.
+
+IMPORTANT: Use the transcript to assess the interview insights. Do not make up any information.
+
+Transcript starts here:
+${transcript}
+Transcript ends here:
+`
         }
       ],
       max_tokens: 500,
@@ -729,7 +748,8 @@ export async function POST(request: Request) {
         skill_assessments,
         questions_and_answers,
         interview_insights!,
-        job_role
+        job_role,
+        raw_transcript
       );
     } catch (error) {
       console.error("Error generating summary:", error);

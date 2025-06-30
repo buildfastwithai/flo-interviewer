@@ -28,6 +28,7 @@ import { BoxReveal } from "@/components/magicui/box-reveal";
 import { MagicCard } from "@/components/magicui/magic-card";
 import { InteractiveHoverButton } from "@/components/magicui/interactive-hover-button";
 import { AnimatedGradientText } from "@/components/magicui/animated-gradient-text";
+import { useSearchParams } from "next/navigation";
 
 interface UserFormData {
   name: string;
@@ -48,10 +49,10 @@ export default function InterviewPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [interviewData, setInterviewData] = useState<InterviewData | null>(null);
-  const [transcriptions, setTranscriptions] = useState<any[]>([]);
-  const startTimeRef = useRef<string>(new Date().toISOString());
+      const [transcriptions, setTranscriptions] = useState<any[]>([]);
+    const startTimeRef = useRef<string>(new Date().toISOString());
 
-  const onJoinInterview = useCallback(
+    const onJoinInterview = useCallback(
     async (formData: UserFormData) => {
       setIsSubmitting(true);
       setError(null);
@@ -370,6 +371,15 @@ function UserForm({
 }) {
   const [name, setName] = useState("");
   const [accessCode, setAccessCode] = useState("");
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    // Get access code from URL if present
+    const codeFromUrl = searchParams.get('code');
+    if (codeFromUrl) {
+      setAccessCode(codeFromUrl);
+    }
+  }, [searchParams]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
