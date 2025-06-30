@@ -1,193 +1,188 @@
 "use client";
 import Image from "next/image";
+import { motion } from "framer-motion";
+import { Sparkles, ArrowRight, Download, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Meteors } from "@/components/magicui/meteors";
+import { BoxReveal } from "@/components/magicui/box-reveal";
+import { AnimatedGradientText } from "@/components/magicui/animated-gradient-text";
+import { MagicCard } from "@/components/magicui/magic-card";
+import Navbar from "@/components/navbar";
 
 const WorkflowPage = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-      {/* Header Section */}
-      <div className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700">
-        <div className="container mx-auto px-4 py-6">
-          <div className="text-center">
-            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
-              Application Workflow
-            </h1>
-            <p className="text-lg text-gray-600 dark:text-gray-300">
-              Complete process flow of the interview system
-            </p>
-          </div>
-        </div>
-      </div>
+    <main className="min-h-screen bg-white text-[#1D244F] font-sans relative">
+      <Navbar />
+      
+      {/* Hero Section */}
+      <section className="relative py-20 px-6 overflow-hidden">
+        {/* Enhanced Background Effects */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#2663FF]/10 via-[#1D244F]/5 to-white opacity-30"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#2663FF]/10 via-transparent to-transparent"></div>
+        <Meteors />
 
-      {/* Scrollable Content Area */}
-      <div className="container mx-auto px-4 py-8">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
-          {/* Diagram Container */}
-          <div className="relative">
-            {/* Scrollable wrapper */}
-            <div className="overflow-auto max-h-[80vh] scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-gray-100 dark:scrollbar-track-gray-800">
-              <div className="p-6 min-w-max">
-                <div className="flex justify-center">
-                  <div className="relative bg-white dark:bg-gray-700 rounded-lg p-4 shadow-inner">
-                    <Image
-                      src="/flocareer-flo.svg"
-                      alt="Application Workflow Diagram"
-                      width={1000}
-                      height={1000}
-                      className="max-w-none h-auto"
-                      priority
-                    />
-                  </div>
+        <div className="max-w-7xl mx-auto relative z-10">
+          <motion.div
+            className="text-center mb-12"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            {/* <BoxReveal> */}
+              <motion.div
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#2663FF]/20 to-[#1D244F]/20 rounded-full border border-[#2663FF]/30 backdrop-blur-sm mb-6"
+                whileHover={{ scale: 1.05 }}
+              >
+                <Sparkles className="w-4 h-4 text-[#2663FF]" />
+                <span className="text-sm font-medium">Application Workflow</span>
+              </motion.div>
+
+              <h1 className="text-4xl md:text-6xl font-bold leading-tight">
+                Complete Process Flow of the{" "}
+                <span className="relative">
+                  <AnimatedGradientText className="bg-gradient-to-r from-[#1D244F] via-[#2663FF] to-[#2663FF] bg-clip-text text-transparent">
+                    Interview System
+                  </AnimatedGradientText>
+                  <motion.div
+                    className="absolute -bottom-2 left-0 w-full h-1 bg-gradient-to-r from-[#2663FF] to-[#1D244F] rounded-full"
+                    initial={{ scaleX: 0 }}
+                    animate={{ scaleX: 1 }}
+                    transition={{ delay: 1, duration: 0.8 }}
+                  />
+                </span>
+              </h1>
+           {/*  </BoxReveal> */}
+          </motion.div>
+
+          {/* Main Workflow Diagram */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="relative bg-white rounded-2xl shadow-xl border border-[#F7F7FA] overflow-hidden"
+          >
+            <div className="overflow-auto max-h-[70vh] scrollbar-thin scrollbar-thumb-[#2663FF]/20 scrollbar-track-[#F7F7FA]">
+              <div className="p-8 min-w-max">
+                <Image
+                  src="/flocareer-flo.svg"
+                  alt="Application Workflow Diagram"
+                  width={1000}
+                  height={1000}
+                  className="max-w-none h-auto"
+                  priority
+                />
+              </div>
+            </div>
+
+            {/* Controls */}
+            <div className="border-t border-[#F7F7FA] bg-white/90 backdrop-blur-sm px-6 py-4">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-2 text-sm text-[#5B5F79]">
+                  <ArrowRight className="w-4 h-4" />
+                  Use scroll or drag to navigate the diagram
+                </div>
+                <div className="flex gap-3">
+                  <Button
+                    onClick={() => {
+                      const container = document.querySelector(".overflow-auto");
+                      if (container) {
+                        container.scrollTo({
+                          left: 0,
+                          top: 0,
+                          behavior: "smooth",
+                        });
+                      }
+                    }}
+                    variant="outline"
+                    className="flex items-center gap-2 border-[#2663FF]/20 hover:bg-[#2663FF]/5"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Reset View
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      const img = document.querySelector(
+                        'img[alt="Application Workflow Diagram"]'
+                      ) as HTMLImageElement;
+                      if (img) {
+                        const link = document.createElement("a");
+                        link.href = img.src;
+                        link.download = "workflow-diagram.svg";
+                        link.click();
+                      }
+                    }}
+                    className="bg-[#f7a828] hover:bg-[#f7a828]/90 text-white"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download Diagram
+                  </Button>
                 </div>
               </div>
             </div>
+          </motion.div>
 
-            {/* Scroll indicators */}
-            <div className="absolute top-4 right-4 bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-medium">
-              Scroll to explore
-            </div>
-          </div>
-
-          {/* Footer with controls */}
-          <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-6 py-4">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                Use scroll or drag to navigate the diagram
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    const container = document.querySelector(".overflow-auto");
-                    if (container) {
-                      container.scrollTo({
-                        left: 0,
-                        top: 0,
-                        behavior: "smooth",
-                      });
-                    }
-                  }}
-                  className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm transition-colors"
-                >
-                  Reset View
-                </button>
-                <button
-                  onClick={() => {
-                    const img = document.querySelector(
-                      'img[alt="Application Workflow Diagram"]'
-                    ) as HTMLImageElement;
-                    if (img) {
-                      const link = document.createElement("a");
-                      link.href = img.src;
-                      link.download = "workflow-diagram.svg";
-                      link.click();
-                    }
-                  }}
-                  className="px-3 py-1 bg-gray-500 hover:bg-gray-600 text-white rounded text-sm transition-colors"
-                >
-                  Download
-                </button>
-              </div>
-            </div>
-          </div>
+          {/* Feature Cards */}
+          <motion.div
+            className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12"
+            initial="hidden"
+            animate="visible"
+            variants={{
+              hidden: {},
+              visible: {
+                transition: {
+                  staggerChildren: 0.1,
+                },
+              },
+            }}
+          >
+            {[
+              {
+                title: "Process Flow",
+                description: "Complete end-to-end workflow from interview creation to candidate evaluation",
+                icon: <Sparkles className="w-6 h-6" />,
+                gradient: "from-[#2663FF] to-[#1D244F]",
+              },
+              {
+                title: "Key Features",
+                description: "AI-powered question generation, real-time evaluation, and comprehensive analytics",
+                icon: <ArrowRight className="w-6 h-6" />,
+                gradient: "from-[#f7a828] to-[#f7a828]/80",
+              },
+              {
+                title: "Analytics",
+                description: "Detailed insights and performance metrics for continuous improvement",
+                icon: <Download className="w-6 h-6" />,
+                gradient: "from-[#2663FF] to-[#1D244F]",
+              },
+            ].map((feature, i) => (
+              <motion.div
+                key={i}
+                className="group"
+                whileHover={{ y: -5 }}
+                transition={{ duration: 0.3 }}
+              >
+                <MagicCard className="relative bg-white border border-[#F7F7FA] hover:border-[#2663FF]/20 rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-500">
+                  <div className="p-6 space-y-4">
+                    <div
+                      className={`inline-flex items-center justify-center w-12 h-12 bg-gradient-to-r ${feature.gradient} rounded-lg text-white shadow-lg`}
+                    >
+                      {feature.icon}
+                    </div>
+                    <h3 className="text-xl font-bold text-[#1D244F]">
+                      {feature.title}
+                    </h3>
+                    <p className="text-gray-200 text-sm leading-relaxed">
+                      {feature.description}
+                    </p>
+                  </div>
+                </MagicCard>
+              </motion.div>
+            ))}
+          </motion.div>
         </div>
-
-        {/* Additional Information Cards */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md">
-            <div className="flex items-center mb-3">
-              <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mr-3">
-                <svg
-                  className="w-4 h-4 text-blue-600 dark:text-blue-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Process Flow
-              </h3>
-            </div>
-            <p className="text-gray-600 dark:text-gray-300 text-sm">
-              Complete end-to-end workflow from interview creation to candidate
-              evaluation
-            </p>
-          </div>
-
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md">
-            <div className="flex items-center mb-3">
-              <div className="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center mr-3">
-                <svg
-                  className="w-4 h-4 text-green-600 dark:text-green-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13 10V3L4 14h7v7l9-11h-7z"
-                  />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Key Features
-              </h3>
-            </div>
-            <p className="text-gray-600 dark:text-gray-300 text-sm">
-              AI-powered question generation, real-time evaluation, and
-              comprehensive analytics
-            </p>
-          </div>
-
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md">
-            <div className="flex items-center mb-3">
-              <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center mr-3">
-                <svg
-                  className="w-4 h-4 text-purple-600 dark:text-purple-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                  />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Analytics
-              </h3>
-            </div>
-            <p className="text-gray-600 dark:text-gray-300 text-sm">
-              Detailed insights and performance metrics for continuous
-              improvement
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 };
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -45,34 +46,75 @@ import {
   Activity,
   RefreshCw,
   BarChart3,
+  Search,
+  Filter,
+  Sparkles,
+  Database,
 } from "lucide-react";
 import Link from "next/link";
 import { useDashboard } from "@/hooks/useDashboard";
 import { Question, Skill } from "@/types/dashboard";
+import { motion } from "framer-motion";
 
-const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"];
+// Animation variants
+const fadeInUp = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, ease: "easeOut" }
+  }
+};
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+};
+
+const COLORS = {
+  primary: "#2663FF",
+  secondary: "#1D244F",
+  accent: "#f7a828",
+  success: "#10B981",
+  error: "#EF4444",
+  muted: "#5B5F79",
+  background: "#F7F7FA"
+};
 
 export default function DashboardPage() {
   const { data, loading, error, refetch } = useDashboard();
+  const [searchTerm, setSearchTerm] = useState("");
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+      <div className="flex items-center justify-center min-h-screen bg-white">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#2663FF]"></div>
+          <p className="text-[#1D244F] font-medium">Loading dashboard data...</p>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Card className="w-96">
+      <div className="flex items-center justify-center min-h-screen bg-white">
+        <Card className="w-96 border-red-200 shadow-lg">
           <CardHeader>
-            <CardTitle className="text-red-600">Error</CardTitle>
+            <CardTitle className="text-red-600">Error Loading Dashboard</CardTitle>
           </CardHeader>
-          <CardContent>
-            <p>{error}</p>
-            <Button onClick={refetch} className="mt-4">
+          <CardContent className="space-y-4">
+            <p className="text-[#5B5F79]">{error}</p>
+            <Button 
+              onClick={refetch} 
+              className="w-full bg-[#2663FF] hover:bg-[#2663FF]/90 text-white"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
               Retry
             </Button>
           </CardContent>
@@ -134,188 +176,263 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-6 space-y-8 bg-white min-h-screen">
+      <motion.div 
+            className="w-full flex justify-center mb-6 space-x-3 text-center justify-center"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.4 }}
+          >
+            <Button 
+              variant="outline" 
+              asChild
+              className="border-[#2663FF]/20 hover:bg-[#2663FF]/5 transition-all duration-300"
+            >
+              <Link href="/jd-qna" className="flex items-center">
+                <BarChart3 className="h-4 w-4 mr-2 text-[#2663FF]" />
+                JD QnA
+              </Link>
+            </Button>
+            <Button 
+              variant="outline" 
+              asChild
+              className="border-[#2663FF]/20 hover:bg-[#2663FF]/5 transition-all duration-300"
+            >
+              <Link href="/jd-qna/dashboard" className="flex items-center">
+                <BarChart3 className="h-4 w-4 mr-2 text-[#2663FF]" />
+                Dashboard
+              </Link>
+            </Button>
+            <Button 
+              variant="outline" 
+              asChild
+              className="border-[#2663FF]/20 hover:bg-[#2663FF]/5 transition-all duration-300"
+            >
+              <Link href="/create-interview" className="flex items-center">
+                <Sparkles className="h-4 w-4 mr-2 text-[#2663FF]" />
+                Create Interview
+              </Link>
+            </Button>
+            <Button 
+              variant="outline" 
+              asChild
+              className="border-[#2663FF]/20 hover:bg-[#2663FF]/5 transition-all duration-300"
+            >
+              <Link href="/interview-evaluation" className="flex items-center">
+                <FileText className="h-4 w-4 mr-2 text-[#2663FF]" />
+                Interview Evaluation
+              </Link>
+            </Button>
+            <Button 
+              variant="outline" 
+              asChild
+              className="border-[#2663FF]/20 hover:bg-[#2663FF]/5 transition-all duration-300"
+            >
+              <Link href="/jd-qna/records" className="flex items-center">
+                <Database className="h-4 w-4 mr-2 text-[#2663FF]" />
+                View Saved Records
+              </Link>
+            </Button>
+          </motion.div>
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">
-            Overview of your skills, questions, and feedback
+      <motion.div 
+        className="flex flex-col md:flex-row md:items-center justify-center gap-4 mb-8"
+        initial="hidden"
+        animate="visible"
+      >
+        <div className="space-y-1 text-center justify-center">
+          <motion.div
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#2663FF]/20 to-[#1D244F]/20 rounded-full border border-[#2663FF]/30 backdrop-blur-sm mb-4"
+              whileHover={{ scale: 1.05 }}
+            >
+              <Sparkles className="w-4 h-4 text-[#2663FF]" />
+              <span className="text-sm font-medium">AI-Powered Interview Analytics</span>
+            </motion.div>
+          <h1 className="text-4xl font-bold tracking-tight text-[#1D244F]">Analytics Dashboard</h1>
+          <p className="text-[#5B5F79]">
+            Comprehensive overview of your JD analysis and question generation metrics
           </p>
         </div>
-        <Link href="/jd-qna">
-          <Button variant="outline">Back to Home</Button>
-        </Link>
-      </div>
+        {/* <div className="flex items-center gap-3">
+          <Button 
+            onClick={refetch}
+            variant="outline" 
+            className="border-[#2663FF] text-[#2663FF] hover:bg-[#2663FF]/5"
+          >
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refresh
+          </Button>
+          <Link href="/jd-qna">
+            <Button 
+              variant="default"
+              className="bg-[#2663FF] hover:bg-[#2663FF]/90 text-white"
+            >
+              Back to Home
+            </Button>
+          </Link>
+        </div> */}
+      </motion.div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Job Description Generated
-            </CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{statistics.totalRecords}</div>
-            <p className="text-xs text-muted-foreground">
-              Job description records
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Skills</CardTitle>
-            <Brain className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{statistics.totalSkills}</div>
-            <p className="text-xs text-muted-foreground">Extracted skills</p>
-          </CardContent>
-        </Card> */}
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Questions
-            </CardTitle>
-            <MessageSquare className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {statistics.totalQuestions}
-            </div>
-            <p className="text-xs text-muted-foreground">Generated questions</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Feedback
-            </CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {statistics.totalFeedbacks}
-            </div>
-            <p className="text-xs text-muted-foreground">Feedback entries</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Regenerations
-            </CardTitle>
-            <RefreshCw className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {statistics.totalRegenerations || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Question regenerations
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Avg Regenerations
-            </CardTitle>
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {statistics.regenerationStats?.averageRegenerationsPerQuestion ||
-                0}
-            </div>
-            <p className="text-xs text-muted-foreground">Per question</p>
-          </CardContent>
-        </Card> */}
-      </div>
+      <motion.div 
+        className="grid gap-6 md:grid-cols-2 lg:grid-cols-4"
+        variants={staggerContainer}
+        initial="hidden"
+        animate="visible"
+      >
+        {[
+          {
+            title: "Job Descriptions",
+            value: statistics.totalRecords,
+            icon: FileText,
+            description: "Total JDs analyzed",
+            color: "bg-gradient-to-br from-[#2663FF] to-[#1D244F]"
+          },
+          {
+            title: "Questions Generated",
+            value: statistics.totalQuestions,
+            icon: MessageSquare,
+            description: "Total questions created",
+            color: "bg-gradient-to-br from-[#f7a828] to-[#f7a828]/80"
+          },
+          {
+            title: "Feedback Received",
+            value: statistics.totalFeedbacks,
+            icon: Target,
+            description: "Total feedback entries",
+            color: "bg-gradient-to-br from-[#2663FF] to-[#1D244F]"
+          },
+          {
+            title: "Regenerations",
+            value: statistics.totalRegenerations || 0,
+            icon: RefreshCw,
+            description: "Question improvements",
+            color: "bg-gradient-to-br from-[#f7a828] to-[#f7a828]/80"
+          }
+        ].map((stat, index) => (
+          <motion.div
+            key={index}
+            className="group"
+            whileHover={{ y: -4 }}
+          >
+            <Card className="border border-[#F7F7FA] shadow-md hover:shadow-xl transition-all duration-300">
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-3">
+                    <div className={`p-3 rounded-xl ${stat.color} w-fit`}>
+                      <stat.icon className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="space-y-0.5">
+                      <h3 className="text-sm font-medium text-[#5B5F79]">
+                        {stat.title}
+                      </h3>
+                      <p className="text-2xl font-bold text-[#1D244F]">
+                        {stat.value}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="hidden group-hover:block">
+                    <Badge 
+                      variant="secondary"
+                      className="bg-[#F7F7FA] text-[#5B5F79] text-xs"
+                    >
+                      {stat.description}
+                    </Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
+      </motion.div>
 
       {/* Regeneration Analytics Section */}
       {statistics.totalRegenerations > 0 && (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <RefreshCw className="h-5 w-5" />
-                Question Regeneration Analytics
-              </CardTitle>
-              <CardDescription>
-                Insights into question regeneration patterns and quality
-                improvements
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-6 md:grid-cols-2">
-              {/* Regeneration Summary */}
-              <div className="space-y-4">
-                <h4 className="text-sm font-medium text-muted-foreground">
-                  Quick Stats
-                </h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="text-center p-3 border rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600">
-                      {statistics.totalRegenerations}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Total Regenerations
-                    </div>
-                  </div>
-                  <div className="text-center p-3 border rounded-lg">
-                    <div className="text-2xl font-bold text-green-600">
-                      {statistics.regenerationStats
-                        ?.averageRegenerationsPerQuestion || 0}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Avg per Question
-                    </div>
-                  </div>
-                </div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
+          <Card className="border border-[#F7F7FA] shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardHeader className="flex flex-row items-center justify-between border-b border-[#F7F7FA] pb-6">
+              <div className="space-y-1">
+                <CardTitle className="flex items-center gap-2 text-[#1D244F]">
+                  <RefreshCw className="h-5 w-5 text-[#2663FF]" />
+                  Question Regeneration Analytics
+                </CardTitle>
+                <CardDescription className="text-[#5B5F79]">
+                  Insights into question regeneration patterns and quality improvements
+                </CardDescription>
               </div>
-
-              {/* Most Regenerated Skills */}
-              <div className="space-y-4">
-                <h4 className="text-sm font-medium text-muted-foreground">
-                  Top Regenerated Skills
-                </h4>
-                <div className="space-y-2">
-                  {statistics.regenerationStats?.mostRegeneratedSkills
-                    ?.slice(0, 4)
-                    .map((skill, index) => (
-                      <div
-                        key={index}
-                        className="flex justify-between items-center p-2 bg-gray-50 rounded-lg"
-                      >
-                        <span className="text-sm font-medium truncate">
-                          {skill.skillName}
-                        </span>
-                        <Badge
-                          variant="outline"
-                          className="text-xs font-semibold"
-                        >
-                          {skill.regenerationCount}
-                        </Badge>
+              <Badge 
+                variant="secondary" 
+                className="bg-[#F7F7FA] text-[#2663FF] border border-[#2663FF]/20"
+              >
+                {statistics.totalRegenerations} Total Regenerations
+              </Badge>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="grid gap-8 md:grid-cols-2">
+                {/* Regeneration Summary */}
+                <motion.div 
+                  className="space-y-4"
+                >
+                  <h4 className="text-sm font-medium text-[#5B5F79]">Quick Stats</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 border border-[#F7F7FA] rounded-xl bg-gradient-to-br from-[#2663FF]/5 to-transparent">
+                      <div className="text-2xl font-bold text-[#2663FF]">
+                        {statistics.totalRegenerations}
                       </div>
-                    )) || (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                      No data available
-                    </p>
-                  )}
-                </div>
+                      <div className="text-xs text-[#5B5F79]">
+                        Total Regenerations
+                      </div>
+                    </div>
+                    <div className="p-4 border border-[#F7F7FA] rounded-xl bg-gradient-to-br from-[#f7a828]/5 to-transparent">
+                      <div className="text-2xl font-bold text-[#f7a828]">
+                        {statistics.regenerationStats?.averageRegenerationsPerQuestion || 0}
+                      </div>
+                      <div className="text-xs text-[#5B5F79]">
+                        Avg per Question
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Most Regenerated Skills */}
+                <motion.div 
+                  className="space-y-4"
+                >
+                  <h4 className="text-sm font-medium text-[#5B5F79]">Top Regenerated Skills</h4>
+                  <div className="space-y-3">
+                    {statistics.regenerationStats?.mostRegeneratedSkills
+                      ?.slice(0, 4)
+                      .map((skill, index) => (
+                        <motion.div
+                          key={index}
+                          className="flex justify-between items-center p-3 bg-[#F7F7FA] rounded-xl hover:bg-[#2663FF]/5 transition-colors duration-200"
+                          whileHover={{ x: 5 }}
+                        >
+                          <span className="text-sm font-medium text-[#1D244F] truncate max-w-[70%]">
+                            {skill.skillName}
+                          </span>
+                          <Badge
+                            variant="outline"
+                            className="bg-white border-[#2663FF] text-[#2663FF] text-xs font-semibold"
+                          >
+                            {skill.regenerationCount} regenerations
+                          </Badge>
+                        </motion.div>
+                      )) || (
+                      <p className="text-sm text-[#5B5F79] text-center py-4">
+                        No data available
+                      </p>
+                    )}
+                  </div>
+                </motion.div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </motion.div>
       )}
 
       {/* Charts Section */}

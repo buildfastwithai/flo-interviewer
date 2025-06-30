@@ -486,27 +486,26 @@ export function JDQnaForm() {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl mx-auto p-4">
+    <div className=" gap-8 max-w-7xl mx-auto p-4">
       <motion.div initial="hidden" animate="visible" variants={fadeInUp}>
-        <Card className="shadow-md border border-border hover:shadow-lg transition-shadow duration-300 h-full">
-          <CardHeader className="space-y-2 border-b border-border/40 bg-card/70">
+        <Card className="shadow-lg border border-[#F7F7FA] hover:shadow-xl transition-all duration-300 h-full bg-white">
+          <CardHeader className="space-y-2 border-b border-[#F7F7FA] bg-gradient-to-br from-[#2663FF]/5 via-transparent to-[#f7a828]/5">
             <div className="flex items-center space-x-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              <CardTitle className="text-2xl font-serif text-foreground">
+              <Sparkles className="h-5 w-5 text-[#2663FF]" />
+              <CardTitle className="text-2xl font-bold text-[#1D244F]">
                 Job Description Details
               </CardTitle>
             </div>
-            <CardDescription className="text-muted-foreground">
-              Upload a job description PDF or paste text to extract skills and
-              generate interview questions.
+            <CardDescription className="text-[#5B5F79] text-base">
+              Upload a job description PDF or paste text to extract skills and generate interview questions.
             </CardDescription>
 
             <div className="pt-2">
-              <div className="flex justify-between items-center text-xs text-muted-foreground mb-1">
+              <div className="flex justify-between items-center text-xs text-[#5B5F79] mb-1">
                 <span>Form completion</span>
                 <span>{formProgress}%</span>
               </div>
-              <Progress value={formProgress} className="h-1 bg-muted/50" />
+              <Progress value={formProgress} className="h-2 bg-[#F7F7FA]" />
             </div>
           </CardHeader>
 
@@ -522,10 +521,10 @@ export function JDQnaForm() {
                     name="jobRole"
                     render={({ field }) => (
                       <FormItem className="space-y-2">
-                        <FormLabel className="font-medium flex items-center">
+                        <FormLabel className="font-medium flex items-center text-[#1D244F]">
                           <Badge
                             variant="outline"
-                            className="mr-2 bg-primary/5 text-primary border-primary/20"
+                            className="mr-2 bg-[#2663FF]/5 text-[#2663FF] border-[#2663FF]/20"
                           >
                             Required
                           </Badge>
@@ -534,11 +533,11 @@ export function JDQnaForm() {
                         <FormControl>
                           <Input
                             placeholder="e.g. Senior Frontend Developer"
-                            className="focus:ring-2 focus:ring-ring/30 transition-all shadow-sm"
+                            className="focus:ring-2 focus:ring-[#2663FF]/30 transition-all duration-300 shadow-md border border-[#F7F7FA] rounded-lg"
                             {...field}
                           />
                         </FormControl>
-                        <FormMessage className="text-destructive text-sm" />
+                        <FormMessage className="text-red-500 text-sm" />
                       </FormItem>
                     )}
                   />
@@ -548,10 +547,10 @@ export function JDQnaForm() {
                     name="interviewLength"
                     render={({ field }) => (
                       <FormItem className="space-y-2">
-                        <FormLabel className="font-medium flex items-center">
+                        <FormLabel className="font-medium flex items-center text-[#1D244F]">
                           <Badge
                             variant="outline"
-                            className="mr-2 bg-primary/5 text-primary border-primary/20"
+                            className="mr-2 bg-[#2663FF]/5 text-[#2663FF] border-[#2663FF]/20"
                           >
                             Required
                           </Badge>
@@ -564,16 +563,16 @@ export function JDQnaForm() {
                               min="15"
                               max="240"
                               placeholder="60"
-                              className="focus:ring-2 focus:ring-ring/30 transition-all shadow-sm pl-8"
+                              className="focus:ring-2 focus:ring-[#2663FF]/30 transition-all duration-300 pl-8 border border-[#F7F7FA] rounded-lg"
                               {...field}
                             />
                           </FormControl>
-                          <Clock className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                          <div className="absolute right-3 top-2.5 text-xs text-muted-foreground">
+                          <Clock className="absolute left-2.5 top-2.5 h-4 w-4 text-[#5B5F79]" />
+                          <div className="absolute right-3 top-2.5 text-xs text-[#5B5F79]">
                             minutes
                           </div>
                         </div>
-                        <FormMessage className="text-destructive text-sm" />
+                        <FormMessage className="text-red-500 text-sm" />
                       </FormItem>
                     )}
                   />
@@ -584,10 +583,10 @@ export function JDQnaForm() {
                   name="customInstructions"
                   render={({ field }) => (
                     <FormItem className="space-y-2">
-                      <FormLabel className="font-medium flex items-center">
+                      <FormLabel className="font-medium flex items-center text-[#1D244F]">
                         <Badge
                           variant="outline"
-                          className="mr-2 bg-secondary/20 text-muted-foreground border-secondary/20"
+                          className="mr-2 bg-[#F7F7FA] text-[#5B5F79] border-[#F7F7FA]"
                         >
                           Optional
                         </Badge>
@@ -596,25 +595,25 @@ export function JDQnaForm() {
                       <FormControl>
                         <Textarea
                           placeholder="Add any specific focus areas or question types you'd like to include"
-                          className="min-h-20 focus:ring-2 focus:ring-ring/30 transition-all resize-y shadow-sm"
+                          className="min-h-20 focus:ring-2 focus:ring-[#2663FF]/30 transition-all duration-300 resize-y shadow-md border border-[#F7F7FA] rounded-lg"
                           {...field}
                         />
                       </FormControl>
-                      <p className="text-xs text-muted-foreground italic">
+                      <p className="text-xs text-[#5B5F79] italic">
                         E.g., &quot;Focus on system design questions&quot; or
                         &quot;Include behavioral questions about teamwork&quot;
                       </p>
-                      <FormMessage className="text-destructive text-sm" />
+                      <FormMessage className="text-red-500 text-sm" />
                     </FormItem>
                   )}
                 />
 
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2 mb-1">
-                    <Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-none">
+                    <Badge className="bg-[#2663FF]/10 text-[#2663FF] hover:bg-[#2663FF]/20 border-none">
                       Step 2
                     </Badge>
-                    <h3 className="text-sm font-medium text-foreground">
+                    <h3 className="text-sm font-medium text-[#1D244F]">
                       Provide Job Description
                     </h3>
                   </div>
@@ -626,17 +625,17 @@ export function JDQnaForm() {
                     }
                     className="w-full"
                   >
-                    <TabsList className="grid grid-cols-2 w-full mb-2 px-2 bg-muted/50 border border-border/50 rounded-md h-12">
+                    <TabsList className="grid grid-cols-2 w-full mb-2 px-2 bg-[#F7F7FA] border border-[#F7F7FA] rounded-lg h-12">
                       <TabsTrigger
                         value="file"
-                        className="text-sm font-medium data-[state=active]:bg-card data-[state=active]:shadow-sm"
+                        className="text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-[#1D244F] data-[state=active]:shadow-md transition-all duration-300"
                       >
                         <FileUp className="mr-2 h-4 w-4" />
                         Upload PDF
                       </TabsTrigger>
                       <TabsTrigger
                         value="text"
-                        className="text-sm font-medium data-[state=active]:bg-card data-[state=active]:shadow-sm"
+                        className="text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-[#1D244F] data-[state=active]:shadow-md transition-all duration-300"
                       >
                         <PenLine className="mr-2 h-4 w-4" />
                         Paste Text
@@ -651,7 +650,7 @@ export function JDQnaForm() {
                           field: { value, onChange, ...fieldProps },
                         }) => (
                           <FormItem className="space-y-2">
-                            <FormLabel className="font-medium">
+                            <FormLabel className="font-medium text-[#1D244F]">
                               Job Description PDF
                             </FormLabel>
                             <FormControl>
@@ -663,21 +662,21 @@ export function JDQnaForm() {
                                     onChange(file);
                                   }
                                 }}
-                                className="w-full border border-input rounded-md p-2 focus:ring-2 focus:ring-ring/30 shadow-sm"
+                                className="w-full border border-[#F7F7FA] rounded-md p-2 focus:ring-2 focus:ring-[#2663FF]/30 shadow-sm"
                                 {...fieldProps}
                               />
                             </FormControl>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-xs text-[#5B5F79]">
                               Supported format: PDF
                             </p>
-                            <FormMessage className="text-destructive text-sm" />
+                            <FormMessage className="text-red-500 text-sm" />
                           </FormItem>
                         )}
                       />
 
                       {uploading && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground mt-4 p-3 bg-muted/30 rounded-md animate-pulse">
-                          <Spinner size="sm" className="text-primary" />
+                        <div className="flex items-center gap-2 text-sm text-[#5B5F79] mt-4 p-3 bg-[#F7F7FA] rounded-md animate-pulse">
+                          <Spinner size="sm" className="text-[#2663FF]" />
                           <span>Uploading and processing file...</span>
                         </div>
                       )}
@@ -687,18 +686,18 @@ export function JDQnaForm() {
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.3 }}
-                          className="mt-4 border border-border/50 rounded-lg p-4 bg-card/50 hover:bg-card/80 transition-colors"
+                          className="mt-4 border border-[#F7F7FA] rounded-lg p-6 bg-gradient-to-br from-white to-[#F7F7FA]/50 hover:shadow-md transition-all duration-300"
                         >
-                          <h3 className="font-medium mb-2 flex items-center text-foreground">
-                            <FileText className="mr-2 h-4 w-4 text-primary" />
+                          <h3 className="font-bold mb-2 flex items-center text-[#1D244F]">
+                            <FileText className="mr-2 h-4 w-4 text-[#2663FF]" />
                             Uploaded PDF
                           </h3>
-                          <p className="text-sm text-muted-foreground mb-2">
+                          <p className="text-sm text-[#5B5F79] mb-2">
                             {fileName}
                           </p>
-                          <div className="text-sm text-primary flex items-center">
-                            <span className="bg-primary/10 text-primary px-2 py-1 rounded-md flex items-center">
-                              <CheckCircle2 className="h-4 w-4 mr-1" />
+                          <div className="text-sm text-[#2663FF] flex items-center">
+                            <span className="bg-[#2663FF]/10 text-[#2663FF] px-3 py-2 rounded-lg flex items-center font-medium">
+                              <CheckCircle2 className="h-4 w-4 mr-2" />
                               PDF content extracted successfully!
                             </span>
                           </div>
@@ -712,7 +711,7 @@ export function JDQnaForm() {
                         name="jobDescriptionText"
                         render={({ field }) => (
                           <FormItem className="space-y-2">
-                            <FormLabel className="font-medium">
+                            <FormLabel className="font-medium text-[#1D244F]">
                               Paste Job Description
                             </FormLabel>
                             <FormControl>
@@ -720,10 +719,10 @@ export function JDQnaForm() {
                                 value={field.value || ""}
                                 onChange={field.onChange}
                                 placeholder="Paste your job description here..."
-                                className="min-h-64 resize-y focus:ring-2 focus:ring-ring/30 transition-all shadow-sm"
+                                className="min-h-64 resize-y focus:ring-2 focus:ring-[#2663FF]/30 transition-all shadow-sm border border-[#F7F7FA]"
                               />
                             </FormControl>
-                            <FormMessage className="text-destructive text-sm" />
+                            <FormMessage className="text-red-500 text-sm" />
                           </FormItem>
                         )}
                       />
@@ -731,13 +730,13 @@ export function JDQnaForm() {
                   </Tabs>
                 </div>
 
-                <Separator className="my-2" />
+                <Separator className="my-2 bg-[#F7F7FA]" />
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                   <Button
                     variant="outline"
                     type="button"
-                    className="flex items-center justify-center h-11 hover:bg-primary/5 hover:text-primary transition-colors shadow-sm"
+                    className="flex items-center justify-center h-12 hover:bg-[#2663FF]/5 hover:text-[#2663FF] transition-all duration-300 shadow-md border-[#F7F7FA] text-[#5B5F79] rounded-lg"
                     disabled={
                       loading ||
                       (inputMethod === "file"
@@ -760,7 +759,7 @@ export function JDQnaForm() {
                   </Button>
                   <Button
                     type="submit"
-                    className="h-11 flex items-center justify-center shadow-sm bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary"
+                    className="h-12 flex items-center justify-center shadow-md bg-[#f7a828] hover:bg-[#f7a828]/90 text-white rounded-lg transition-all duration-300 hover:shadow-lg hover:shadow-[#f7a828]/25 transform hover:-translate-y-0.5"
                     disabled={
                       extractingSkills ||
                       (inputMethod === "file"
@@ -782,16 +781,16 @@ export function JDQnaForm() {
                   </Button>
                 </div>
 
-                <div className="text-xs text-muted-foreground/70 pt-2">
+                <div className="text-xs text-[#5B5F79] pt-2">
                   <p className="flex items-center">
-                    <Zap className="h-3 w-3 mr-1 inline" />
+                    <Zap className="h-3 w-3 mr-1 inline text-[#2663FF]" />
                     <span>
                       <strong>Auto-Generate:</strong> Creates both skills and
                       questions in one step
                     </span>
                   </p>
                   <p className="flex items-center mt-1">
-                    <ArrowRight className="h-3 w-3 mr-1 inline" />
+                    <ArrowRight className="h-3 w-3 mr-1 inline text-[#f7a828]" />
                     <span>
                       <strong>Extract Skills:</strong> Lets you review skills
                       before generating questions
@@ -809,25 +808,24 @@ export function JDQnaForm() {
           initial="hidden"
           animate="visible"
           variants={fadeInUp}
-          className="space-y-6"
+          className="space-y-6 mt-8"
         >
-          <Card className="shadow-md border border-border hover:shadow-lg transition-shadow duration-300">
-            <CardHeader className="border-b border-border/40 bg-gradient-to-r from-accent/10 to-transparent">
+          <Card className="shadow-lg border border-[#F7F7FA] hover:shadow-xl transition-all duration-300 bg-white">
+            <CardHeader className="border-b border-[#F7F7FA] bg-gradient-to-br from-[#f7a828]/10 via-transparent to-[#2663FF]/5">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
-                  <CardTitle className="text-xl font-serif text-foreground flex items-center">
-                    <Sparkles className="h-5 w-5 text-accent mr-2" />
+                  <CardTitle className="text-2xl font-bold text-[#1D244F] flex items-center">
+                    <Sparkles className="h-5 w-5 text-[#f7a828] mr-2" />
                     {form.getValues().jobRole} - Interview Questions
                   </CardTitle>
-                  <CardDescription className="text-muted-foreground">
-                    {questions.length} questions generated (
-                    {form.getValues().interviewLength} minute interview)
+                  <CardDescription className="text-[#5B5F79] text-base">
+                    {questions.length} questions generated ({form.getValues().interviewLength} minute interview)
                   </CardDescription>
                 </div>
                 <Button
                   onClick={handleGeneratePDF}
                   disabled={pdfLoading}
-                  className="bg-accent text-accent-foreground hover:bg-accent/90 shadow-sm"
+                  className="bg-[#f7a828] text-white hover:bg-[#f7a828]/90 shadow-md hover:shadow-lg hover:shadow-[#f7a828]/25 transform hover:-translate-y-0.5 transition-all duration-300 rounded-lg"
                 >
                   {pdfLoading ? (
                     <>
@@ -846,15 +844,15 @@ export function JDQnaForm() {
             <CardContent className="pt-6">
               <QuestionsDisplay questions={questions} />
             </CardContent>
-            <CardFooter className="border-t border-border/40 pt-4 flex justify-between items-center">
-              <p className="text-xs text-muted-foreground">
+            <CardFooter className="border-t border-[#F7F7FA] pt-4 flex justify-between items-center">
+              <p className="text-xs text-[#5B5F79]">
                 These questions are tailored based on the provided job
                 description and skills
               </p>
               <Button
                 variant="outline"
                 onClick={handleReset}
-                className="flex items-center"
+                className="flex items-center border-[#F7F7FA] text-[#5B5F79] hover:text-[#1D244F] hover:bg-[#F7F7FA]"
               >
                 <RefreshCw className="mr-2 h-4 w-4" />
                 Start Over

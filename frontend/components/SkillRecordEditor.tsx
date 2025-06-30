@@ -67,6 +67,7 @@ import SkillsTable from "./SkillsTable";
 import { GlobalFeedbackDialog } from "./ui/global-feedback-dialog";
 import { QuestionGenerationDialog } from "./ui/question-generation-dialog";
 import { Checkbox } from "./ui/checkbox";
+import { motion } from "framer-motion";
 
 // Define interfaces for the types from Prisma
 interface Skill {
@@ -123,6 +124,27 @@ interface QuestionData {
 interface SkillRecordEditorProps {
   record: RecordWithRelations;
 }
+
+// Add animation variants for Framer Motion
+const fadeInUp = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, ease: [0.43, 0.13, 0.23, 0.96] }
+  }
+} as const;
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      ease: [0.43, 0.13, 0.23, 0.96]
+    }
+  }
+} as const;
 
 export default function SkillRecordEditor({ record }: SkillRecordEditorProps) {
   const router = useRouter();
@@ -1355,53 +1377,44 @@ export default function SkillRecordEditor({ record }: SkillRecordEditorProps) {
   };
 
   return (
-    <div className="space-y-6 w-full overflow-hidden">
-      <div className="flex items-center justify-between">
+    <motion.div 
+      className="space-y-6 w-full overflow-hidden"
+      initial="hidden"
+      animate="visible"
+      variants={staggerContainer}
+    >
+      <motion.div 
+        className="flex items-center justify-between"
+        variants={fadeInUp}
+      >
         <div>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => router.push("/jd-qna")}
-            className="mb-2"
+            className="mb-2 text-[#1D244F] hover:text-[#2663FF] transition-colors"
           >
             <ArrowLeft className="h-4 w-4 mr-2" /> Back to Home
           </Button>
-          <h1 className="text-2xl font-bold">{record.jobTitle}</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl font-bold text-[#1D244F]">{record.jobTitle}</h1>
+          <p className="text-[#5B5F79]">
             Created: {new Date(record.createdAt).toLocaleDateString()}
           </p>
         </div>
         <div className="flex gap-2">
-          {/* <Button
-            onClick={autoGenerateSkillsAndQuestions}
-            disabled={generatingQuestions}
-            variant="default"
-          >
-            {generatingQuestions ? (
-              <>
-                <Spinner size="sm" className="mr-2" />
-                Auto-Generating...
-              </>
-            ) : (
-              <>Auto-Generate All</>
-            )}
-          </Button> */}
           <Button
             variant="outline"
             onClick={() => router.push("/create-interview")}
+            className="border-[#2663FF] text-[#2663FF] hover:bg-[#2663FF] hover:text-white transition-all duration-300"
           >
             <Plus className="mr-2 h-4 w-4" />
             Create Interview
           </Button>
           <Button
             onClick={handleGenerateExcel}
-            disabled={
-              excelExporting ||
-              questions.length === 0 ||
-              generatingQuestions ||
-              questionsLoading
-            }
+            disabled={excelExporting || questions.length === 0 || generatingQuestions || questionsLoading}
             variant="outline"
+            className="border-[#2663FF] text-[#2663FF] hover:bg-[#2663FF] hover:text-white transition-all duration-300"
           >
             {excelExporting ? (
               <>
@@ -1417,12 +1430,8 @@ export default function SkillRecordEditor({ record }: SkillRecordEditorProps) {
           </Button>
           <Button
             onClick={handleGeneratePDF}
-            disabled={
-              pdfLoading ||
-              questions.length === 0 ||
-              generatingQuestions ||
-              questionsLoading
-            }
+            disabled={pdfLoading || questions.length === 0 || generatingQuestions || questionsLoading}
+            className="bg-[#f7a828] hover:bg-[#f7a828]/90 text-white transition-all duration-300"
           >
             {pdfLoading ? (
               <>
@@ -1437,16 +1446,23 @@ export default function SkillRecordEditor({ record }: SkillRecordEditorProps) {
             )}
           </Button>
         </div>
-      </div>
+      </motion.div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full justify-start">
-          <TabsTrigger value="skills" className="flex-1 max-w-[200px]">
+      <Tabs 
+        value={activeTab} 
+        onValueChange={setActiveTab}
+        className="w-full"
+      >
+        <TabsList className="w-full justify-start bg-[#F7F7FA] p-1 rounded-lg">
+          <TabsTrigger 
+            value="skills" 
+            className="flex-1 max-w-[200px] data-[state=active]:bg-white data-[state=active]:text-[#1D244F] data-[state=active]:shadow-sm"
+          >
             Skills ({editedSkills.length})
           </TabsTrigger>
-          <TabsTrigger
-            value="questions"
-            className="flex-1 max-w-[200px]"
+          <TabsTrigger 
+            value="questions" 
+            className="flex-1 max-w-[200px] data-[state=active]:bg-white data-[state=active]:text-[#1D244F] data-[state=active]:shadow-sm"
             onClick={() => {
               if (activeTab !== "questions") {
                 fetchLatestQuestions();
@@ -1458,35 +1474,24 @@ export default function SkillRecordEditor({ record }: SkillRecordEditorProps) {
         </TabsList>
 
         <TabsContent value="skills" className="pt-4">
-          <Card className="w-full overflow-hidden">
-            <CardHeader className="flex flex-row items-center justify-between">
+          <Card className="w-full overflow-hidden border-[#F7F7FA] shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardHeader className="flex flex-row items-center justify-between border-b border-[#F7F7FA] pb-6">
               <div>
-                <CardTitle>Skills Management</CardTitle>
-                <CardDescription>
-                  Edit skill levels, requirements, priorities, and question
-                  formats. Mark skills as mandatory to include them in interview
-                  questions.
+                <CardTitle className="text-[#1D244F] text-xl">Skills Management</CardTitle>
+                <CardDescription className="text-[#5B5F79]">
+                  Edit skill levels, requirements, priorities, and question formats. Mark skills as mandatory to include them in interview questions.
                 </CardDescription>
               </div>
               <div className="flex items-center gap-2">
-                {/* <Button
-                  variant="default"
-                  onClick={() => autoGenerateSkillsAndQuestions()}
-                  disabled={generatingQuestions}
-                  className="mr-2"
-                >
-                  {generatingQuestions ? (
-                    <>
-                      <Spinner size="sm" className="mr-2" />
-                      Auto-Generating...
-                    </>
-                  ) : (
-                    "Auto-Generate Questions"
-                  )}
-                </Button> */}
                 <Button
                   variant={priorityMode ? "secondary" : "outline"}
                   onClick={() => setPriorityMode(!priorityMode)}
+                  className={cn(
+                    "transition-all duration-300",
+                    priorityMode 
+                      ? "bg-[#2663FF] text-white hover:bg-[#2663FF]/90" 
+                      : "border-[#2663FF] text-[#2663FF] hover:bg-[#2663FF] hover:text-white"
+                  )}
                 >
                   {priorityMode ? "Exit Priority Mode" : "Prioritize Skills"}
                 </Button>
@@ -1770,11 +1775,12 @@ export default function SkillRecordEditor({ record }: SkillRecordEditorProps) {
               )}
             </CardContent>
 
-            <CardFooter className="flex justify-between">
+            <CardFooter className="flex justify-between border-t border-[#F7F7FA] pt-6">
               <div>
                 <Button
                   onClick={() => setPriorityMode(!priorityMode)}
                   variant="outline"
+                  className="border-[#2663FF] text-[#2663FF] hover:bg-[#2663FF] hover:text-white transition-all duration-300"
                 >
                   {priorityMode ? "Table View" : "Priority View"}
                 </Button>
@@ -1786,29 +1792,23 @@ export default function SkillRecordEditor({ record }: SkillRecordEditorProps) {
                       <Button
                         size="icon"
                         variant="outline"
-                        className="rounded-full h-8 w-8"
+                        className="rounded-full h-8 w-8 border-[#2663FF] text-[#2663FF] hover:bg-[#2663FF] hover:text-white transition-all duration-300"
                       >
                         <Info className="h-4 w-4" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent className="max-w-sm">
+                    <TooltipContent className="max-w-sm bg-white text-[#1D244F] shadow-lg">
                       <p>
-                        Questions are generated for mandatory skills and
-                        optional skills with questions count &gt; 0. Select
-                        &quot;Generate Questions&quot; to create questions for
-                        skills that don&apos;t have any yet. Use
-                        &quot;Regenerate All Questions&quot; to create new
-                        questions for all skills, replacing existing ones.
+                        Questions are generated for mandatory skills and optional skills with questions count &gt; 0. Select &quot;Generate Questions&quot; to create questions for skills that don&apos;t have any yet. Use &quot;Regenerate All Questions&quot; to create new questions for all skills, replacing existing ones.
                       </p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
                 <Button
                   onClick={() => generateQuestionsForRecord(false)}
-                  disabled={
-                    generatingQuestions || questionsLoading || pdfLoading
-                  }
+                  disabled={generatingQuestions || questionsLoading || pdfLoading}
                   variant="outline"
+                  className="border-[#2663FF] text-[#2663FF] hover:bg-[#2663FF] hover:text-white transition-all duration-300"
                 >
                   {generatingQuestions ? (
                     <>
@@ -1821,12 +1821,8 @@ export default function SkillRecordEditor({ record }: SkillRecordEditorProps) {
                 </Button>
                 <Button
                   onClick={regenerateAllQuestions}
-                  disabled={
-                    generatingQuestions ||
-                    questionsLoading ||
-                    pdfLoading ||
-                    questions.length === 0
-                  }
+                  disabled={generatingQuestions || questionsLoading || pdfLoading || questions.length === 0}
+                  className="bg-[#f7a828] hover:bg-[#f7a828]/90 text-white transition-all duration-300"
                 >
                   {generatingQuestions ? (
                     <>
@@ -1843,37 +1839,21 @@ export default function SkillRecordEditor({ record }: SkillRecordEditorProps) {
         </TabsContent>
 
         <TabsContent value="questions" className="pt-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+          <Card className="border-[#F7F7FA] shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardHeader className="flex flex-row items-center justify-between border-b border-[#F7F7FA] pb-6">
               <div>
-                <CardTitle>Interview Questions</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-[#1D244F] text-xl">Interview Questions</CardTitle>
+                <CardDescription className="text-[#5B5F79]">
                   Generated questions for the mandatory skills
                 </CardDescription>
               </div>
               <div className="flex gap-2">
-                {/* <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={fetchLatestQuestions}
-                  disabled={
-                    questionsLoading || generatingQuestions || pdfLoading
-                  }
-                >
-                  <RefreshCw
-                    className={`h-4 w-4 mr-2 ${
-                      questionsLoading ? "animate-spin" : ""
-                    }`}
-                  />
-                  Refresh
-                </Button> */}
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setGlobalFeedbackDialogOpen(true)}
-                  disabled={
-                    questionsLoading || generatingQuestions || pdfLoading
-                  }
+                  disabled={questionsLoading || generatingQuestions || pdfLoading}
+                  className="border-[#2663FF] text-[#2663FF] hover:bg-[#2663FF] hover:text-white transition-all duration-300"
                 >
                   <MessageSquare className="h-4 w-4 mr-2" />
                   Global Feedback
@@ -1883,9 +1863,8 @@ export default function SkillRecordEditor({ record }: SkillRecordEditorProps) {
                     variant="outline"
                     size="sm"
                     onClick={regenerateAllDislikedQuestions}
-                    disabled={
-                      questionsLoading || generatingQuestions || pdfLoading
-                    }
+                    disabled={questionsLoading || generatingQuestions || pdfLoading}
+                    className="border-[#2663FF] text-[#2663FF] hover:bg-[#2663FF] hover:text-white transition-all duration-300"
                   >
                     {questionsLoading ? (
                       <>
@@ -1905,9 +1884,8 @@ export default function SkillRecordEditor({ record }: SkillRecordEditorProps) {
                     variant="outline"
                     size="sm"
                     onClick={regenerateAllQuestions}
-                    disabled={
-                      questionsLoading || generatingQuestions || pdfLoading
-                    }
+                    disabled={questionsLoading || generatingQuestions || pdfLoading}
+                    className="border-[#2663FF] text-[#2663FF] hover:bg-[#2663FF] hover:text-white transition-all duration-300"
                   >
                     {generatingQuestions ? (
                       <>
@@ -1923,9 +1901,8 @@ export default function SkillRecordEditor({ record }: SkillRecordEditorProps) {
                   variant="outline"
                   size="sm"
                   onClick={handleGenerateExcel}
-                  disabled={
-                    excelExporting || questionsLoading || generatingQuestions
-                  }
+                  disabled={excelExporting || questionsLoading || generatingQuestions}
+                  className="border-[#2663FF] text-[#2663FF] hover:bg-[#2663FF] hover:text-white transition-all duration-300"
                 >
                   {excelExporting ? (
                     <>
@@ -1943,9 +1920,8 @@ export default function SkillRecordEditor({ record }: SkillRecordEditorProps) {
                   variant="outline"
                   size="sm"
                   onClick={handleGeneratePDF}
-                  disabled={
-                    pdfLoading || questionsLoading || generatingQuestions
-                  }
+                  disabled={pdfLoading || questionsLoading || generatingQuestions}
+                  className="border-[#2663FF] text-[#2663FF] hover:bg-[#2663FF] hover:text-white transition-all duration-300"
                 >
                   {pdfLoading ? (
                     <>
@@ -1975,10 +1951,9 @@ export default function SkillRecordEditor({ record }: SkillRecordEditorProps) {
                   <div className="flex items-center justify-center gap-2">
                     <Button
                       onClick={() => generateQuestionsForRecord(false)}
-                      disabled={
-                        generatingQuestions || questionsLoading || pdfLoading
-                      }
+                      disabled={generatingQuestions || questionsLoading || pdfLoading}
                       variant="outline"
+                      className="border-[#2663FF] text-[#2663FF] hover:bg-[#2663FF] hover:text-white transition-all duration-300"
                     >
                       {generatingQuestions ? (
                         <>
@@ -1991,9 +1966,8 @@ export default function SkillRecordEditor({ record }: SkillRecordEditorProps) {
                     </Button>
                     <Button
                       onClick={regenerateAllQuestions}
-                      disabled={
-                        generatingQuestions || questionsLoading || pdfLoading
-                      }
+                      disabled={generatingQuestions || questionsLoading || pdfLoading}
+                      className="bg-[#f7a828] hover:bg-[#f7a828]/90 text-white transition-all duration-300"
                     >
                       {generatingQuestions ? (
                         <>
@@ -2195,7 +2169,7 @@ export default function SkillRecordEditor({ record }: SkillRecordEditorProps) {
                                     onClick={() =>
                                       handleOpenFeedbackDialog(question.id)
                                     }
-                                    className="h-8 w-8"
+                                    className="h-8 w-8 border-[#2663FF] text-[#2663FF] hover:bg-[#2663FF] hover:text-white transition-all duration-300"
                                   >
                                     <TooltipProvider>
                                       <Tooltip>
@@ -2227,7 +2201,7 @@ export default function SkillRecordEditor({ record }: SkillRecordEditorProps) {
                                       )
                                     }
                                     className={cn(
-                                      "h-8 w-8",
+                                      "h-8 w-8 border-[#2663FF] text-[#2663FF] hover:bg-[#2663FF] hover:text-white",
                                       question.liked === "LIKED" &&
                                         "bg-green-100 text-green-800"
                                     )}
@@ -2255,7 +2229,7 @@ export default function SkillRecordEditor({ record }: SkillRecordEditorProps) {
                                       )
                                     }
                                     className={cn(
-                                      "h-8 w-8",
+                                      "h-8 w-8 border-[#2663FF] text-[#2663FF] hover:bg-[#2663FF] hover:text-white",
                                       question.liked === "DISLIKED" &&
                                         "bg-red-100 text-red-800"
                                     )}
@@ -2364,6 +2338,6 @@ export default function SkillRecordEditor({ record }: SkillRecordEditorProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </motion.div>
   );
 }

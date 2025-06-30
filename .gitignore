@@ -6,7 +6,7 @@
 .Trashes
 ehthumbs.db
 Thumbs.db
-
+.cursor/
 # IDE and editor files
 .vscode/
 .idea/

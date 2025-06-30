@@ -16,13 +16,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Mic, MicOff, X } from "lucide-react";
+import { Mic, MicOff, X, Clock, Sparkles, Zap, ArrowRight } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { NoAgentNotification } from "@/components/NoAgentNotification";
 import TranscriptionView from "@/components/TranscriptionView";
 import useCombinedTranscriptions from "@/hooks/useCombinedTranscriptions";
 import type { ConnectionDetails } from "@/app/api/connection-details/route";
 import { toast } from "sonner";
+import { Meteors } from "@/components/magicui/meteors";
+import { BoxReveal } from "@/components/magicui/box-reveal";
+import { MagicCard } from "@/components/magicui/magic-card";
+import { InteractiveHoverButton } from "@/components/magicui/interactive-hover-button";
+import { AnimatedGradientText } from "@/components/magicui/animated-gradient-text";
 
 interface UserFormData {
   name: string;
@@ -372,55 +377,127 @@ function UserForm({
   };
 
   return (
-    <div className="w-full h-full flex items-center justify-center bg-slate-50">
-      <Card className="w-full max-w-md p-6">
-        <div className="space-y-6">
-          <div className="space-y-2 text-center">
-            <h1 className="text-3xl font-bold">Interview Session</h1>
-            <p className="text-slate-500">
-              Enter your details to join the interview
-            </p>
-          </div>
-          
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Your Name</Label>
-              <Input
-                id="name"
-                placeholder="Enter your full name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="accessCode">Access Code</Label>
-              <Input
-                id="accessCode"
-                placeholder="Enter the interview access code"
-                value={accessCode}
-                onChange={(e) => setAccessCode(e.target.value)}
-                required
-              />
-            </div>
-            
-            {error && (
-              <div className="p-3 text-sm border rounded bg-red-50 border-red-200 text-red-600">
-                {error}
+    <div className="w-full h-full flex items-center justify-center relative bg-white overflow-hidden">
+      {/* Enhanced Background Effects */}
+      <div className="absolute inset-0 bg-gradient-to-br from-[#2663FF]/10 via-[#1D244F]/5 to-white opacity-30"></div>
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#2663FF]/10 via-transparent to-transparent"></div>
+      <Meteors />
+
+      {/* Floating Elements */}
+      <div className="absolute top-20 left-10 w-2 h-2 bg-[#2663FF]/60 rounded-full animate-pulse"></div>
+      <div className="absolute top-40 right-20 w-1 h-1 bg-[#1D244F]/60 rounded-full animate-ping"></div>
+      <div className="absolute bottom-20 left-20 w-3 h-3 bg-[#f7a828]/40 rounded-full animate-bounce"></div>
+
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="z-10"
+      >
+        <Card className="w-full max-w-lg p-8 border border-[#F7F7FA] shadow-xl bg-gray-50 backdrop-blur-sm rounded-3xl">
+          <motion.div 
+            className="space-y-8"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2, duration: 0.5 }}
+          >
+            <BoxReveal>
+              <div className="space-y-3 text-center">
+                <motion.div
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#2663FF]/20 to-[#1D244F]/20 rounded-full border border-[#2663FF]/30 backdrop-blur-sm mx-auto"
+                  whileHover={{ scale: 1.05 }}
+                >
+                  <Sparkles className="w-4 h-4 text-[#2663FF]" />
+                  <span className="text-sm font-medium text-[#1D244F]">
+                    AI-Powered Interview
+                  </span>
+                </motion.div>
+                <h1 className="text-3xl font-bold text-[#1D244F]">
+                  Welcome to Your <AnimatedGradientText className="bg-gradient-to-r from-[#2663FF] via-[#2663FF] to-[#1D244F] bg-clip-text text-transparent">
+                    Interview Session
+                  </AnimatedGradientText>
+                </h1>
+                <p className="text-gray-700">
+                  Enter your details to connect with our AI Interviewer
+                </p>
               </div>
-            )}
+            </BoxReveal>
             
-            <Button 
-              type="submit" 
-              className="w-full" 
-              disabled={isSubmitting || !name || !accessCode}
-            >
-              {isSubmitting ? "Connecting..." : "Join Interview"}
-            </Button>
-          </form>
-        </div>
-      </Card>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <motion.div 
+                className="space-y-4"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3, duration: 0.5 }}
+              >
+                <div className="space-y-2">
+                  <Label htmlFor="name" className="text-[#1D244F] font-medium">Your Name</Label>
+                  <Input
+                    id="name"
+                    placeholder="Enter your full name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                    className="border-[#F7F7FA] focus:border-[#2663FF] focus:ring-[#2663FF]/30 rounded-lg h-12"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="accessCode" className="text-[#1D244F] font-medium">Access Code</Label>
+                  <Input
+                    id="accessCode"
+                    placeholder="Enter the interview access code"
+                    value={accessCode}
+                    onChange={(e) => setAccessCode(e.target.value)}
+                    required
+                    className="border-[#F7F7FA] focus:border-[#2663FF] focus:ring-[#2663FF]/30 rounded-lg h-12"
+                  />
+                </div>
+              </motion.div>
+              
+              {error && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-4 text-sm rounded-lg bg-red-50 border border-red-200 text-red-600"
+                >
+                  {error}
+                </motion.div>
+              )}
+              
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5, duration: 0.5 }}
+              >
+                <InteractiveHoverButton className="group w-full bg-[#f7a828] hover:bg-[#f7a828]/90 rounded-lg px-8 py-4 text-lg font-medium transition-all duration-300 shadow-lg hover:shadow-[#f7a828]/30 transform hover:-translate-y-1 text-white" disabled={isSubmitting || !name || !accessCode}>
+                  <span className="flex items-center justify-center gap-2">
+                    {isSubmitting ? "Connecting..." : "Join Interview"}
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </span>
+                </InteractiveHoverButton>
+              </motion.div>
+
+              {/* Features Highlights */}
+              <motion.div
+                className="pt-4 flex justify-center gap-6"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.6, duration: 0.5 }}
+              >
+                <div className="flex items-center gap-2 text-xs text-[#5B5F79]">
+                  <Clock className="w-3 h-3 text-[#2663FF]" />
+                  <span>24/7 Available</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-[#5B5F79]">
+                  <Zap className="w-3 h-3 text-[#f7a828]" />
+                  <span>AI-Powered</span>
+                </div>
+              </motion.div>
+            </form>
+          </motion.div>
+        </Card>
+      </motion.div>
     </div>
   );
 }
@@ -432,124 +509,213 @@ function InterviewInterface({ isDemoMode = false, interviewId, onTranscriptUpdat
   const isRecording = agentState === "listening";
   const isConnected = agentState !== "disconnected";
 
-    return (
+  return (
     <>
       {/* Left Sidebar */}
-      <div className="w-full max-w-sm bg-slate-900 border-r border-slate-800 flex flex-col">
+      <div className="w-full max-w-sm bg-gradient-to-b from-[#1D244F] to-[#1D244F]/95 border-r border-[#2663FF]/20 flex flex-col relative overflow-hidden">
+        {/* Background Effects */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-[#2663FF]/10 via-transparent to-transparent"></div>
+        <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-[#1D244F] to-transparent z-0"></div>
+        
+        {/* Floating Elements */}
+        <div className="absolute top-20 left-10 w-2 h-2 bg-[#2663FF]/60 rounded-full animate-pulse"></div>
+        <div className="absolute bottom-40 right-10 w-1 h-1 bg-[#2663FF]/60 rounded-full animate-ping"></div>
+
         {/* Demo Mode Banner */}
         {isDemoMode && (
-          <div className="bg-amber-500 text-amber-900 text-xs text-center p-1 font-medium">
+          <div className="bg-[#f7a828] text-white text-xs text-center p-1 font-medium z-10">
             DEMO MODE - Using LiveKit Cloud
           </div>
         )}
         
         {/* Audio Visualizer */}
-        <div className="p-6">
-          <h2 className="text-white text-lg font-semibold mb-4">Audio Activity</h2>
-          <div className="h-[200px] w-full flex items-center justify-center">
+        <div className="p-6 relative z-10">
+          {/* <div className="flex items-center gap-2 mb-4"> */}
+            <motion.div
+              className="flex items-center justify-center gap-2 px-3 py-1 bg-gradient-to-r from-[#2663FF]/20 to-[#1D244F]/20 rounded-full border border-[#2663FF]/30 backdrop-blur-sm text-center"
+              whileHover={{ scale: 1.05 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+            >
+              <Sparkles className="w-4 h-4 text-[#2663FF]" />
+              <span className="text-sm font-medium text-white text-center">Audio Activity</span>
+            </motion.div>
+          {/* </div> */}
+          
+          {/* <motion.div 
+            className="h-[180px] w-full flex items-center justify-center bg-[#1D244F]/40 backdrop-blur-sm rounded-xl border border-[#2663FF]/10 overflow-hidden"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.3 }}
+          >
             <BarVisualizer
               state={agentState}
-              barCount={5}
+              barCount={16}
               trackRef={audioTrack}
-              color="white"
-              className="w-full h-full bg-transparent"
+              color="#2663FF"
+              className="w-full h-full"
               options={{
-                minHeight: 24,
-                maxHeight: 60,
+                minHeight: 5,
+                maxHeight: 100
               }}
             />
-          </div>
+          </motion.div> */}
         </div>
 
         {/* Controls Section */}
-        <div className="flex-1 p-6 flex flex-col justify-center items-center space-y-6">
+        <div className="flex-1 p-6 flex flex-col justify-center items-center space-y-8 relative z-10">
           <AnimatePresence mode="wait">
             <motion.div
               key="connected"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="flex flex-col items-center space-y-4"
+              className="flex flex-col items-center space-y-6"
             >
               {/* Microphone Button */}
-              <div className="relative">
-                <div className="w-20 h-20 rounded-full bg-teal-600 hover:bg-teal-700 transition-all duration-200 flex items-center justify-center">
+              <motion.div 
+                className="relative"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <div className="absolute -inset-4 bg-gradient-to-r from-[#2663FF] to-[#2663FF]/70 opacity-30 blur-md rounded-full animate-pulse"></div>
+                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#2663FF] to-[#2663FF]/80 hover:from-[#2663FF] hover:to-[#2663FF]/90 transition-all duration-300 flex items-center justify-center shadow-lg relative">
                   {isRecording ? (
-                    <MicOff className="w-8 h-8 text-white" />
+                    <MicOff className="w-10 h-10 text-white" />
                   ) : (
-                    <Mic className="w-8 h-8 text-white" />
+                    <Mic className="w-10 h-10 text-white" />
+                  )}
+                  
+                  {isRecording && (
+                    <>
+                      <span className="absolute inset-0 rounded-full bg-[#2663FF] animate-ping opacity-20"></span>
+                      <span className="absolute inset-0 rounded-full bg-[#2663FF] animate-pulse opacity-40"></span>
+                    </>
                   )}
                 </div>
-              </div>
+              </motion.div>
 
-              <span className="text-white text-sm font-medium">
+              <motion.span 
+                className="text-white text-sm font-medium bg-[#1D244F]/80 px-4 py-1 rounded-full border border-[#2663FF]/20"
+                animate={{ 
+                  backgroundColor: isRecording ? 'rgba(38, 99, 255, 0.3)' : 'rgba(29, 36, 79, 0.8)'
+                }}
+                transition={{ duration: 0.3 }}
+              >
                 {isRecording ? "Listening..." : "Tap to speak"}
-              </span>
+              </motion.span>
 
               {/* Voice Assistant Controls */}
-              <div className="flex items-center space-x-2">
-                <VoiceAssistantControlBar controls={{ leave: false }} />
+              <motion.div 
+                className="flex items-center space-x-3 pt-4"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+              >
+                {/* <VoiceAssistantControlBar controls={{ leave: false }} /> */}
                 <DisconnectButton>
-                  <div className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground">
+                  <Button className="inline-flex h-10 items-center justify-center rounded-md bg-[#1D244F] px-4 py-2 text-sm font-medium text-white ring-offset-background transition-colors hover:bg-[#2663FF] hover:text-white border border-[#2663FF]/30">
                     <X className="w-4 h-4" />
-                  </div>
+                    <span className="text-white">End Interview</span>
+                  </Button>
                 </DisconnectButton>
-              </div>
+              </motion.div>
             </motion.div>
           </AnimatePresence>
         </div>
 
-        {/* Status */}
-        <div className="p-4 border-t border-slate-800">
-          <div className="flex items-center justify-center space-x-2">
+        <motion.div 
+          className="p-4 border-t border-[#2663FF]/20 relative z-10"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+        >
+          <div className="flex items-center justify-center space-x-2 bg-[#1D244F]/60 backdrop-blur-sm rounded-full py-2 px-4 border border-[#2663FF]/10">
             <div
-              className={`w-2 h-2 rounded-full ${isConnected ? "bg-green-500 animate-pulse" : "bg-gray-500"}`}
+              className={`w-2 h-2 rounded-full ${isConnected ? "bg-[#2663FF] animate-pulse" : "bg-gray-500"}`}
             />
-            <span className="text-slate-400 text-xs">
+            <span className="text-[#F7F7FA] text-xs font-medium">
               {isConnected ? "AI Interviewer Active" : "AI Interviewer Inactive"}
             </span>
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Right Chat Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col bg-white relative overflow-hidden">
+        {/* Background Elements */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-0 right-0 left-0 h-40 bg-gradient-to-b from-[#F7F7FA]/50 to-transparent z-0"></div>
+          <div className="absolute bottom-0 right-0 left-0 h-40 bg-gradient-to-t from-[#F7F7FA]/50 to-transparent z-0"></div>
+          <div className="absolute top-10 right-10 w-2 h-2 bg-[#2663FF]/30 rounded-full animate-ping"></div>
+          <div className="absolute bottom-20 left-20 w-3 h-3 bg-[#f7a828]/20 rounded-full animate-pulse"></div>
+        </div>
+
         {/* Header */}
-        <div className="border-b border-border p-4">
+        <motion.div 
+          className="border-b border-[#F7F7FA] p-6 relative z-10"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl font-semibold text-foreground">
-                Interview Session {isDemoMode && <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">Demo</span>}
-              </h1>
-              <p className="text-muted-foreground text-sm">AI-powered technical interview</p>
+              <motion.div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold text-[#1D244F]">
+                  Interview Session
+                </h1>
+                {isDemoMode && (
+                  <motion.span 
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.3 }}
+                    className="text-xs bg-[#f7a828]/10 text-[#f7a828] px-2 py-0.5 rounded-full font-medium border border-[#f7a828]/20"
+                  >
+                    Demo
+                  </motion.span>
+                )}
+              </motion.div>
+              <p className="text-[#5B5F79] text-sm mt-1">
+                AI-powered technical interview with real-time evaluation
+              </p>
             </div>
             <Badge
               variant="outline"
               className={
                 isConnected
-                  ? "bg-green-50 text-green-700 border-green-200"
-                  : "bg-gray-50 text-gray-700 border-gray-200"
+                  ? "bg-[#2663FF]/10 text-[#2663FF] border-[#2663FF]/30 px-3 py-1"
+                  : "bg-gray-50 text-gray-700 border-gray-200 px-3 py-1"
               }
             >
               {isConnected ? "Live Session" : "Disconnected"}
             </Badge>
           </div>
-        </div>
+        </motion.div>
 
         {/* Chat Messages */}
-        <ScrollArea className="flex-1 p-4">
-          <div className="space-y-4 max-w-4xl mx-auto">
+        <ScrollArea className="flex-1 p-6 relative z-10">
+          <div className="space-y-6 max-w-4xl mx-auto">
             {isConnected ? (
               <TranscriptionView 
                 interviewId={interviewId}
                 onTranscriptUpdate={onTranscriptUpdate}
               />
             ) : (
-              <div className="flex items-center justify-center h-full">
-                <p className="text-muted-foreground text-center">
-                  Interview ended. Please reload the page.
+              <motion.div 
+                className="flex flex-col items-center justify-center h-[50vh] p-8 text-center" 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+              >
+                <div className="w-16 h-16 rounded-full bg-[#F7F7FA] flex items-center justify-center mb-4">
+                  <X className="w-6 h-6 text-[#5B5F79]" />
+                </div>
+                <h3 className="text-xl font-semibold text-[#1D244F] mb-2">Interview Ended</h3>
+                <p className="text-[#5B5F79] max-w-md">
+                  Your interview session has been completed and saved. Please reload the page to start a new interview.
                 </p>
-              </div>
+              </motion.div>
             )}
           </div>
         </ScrollArea>
