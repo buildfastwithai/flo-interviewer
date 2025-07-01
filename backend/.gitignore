@@ -93,7 +93,6 @@ models/
 # Docker
 .dockerignore
 Dockerfile.prod
-docker-compose*.yml
 .docker/
 
 # IDE and Editor files
