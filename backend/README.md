@@ -1,85 +1,317 @@
-<a href="https://livekit.io/">
-  <img src="./.github/assets/livekit-mark.png" alt="LiveKit logo" width="100" height="100">
-</a>
+# AI Interview Analysis Backend
 
-# Python Voice Agent
+A sophisticated AI-powered FastAPI backend for conducting and analyzing technical interviews. This backend provides comprehensive interview analysis, skill assessment, and insights using multiple AI providers.
 
-<p>
-  <a href="https://cloud.livekit.io/projects/p_/sandbox"><strong>Deploy a sandbox app</strong></a>
-  •
-  <a href="https://docs.livekit.io/agents/overview/">LiveKit Agents Docs</a>
-  •
-  <a href="https://livekit.io/cloud">LiveKit Cloud</a>
-  •
-  <a href="https://blog.livekit.io/">Blog</a>
-</p>
+## 🐳 Docker Deployment (Recommended)
 
-A basic example of a voice agent using LiveKit and Python.
+### Prerequisites for Ubuntu
 
-## Dev Setup
+1. **Install Docker and Docker Compose**:
 
-Clone the repository and install dependencies to a virtual environment:
+```bash
+# Update package index
+sudo apt update
 
-```console
-# Linux/macOS
-cd voice-pipeline-agent-python
+# Install required packages
+sudo apt install apt-transport-https ca-certificates curl software-properties-common
+
+# Add Docker's official GPG key
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+
+# Add Docker repository
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+# Update package index again
+sudo apt update
+
+# Install Docker
+sudo apt install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+# Add your user to docker group (optional, to run docker without sudo)
+sudo usermod -aG docker $USER
+
+# Log out and log back in, or run:
+newgrp docker
+```
+
+2. **Verify Docker Installation**:
+
+```bash
+docker --version
+docker compose version
+```
+
+### Environment Setup
+
+1. **Create Environment File**:
+
+```bash
+# Create .env file in the backend directory
+cd backend
+cp env.example .env  # Copy the example environment file
+# Edit .env with your actual API keys and configuration
+```
+
+2. **Configure Environment Variables** (edit `.env` file):
+
+```env
+# Required API Keys
+OPENAI_API_KEY=your_openai_api_key_here
+GEMINI_API_KEY=your_gemini_api_key_here
+
+# LiveKit Configuration (if using voice agent features)
+LIVEKIT_URL=wss://your-livekit-url
+LIVEKIT_API_KEY=your_livekit_api_key
+LIVEKIT_API_SECRET=your_livekit_api_secret
+
+# Groq Configuration (for STT)
+GROQ_API_KEY=your_groq_api_key
+
+# Cartesia Configuration (for TTS)
+CARTESIA_API_KEY=your_cartesia_api_key
+
+# Next.js API URL (if integrating with frontend)
+NEXTJS_API_URL=http://localhost:3000
+
+# Interview Configuration (optional)
+INTERVIEW_ROLE=Software Engineer
+INTERVIEW_SKILL_LEVEL=mid
+INTERVIEW_RECORD_ID=
+
+# Development flag
+USE_LEGACY_AGENT=false
+
+# Database (if needed)
+DATABASE_URL=sqlite:///./interview_analysis.db
+```
+
+### Docker Build and Run
+
+1. **Build the Docker Image**:
+
+```bash
+# Navigate to backend directory
+cd backend
+
+# Build the Docker image
+docker build -t flo-interviewer-backend .
+```
+
+2. **Run with Environment File**:
+
+```bash
+# Run the container with environment file
+docker run -d \
+  --name flo-interviewer-backend \
+  --env-file .env \
+  -p 8000:8000 \
+  -v $(pwd)/logs:/app/logs \
+  -v $(pwd)/uploads:/app/uploads \
+  -v $(pwd)/interview_data:/app/interview_data \
+  flo-interviewer-backend
+```
+
+3. **Alternative: Using Docker Compose** (create `docker-compose.yml`):
+
+```yaml
+version: "3.8"
+services:
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+      - ./uploads:/app/uploads
+      - ./interview_data:/app/interview_data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+```
+
+```bash
+# Run with Docker Compose
+docker compose up -d
+```
+
+### Docker Management Commands
+
+```bash
+# View running containers
+docker ps
+
+# View logs
+docker logs flo-interviewer-backend
+
+# Follow logs in real-time
+docker logs -f flo-interviewer-backend
+
+# Stop the container
+docker stop flo-interviewer-backend
+
+# Start the container
+docker start flo-interviewer-backend
+
+# Remove the container
+docker rm flo-interviewer-backend
+
+# Remove the image
+docker rmi flo-interviewer-backend
+
+# Access container shell
+docker exec -it flo-interviewer-backend bash
+```
+
+### API Testing
+
+Once the container is running, test the API:
+
+```bash
+# Health check
+curl http://localhost:8000/health
+
+# API documentation
+curl http://localhost:8000/docs
+
+# Upload and analyze interview audio (example)
+curl -X POST "http://localhost:8000/analyze-interview" \
+  -H "accept: application/json" \
+  -H "Content-Type: multipart/form-data" \
+  -F "file=@interview_audio.mp3" \
+  -F "skills_to_assess=Python,Communication,Problem Solving" \
+  -F "job_role=Software Developer" \
+  -F "company_name=YourCompany"
+```
+
+### Troubleshooting Docker Setup
+
+1. **Port Already in Use**:
+
+```bash
+# Check what's using port 8000
+sudo lsof -i :8000
+
+# Kill the process or use a different port
+docker run -p 8080:8000 flo-interviewer-backend
+```
+
+2. **Permission Issues**:
+
+```bash
+# Fix volume permissions
+sudo chown -R $USER:$USER logs/ uploads/ interview_data/
+```
+
+3. **Container Won't Start**:
+
+```bash
+# Check logs for errors
+docker logs flo-interviewer-backend
+
+# Run interactively for debugging
+docker run -it --env-file .env flo-interviewer-backend bash
+```
+
+4. **API Key Issues**:
+
+```bash
+# Verify environment variables are loaded
+docker exec flo-interviewer-backend env | grep API_KEY
+```
+
+## 📋 API Endpoints
+
+The FastAPI backend provides several endpoints:
+
+- `GET /` - Root endpoint with status
+- `GET /health` - Health check endpoint
+- `POST /extract-transcript` - Extract transcript from video URL
+- `POST /upload-audio` - Upload and transcribe audio file
+- `POST /analyze-interview` - Comprehensive interview analysis from audio file
+- `POST /analyze-interview-url` - Analyze interview from video URL
+- `POST /analyze-transcript` - Analyze pre-existing transcript
+- `POST /compare-analyses` - Compare two PDF analyses
+
+Visit `http://localhost:8000/docs` for interactive API documentation.
+
+---
+
+## 🔧 Local Development Setup (Alternative)
+
+If you prefer to run without Docker:
+
+### Prerequisites
+
+- Python 3.8+
+- FFmpeg for audio processing
+- OpenAI API key
+- Additional API keys (Groq, Cartesia, LiveKit) for voice features
+
+### Installation
+
+1. **Clone and Setup**:
+
+```bash
+git clone <repository-url>
+cd flo-interviewer/backend
+```
+
+2. **Create Virtual Environment**:
+
+```bash
 python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-python3 agent.py download-files
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-<details>
-  <summary>Windows instructions (click to expand)</summary>
-  
-```cmd
-:: Windows (CMD/PowerShell)
-cd voice-pipeline-agent-python
-python3 -m venv venv
-venv\Scripts\activate
+3. **Install Dependencies**:
+
+```bash
 pip install -r requirements.txt
 ```
 
-</details>
+4. **Environment Configuration**:
 
-Set up the environment by copying `.env.example` to `.env.local` and filling in the required values:
-
-- `LIVEKIT_URL`
-- `LIVEKIT_API_KEY`
-- `LIVEKIT_API_SECRET`
-- `OPENAI_API_KEY`
-- `CARTESIA_API_KEY`
-- `DEEPGRAM_API_KEY`
-
-You can also do this automatically using the LiveKit CLI:
-
-```console
-lk app env
+```bash
+cp env.example .env.local  # Create from example
+# Edit .env.local with your API keys
 ```
 
-Run the agent:
+5. **Run the Application**:
 
-```console
-python3 agent.py console
+```bash
+# Run FastAPI server
+python uvicorn_config.py
+
+# Or using uvicorn directly
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-This agent can use a frontend application to communicate with. You can use one of our example frontends in [livekit-examples](https://github.com/livekit-examples/), create your own following one of our [client quickstarts](https://docs.livekit.io/realtime/quickstarts/), or test instantly against one of our hosted [Sandbox](https://cloud.livekit.io/projects/p_/sandbox) frontends.
+### Testing Setup
 
-Run the agent with the following command when using a frontend application.
+```bash
+# Run setup validation
+python test_setup.py
 
-```console
-python3 agent.py dev
+# Test specific API endpoints
+python -m pytest tests/  # If tests exist
 ```
 
-# Technical Interview Voice Agent
+---
 
-A sophisticated AI-powered voice agent designed to conduct structured technical interviews following best practices and the Ideal Technical Interview Playbook. This agent provides fair, thorough, and bias-free evaluation of candidates for software engineering positions.
+## 🎯 Technical Interview Voice Agent
 
-## Features
+The backend also includes a sophisticated AI-powered voice agent for conducting structured technical interviews following best practices.
 
-### Core Interview Capabilities
+### Voice Agent Features
 
-- **Structured Interview Flow**: Follows a systematic approach with onboarding, technical assessment, candidate questions, and wrap-up
+#### Core Interview Capabilities
+
+- **Structured Interview Flow**: Follows systematic approach with onboarding, technical assessment, candidate questions, and wrap-up
 - **Competency-Based Evaluation**: Covers 5 key areas:
   - Data Structures & Algorithms (30%)
   - System Design (25%)
@@ -87,137 +319,58 @@ A sophisticated AI-powered voice agent designed to conduct structured technical 
   - Problem Solving & Communication (15%)
   - Behavioral & Culture Fit (10%)
 
-### Professional Interview Conduct
+#### Professional Interview Conduct
 
 - **Bias-Free Evaluation**: Evidence-based scoring with behavior-anchored rating scales
 - **Respectful Treatment**: Professional conduct with accommodation for different communication styles
 - **Accessibility Support**: Flexible question format, thinking time, and technical assistance
 - **Time Management**: Structured timing with gentle transitions between sections
 
-### Adaptive Question Bank
+#### Adaptive Question Bank
 
 - **Skill-Level Appropriate**: Questions tailored for Junior, Mid, Senior, and Staff levels
 - **Role-Specific Content**: Customizable for different engineering roles
 - **Comprehensive Coverage**: Multiple questions per competency to ensure thorough evaluation
 
-### Quality Assurance
-
-- **Interview Logging**: Detailed tracking of interview progress and candidate responses
-- **Scoring Documentation**: Evidence-based evaluation with specific examples
-- **Performance Analytics**: Comprehensive interview summaries with weighted scores
-
-## Quick Start
-
-### Prerequisites
-
-- Python 3.8+
-- LiveKit account and API keys
-- OpenAI API key
-- Groq API key (for STT)
-- Cartesia API key (for TTS)
-
-### Installation
-
-1. Clone the repository:
+### Voice Agent Usage
 
 ```bash
-git clone <repository-url>
-cd feedback-v0-custom
+# Run the voice agent (requires LiveKit setup)
+python3 agent.py dev
+
+# Or using Docker with voice agent
+docker run --env-file .env flo-interviewer-backend python3 agent.py dev
 ```
 
-2. Install dependencies:
+---
 
-```bash
-pip install -r requirements.txt
-```
+## 🔍 Interview Analysis Features
 
-3. Set up environment variables in `.env.local`:
+### Comprehensive Analysis Response
 
-```env
-# LiveKit Configuration
-LIVEKIT_URL=wss://your-livekit-url
-LIVEKIT_API_KEY=your-api-key
-LIVEKIT_API_SECRET=your-api-secret
+The API provides detailed analysis including:
 
-# AI Service APIs
-OPENAI_API_KEY=your-openai-key
-GROQ_API_KEY=your-groq-key
-CARTESIA_API_KEY=your-cartesia-key
-```
+- **Skill Assessments**: Level determination with confidence scores
+- **Q&A Evaluation**: Graded responses with detailed feedback
+- **Interview Insights**: Performance scores, strengths, weaknesses
+- **Hiring Recommendations**: Data-driven decision support
 
-### Running the Agent
+### Supported File Formats
 
-```bash
-python agent.py
-```
+- **Audio**: MP3, WAV, M4A, OGG, WEBM
+- **Video URLs**: YouTube, Vimeo, and other yt-dlp supported platforms
+- **Text**: Direct transcript upload and analysis
 
-The agent will:
+### AI Provider Support
 
-1. Connect to your LiveKit room
-2. Wait for a participant to join
-3. Begin the structured interview process
-4. Log detailed interview data and evaluations
+- **OpenAI**: GPT-4 for comprehensive analysis
+- **Google Gemini**: Alternative AI provider option
+- **Groq**: High-speed speech-to-text processing
+- **Cartesia**: Natural text-to-speech synthesis
 
-## Interview Structure
+---
 
-### Onboarding (2-3 minutes)
-
-- Welcome and expectation setting
-- Agenda overview
-- Technical setup confirmation
-- Initial questions clarification
-
-### Technical Deep Dives (40-45 minutes)
-
-#### Data Structures & Algorithms (15 min)
-
-Example questions by level:
-
-- **Junior**: "Implement a function to reverse a string"
-- **Mid**: "Find the second largest element in an array"
-- **Senior**: "Design and implement a LRU cache with O(1) operations"
-- **Staff**: "Design a distributed consistent hashing algorithm"
-
-#### System Design (15 min)
-
-- **Junior**: Simple application design
-- **Mid**: Scalable service design (URL shortener)
-- **Senior**: Complex distributed systems
-- **Staff**: Global enterprise systems
-
-#### Code Quality & Best Practices (10 min)
-
-- Clean code principles
-- Testing methodologies
-- Architecture patterns
-- Performance optimization
-
-#### Problem Solving & Communication (10 min)
-
-- Technical problem breakdown
-- Learning approach
-- Communication clarity
-- Decision-making process
-
-#### Behavioral & Culture Fit (10 min)
-
-- Project examples
-- Team collaboration
-- Growth mindset
-- Values alignment
-
-### Candidate Questions (5-7 minutes)
-
-- Role and company inquiries
-- Technical stack questions
-- Growth opportunities
-
-### Wrap-up (2-3 minutes)
-
-- Thank you and next steps
-- Timeline communication
-
-## Customization
+## 🛠️ Customization
 
 ### Role Configuration
 
@@ -230,124 +383,47 @@ Edit `interview_config.py` to:
 
 ### Skill Level Adaptation
 
-The agent automatically adapts questions based on the candidate's skill level:
+The system automatically adapts questions based on candidate skill level:
 
 - `junior`: Entry-level questions
 - `mid`: Intermediate complexity
 - `senior`: Advanced technical depth
 - `staff`: Leadership and architecture focus
 
-### Environment Customization
+---
 
-Modify the agent initialization in `agent.py`:
+## 📊 Monitoring and Logging
 
-```python
-agent=InterviewAgent(
-    role="Software Engineer",  # Customize role
-    candidate_name=participant.identity or "Candidate",
-    skill_level="mid"  # junior|mid|senior|staff
-)
+### Application Logs
+
+```bash
+# View logs in Docker
+docker logs flo-interviewer-backend
+
+# Local development logs
+tail -f logs/interview_agent.log
 ```
 
-## Evaluation & Scoring
+### Health Monitoring
 
-### Scoring Rubric (1-5 scale)
+The application includes built-in health checks:
 
-- **1**: Does not meet expectations
-- **2**: Partially meets expectations
-- **3**: Meets expectations
-- **4**: Exceeds expectations
-- **5**: Significantly exceeds expectations
+- Database connectivity
+- API service availability
+- File system permissions
 
-### Interview Summary
+---
 
-The agent generates comprehensive summaries including:
+## 🔒 Security Considerations
 
-- Weighted competency scores
-- Overall recommendation (Strong Hire/Hire/Borderline/No Hire)
-- Specific evidence for each evaluation
-- Areas of strength and improvement
+- **API Keys**: Never commit API keys to version control
+- **Environment Variables**: Use `.env` files for sensitive configuration
+- **User Data**: Implement proper data encryption and retention policies
+- **Network Security**: Use HTTPS in production environments
 
-### Data Logging
+---
 
-All interviews are logged with:
-
-- Detailed conversation flow
-- Question-by-question evaluation
-- Time allocation tracking
-- Performance metrics
-
-## Best Practices
-
-### For Interviewers
-
-- Review candidate background before starting
-- Ensure quiet, professional environment
-- Have backup questions ready
-- Take notes during the interview
-- Follow up with human review of AI evaluation
-
-### For Candidates
-
-- Test audio/video setup beforehand
-- Prepare examples from recent projects
-- Ask clarifying questions when needed
-- Think out loud during problem-solving
-- Ask questions about the role and company
-
-## Technical Requirements
-
-### Minimum System Requirements
-
-- 4GB RAM
-- Stable internet connection (10+ Mbps)
-- Modern web browser or LiveKit client
-- Microphone and speakers/headphones
-
-### API Rate Limits
-
-- OpenAI: Varies by plan
-- Groq: Check current limits
-- Cartesia: Check current limits
-- LiveKit: Based on usage tier
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Audio Quality**: Ensure good microphone and stable connection
-2. **API Errors**: Check API keys and rate limits
-3. **Connection Issues**: Verify LiveKit configuration
-4. **Interview Flow**: Review agent logs for debugging
-
-### Support
-
-- Check logs in the console output
-- Review interview_data for session details
-- Verify all environment variables are set
-- Test API connections independently
-
-## Development
-
-### Adding New Roles
-
-1. Create new role template in `interview_config.py`
-2. Define competencies and question banks
-3. Set evaluation criteria
-4. Update role selection logic
-
-### Extending Functionality
-
-- Add video analysis capabilities
-- Integrate with applicant tracking systems
-- Implement real-time coaching features
-- Add multi-language support
-
-## License
-
-This project is designed for internal use and follows professional interview standards and best practices.
-
-## Contributing
+## 🤝 Contributing
 
 When contributing to this project:
 
@@ -355,3 +431,10 @@ When contributing to this project:
 2. Update tests for new functionality
 3. Document any new configuration options
 4. Ensure bias-free and inclusive practices
+5. Test Docker builds before submitting PRs
+
+---
+
+## 📄 License
+
+This project is designed for internal use and follows professional interview standards and best practices.

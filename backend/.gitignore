@@ -89,3 +89,73 @@ models/
 # Temporary files
 *.tmp
 *.temp
+
+# Docker
+.dockerignore
+Dockerfile.prod
+docker-compose*.yml
+.docker/
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.spyderproject
+.spyproject
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Backup files
+*.backup
+*.bak
+*.orig
+
+# System files
+Thumbs.db
+Desktop.ini
+.Spotlight-V100
+.Trashes
+
+# Node.js (for any frontend integration)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn/
+.pnp.*
+
+# FastAPI specific
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Interview data and uploads
+uploads/
+interview_data/
+user_uploads/
+transcriptions/
+
+# Large files that shouldn't be in repo
+*.wav
+*.mp3
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.webm
+
+# Environment and secrets
+.env.production
+.env.staging
+secrets/
+credentials/
+
+# Monitoring and analytics
+.sentry/
