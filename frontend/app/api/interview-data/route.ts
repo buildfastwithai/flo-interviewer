@@ -14,7 +14,8 @@ export async function POST(req: NextRequest) {
       analysis = {},
       aiEvaluation = {},
       questionAnswers = {},
-      updateIfExists = true // Default to true to prefer updating over creating
+      updateIfExists = false, // Changed default to false to prefer creating new records
+      id = null // Added to support direct updates to a specific record
     } = data;
     
     if (!interviewId) {
@@ -55,29 +56,45 @@ export async function POST(req: NextRequest) {
       dataToSave.candidateName = candidateName;
     }
 
-    // Always check first if any record exists
+    let result;
+    
+    // If we have a specific ID, try to update that record directly
+    if (id) {
+      const recordToUpdate = await prisma.interviewData.findUnique({
+        where: { id }
+      });
+      
+      if (recordToUpdate) {
+        result = await prisma.interviewData.update({
+          where: { id },
+          data: dataToSave
+        });
+        
+        return NextResponse.json({
+          success: true,
+          data: result,
+          updated: true
+        });
+      }
+    }
+    
+    // Only look for an existing session by the same candidate that started at the same time
+    // This helps identify the same interview session for updates vs creating a new record
     const existingInterviewData = await prisma.interviewData.findFirst({
       where: {
-        interview: { id: interviewId }
-      },
-      orderBy: {
-        createdAt: 'desc'
+        interview: { id: interviewId },
+        candidateName: candidateName || undefined,
+        startTime: new Date(startTime)
       }
     });
 
-    let result;
-    
-    if (existingInterviewData) {
-      // Update existing record
+    if (existingInterviewData && updateIfExists) {
+      // Update existing record only if updateIfExists is true and we found an exact match
       result = await prisma.interviewData.update({
         where: {
           id: existingInterviewData.id
         },
-        data: {
-          ...dataToSave,
-          // Ensure we don't lose the candidate name if it exists
-          candidateName: candidateName || existingInterviewData.candidateName
-        }
+        data: dataToSave
       });
       
       return NextResponse.json({ 
@@ -86,7 +103,7 @@ export async function POST(req: NextRequest) {
         updated: true
       });
     } else {
-      // Create new record only if no record exists
+      // Create new record in all other cases
       result = await prisma.interviewData.create({
         data: {
           interview: {

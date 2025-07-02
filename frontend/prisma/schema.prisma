@@ -153,6 +153,7 @@ model InterviewData {
   analysis        Json?     // JSON data for AI analysis of the interview
   aiEvaluation    Json?     // AI-generated evaluation and scores
   questionAnswers Json?     // Questions and answers in the interview
+  feedback        Json?     // Feedback from the interviewer to the candidate
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 

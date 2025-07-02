@@ -212,10 +212,10 @@ async function assessSkillsWithOpenAI(transcript: string, skills: string[], jobR
       throw new Error("No skills provided for assessment");
     }
     
-    if (skills.length > 20) {
-      console.warn("Too many skills requested. Limiting to first 20 skills.");
-      skills = skills.slice(0, 20);
-    }
+    // if (skills.length > 20) {
+    //   console.warn("Too many skills requested. Limiting to first 20 skills.");
+    //   skills = skills.slice(0, 20);
+    // }
     
     const skillsText = skills.join(", ");
     
@@ -419,7 +419,15 @@ async function generateInterviewInsightsWithOpenAI(transcript: string, jobRole: 
                       "cultural_fit_indicators": ["Indicator 1", "Indicator 2"],
                       "hiring_recommendation": "Detailed hiring recommendation",
                       "next_steps": ["Next step 1", "Next step 2"]
-                    }`
+                    }
+
+                    IMPORTANT: Use the transcript to assess the interview insights. Do not make up any information.
+
+Transcript starts here:
+${transcript}
+Transcript ends here:
+
+                      `
         },
         {
           role: "user",

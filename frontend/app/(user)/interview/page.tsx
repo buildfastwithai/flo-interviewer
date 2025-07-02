@@ -29,6 +29,7 @@ import { MagicCard } from "@/components/magicui/magic-card";
 import { InteractiveHoverButton } from "@/components/magicui/interactive-hover-button";
 import { AnimatedGradientText } from "@/components/magicui/animated-gradient-text";
 import { useSearchParams } from "next/navigation";
+import InterviewFeedback from "@/components/interview-feedback";
 
 interface UserFormData {
   name: string;
@@ -49,10 +50,14 @@ export default function InterviewPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [interviewData, setInterviewData] = useState<InterviewData | null>(null);
-      const [transcriptions, setTranscriptions] = useState<any[]>([]);
-    const startTimeRef = useRef<string>(new Date().toISOString());
+  const [transcriptions, setTranscriptions] = useState<any[]>([]);
+  const startTimeRef = useRef<string>(new Date().toISOString());
+  const [interviewDataId, setInterviewDataId] = useState<string | null>(null);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedback, setFeedback] = useState<any>(null);
+  const [isFeedbackLoading, setIsFeedbackLoading] = useState(false);
 
-    const onJoinInterview = useCallback(
+  const onJoinInterview = useCallback(
     async (formData: UserFormData) => {
       setIsSubmitting(true);
       setError(null);
@@ -171,6 +176,7 @@ export default function InterviewPage() {
           ? new Date(data.endTime) 
           : undefined, // Set to undefined so Prisma will ignore it
         startTime: new Date(data.startTime),
+        updateIfExists: false // Always create a new record initially
       };
 
       // Include the updated flag to ensure we always update if an entry exists
@@ -179,17 +185,20 @@ export default function InterviewPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          ...processedData,
-          updateIfExists: true
-        }),
+        body: JSON.stringify(processedData),
       });
       
       if (!response.ok) {
         throw new Error('Failed to create interview data');
       }
       
-      return await response.json();
+      const result = await response.json();
+      // Store the ID of the created interview data record for future updates
+      if (result?.data?.id) {
+        setInterviewDataId(result.data.id);
+      }
+      
+      return result;
     } catch (error) {
       console.error('Error creating interview data:', error);
       throw error;
@@ -208,8 +217,13 @@ export default function InterviewPage() {
           : undefined, // Set to undefined so Prisma will ignore it
         startTime: new Date(data.startTime),
         candidateName: userData?.name || data.candidateName, // Always include candidate name
-        updateIfExists: true // Always update existing records
+        updateIfExists: interviewDataId ? true : false // Only update if we have an ID, otherwise create
       };
+
+      // If we have an ID, include it in the request to ensure we update the same record
+      if (interviewDataId) {
+        processedData.id = interviewDataId;
+      }
 
       const response = await fetch('/api/interview-data', {
         method: 'POST', // The API uses POST for both create and update
@@ -223,7 +237,13 @@ export default function InterviewPage() {
         throw new Error('Failed to update interview data');
       }
       
-      return await response.json();
+      const result = await response.json();
+      // If we didn't have an ID before and just created a new record, store its ID
+      if (!interviewDataId && result?.data?.id) {
+        setInterviewDataId(result.data.id);
+      }
+      
+      return result;
     } catch (error) {
       console.error('Error updating interview data:', error);
       throw error;
@@ -306,7 +326,7 @@ export default function InterviewPage() {
     if (interviewData) {
       const endTime = new Date().toISOString();
       try {
-        await updateInterviewData({
+        const updateResponse = await updateInterviewData({
           interviewId: interviewData.interviewId,
           transcript: JSON.stringify(transcriptions),
           startTime: interviewData.startTime,
@@ -316,7 +336,37 @@ export default function InterviewPage() {
           questionAnswers: extractQuestionAnswers(transcriptions),
           candidateName: userData?.name || "" // Always include candidate name
         });
+        
         console.log('Successfully saved interview data on disconnect');
+        
+        // Generate feedback after saving interview data
+        if (updateResponse?.data?.id) {
+          setIsFeedbackLoading(true);
+          setShowFeedbackModal(true);
+          
+          try {
+            const feedbackResponse = await fetch('/api/interview-feedback', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                interviewDataId: updateResponse.data.id
+              }),
+            });
+            
+            if (feedbackResponse.ok) {
+              const feedbackData = await feedbackResponse.json();
+              setFeedback(feedbackData.feedback);
+            } else {
+              console.error('Failed to generate feedback');
+            }
+          } catch (feedbackError) {
+            console.error('Error generating feedback:', feedbackError);
+          } finally {
+            setIsFeedbackLoading(false);
+          }
+        }
       } catch (error) {
         console.error('Failed to save interview data on disconnect:', error);
       }
@@ -352,6 +402,11 @@ export default function InterviewPage() {
             isDemoMode={isDemoMode} 
             interviewId={interviewData?.interviewId}
             onTranscriptUpdate={handleTranscriptUpdate}
+            candidateName={userData.name}
+            showFeedbackModal={showFeedbackModal}
+            setShowFeedbackModal={setShowFeedbackModal}
+            feedback={feedback}
+            isFeedbackLoading={isFeedbackLoading}
           />
           <RoomAudioRenderer />
         </RoomContext.Provider>
@@ -512,7 +567,7 @@ function UserForm({
   );
 }
 
-function InterviewInterface({ isDemoMode = false, interviewId, onTranscriptUpdate }: { isDemoMode?: boolean, interviewId?: string, onTranscriptUpdate: (newTranscriptions: any[]) => void }) {
+function InterviewInterface({ isDemoMode = false, interviewId, onTranscriptUpdate, candidateName, showFeedbackModal, setShowFeedbackModal, feedback, isFeedbackLoading }: { isDemoMode?: boolean, interviewId?: string, onTranscriptUpdate: (newTranscriptions: any[]) => void, candidateName: string, showFeedbackModal: boolean, setShowFeedbackModal: (show: boolean) => void, feedback: any, isFeedbackLoading: boolean }) {
   const { state: agentState, audioTrack } = useVoiceAssistant();
   const transcriptions = useCombinedTranscriptions();
 
@@ -625,7 +680,9 @@ function InterviewInterface({ isDemoMode = false, interviewId, onTranscriptUpdat
               >
                 {/* <VoiceAssistantControlBar controls={{ leave: false }} /> */}
                 <DisconnectButton>
-                  <Button className="inline-flex h-10 items-center justify-center rounded-md bg-[#1D244F] px-4 py-2 text-sm font-medium text-white ring-offset-background transition-colors hover:bg-[#2663FF] hover:text-white border border-[#2663FF]/30">
+                  <Button className="inline-flex h-10 items-center justify-center rounded-md bg-[#1D244F] px-4 py-2 text-sm font-medium text-white ring-offset-background transition-colors hover:bg-[#2663FF] hover:text-white border border-[#2663FF]/30" onClick={() => {
+                    setShowFeedbackModal(true);
+                  }}>
                     <X className="w-4 h-4" />
                     <span className="text-white">End Interview</span>
                   </Button>
@@ -723,8 +780,22 @@ function InterviewInterface({ isDemoMode = false, interviewId, onTranscriptUpdat
                 </div>
                 <h3 className="text-xl font-semibold text-[#1D244F] mb-2">Interview Ended</h3>
                 <p className="text-[#5B5F79] max-w-md">
-                  Your interview session has been completed and saved. Please reload the page to start a new interview.
+                  Your interview session has been completed and saved. Please reload the page to start a new interview or view the feedback.
                 </p>
+
+                <div className="flex items-center gap-2 mt-4"> 
+
+                <Button className="bg-[#2663FF] text-white px-4 py-2 rounded-md hover:bg-[#2663FF]/80" onClick={() => {
+                  window.location.reload();
+                }}>
+                  Start New Interview
+                </Button>
+                <Button className="bg-[#2663FF] text-white px-4 py-2 rounded-md hover:bg-[#2663FF]/80" onClick={() => {
+                  setShowFeedbackModal(true);
+                }}>
+                  View Feedback
+                </Button>
+                </div>
               </motion.div>
             )}
           </div>
@@ -732,6 +803,16 @@ function InterviewInterface({ isDemoMode = false, interviewId, onTranscriptUpdat
       </div>
 
       <NoAgentNotification state={agentState} />
+
+      {showFeedbackModal && (
+        <InterviewFeedback
+          candidateName={candidateName}
+          feedback={feedback}
+          loading={isFeedbackLoading}
+          onClose={() => setShowFeedbackModal(false)}
+          isOpen={showFeedbackModal}
+        />
+      )}
     </>
   );
 }
