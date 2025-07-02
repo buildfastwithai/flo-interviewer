@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// GET analysis for a specific interview
+// GET analysis for a specific interview data record
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -9,13 +9,10 @@ export async function GET(
   try {
     const { id } = await params;
 
-    // Find the most recent interview data record for this interview ID
-    const interviewData = await prisma.interviewData.findFirst({
+    // Find the specific interview data record by its ID
+    const interviewData = await prisma.interviewData.findUnique({
       where: {
-        interviewId: id,
-      },
-      orderBy: {
-        createdAt: 'desc'
+        id: id,
       }
     });
 
@@ -46,7 +43,7 @@ export async function GET(
   }
 }
 
-// POST/update analysis for a specific interview
+// POST/update analysis for a specific interview data record
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -62,16 +59,13 @@ export async function POST(
       );
     }
 
-    console.log(`Saving analysis for interview ID: ${id}`);
+    console.log(`Saving analysis for interview data ID: ${id}`);
     console.log(`Analysis data size: ${JSON.stringify(analysis).length} characters`);
 
-    // Find the most recent interview data record
-    const interviewData = await prisma.interviewData.findFirst({
+    // Find the specific interview data record by its ID
+    const interviewData = await prisma.interviewData.findUnique({
       where: {
-        interviewId: id,
-      },
-      orderBy: {
-        createdAt: 'desc'
+        id: id,
       }
     });
 
@@ -86,7 +80,7 @@ export async function POST(
     try {
       const updatedInterviewData = await prisma.interviewData.update({
         where: {
-          id: interviewData.id,
+          id: id,
         },
         data: {
           analysis: analysis,
@@ -100,7 +94,7 @@ export async function POST(
         },
       });
 
-      console.log(`Analysis successfully saved for interview ID: ${id}`);
+      console.log(`Analysis successfully saved for interview data ID: ${id}`);
       return NextResponse.json({
         success: true,
         data: updatedInterviewData,

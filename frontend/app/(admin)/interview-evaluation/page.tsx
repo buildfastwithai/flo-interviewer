@@ -118,8 +118,8 @@ export default function InterviewEvaluationPage() {
     fetchInterviews();
   }, []);
 
-  const generateAnalysis = async (interviewId: string, transcript: string) => {
-    router.push(`/interview-evaluation/analysis?id=${interviewId}&analysisId='new'}`);
+  const generateAnalysis = async (interviewDataId: string, transcript: string) => {
+    router.push(`/interview-evaluation/analysis?id=${interviewDataId}&analysisId=new`);
   };
 
   const handleRefresh = async () => {
@@ -424,7 +424,7 @@ export default function InterviewEvaluationPage() {
                           variant="default" 
                           className="w-full bg-[#f7a828] hover:bg-[#f7a828]/90 text-white shadow-md hover:shadow-lg hover:shadow-[#f7a828]/25 transition-all duration-300 transform hover:-translate-y-0.5 rounded-lg"
                           disabled={analyzing === interview.interviewId}
-                          onClick={() => generateAnalysis(interview.interviewId, interview.transcript)}
+                          onClick={() => generateAnalysis(interview.id, interview.transcript)}
                         >
                           {analyzing === interview.interviewId ? (
                             <>
@@ -544,7 +544,7 @@ export default function InterviewEvaluationPage() {
                               variant="outline" 
                               size="sm"
                               disabled={analyzing === interview.interviewId}
-                              onClick={() => generateAnalysis(interview.interviewId, interview.transcript)}
+                              onClick={() => generateAnalysis(interview.id, interview.transcript)}
                               className="border-[#F7F7FA] text-[#f7a828] hover:bg-[#f7a828]/10 hover:text-[#f7a828] hover:border-[#f7a828]/30 transition-all duration-300 shadow-sm"
                             >
                               {analyzing === interview.interviewId ? (

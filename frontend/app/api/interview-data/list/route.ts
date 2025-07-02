@@ -12,9 +12,10 @@ export async function GET() {
           },
         },
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy: [
+        { interviewId: 'asc' }, // Group by interview ID first
+        { startTime: 'desc' }   // Then sort by start time (newest first)
+      ],
     });
 
     return NextResponse.json({ 

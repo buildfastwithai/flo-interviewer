@@ -58,25 +58,26 @@ function AnalysisContent() {
 
     const fetchInterviewData = async () => {
       try {
-        const response = await fetch(`/api/interview-data?interviewId=${interviewId}`);
+        // Use the specific interviewData ID directly instead of looking up by interviewId
+        const response = await fetch(`/api/interview-data/${interviewId}`);
+        
         if (!response.ok) {
           throw new Error("Failed to fetch interview data");
         }
-        const result = await response.json();
         
-        // Handle the potential array of interview data records
-        // Use the most recent interview data if multiple records exist
-        const interviewDataRecord = Array.isArray(result.data) 
-          ? result.data.sort((a: any, b: any) => 
-              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-            )[0]
-          : result.data;
+        const result = await response.json();
+        const interviewDataRecord = result.data;
+        
+        if (!interviewDataRecord) {
+          throw new Error("No interview data found");
+        }
           
         setInterviewData(interviewDataRecord);
         
         // Check for existing analysis in the database
         try {
-          console.log(`Checking for existing analysis for interview ${interviewId}`);
+          console.log(`Checking for existing analysis for interview data ${interviewId}`);
+          // Update path to use interviewDataId directly
           const analysisResponse = await fetch(`/api/interview-data/${interviewId}/analysis`);
           
           if (analysisResponse.ok) {
