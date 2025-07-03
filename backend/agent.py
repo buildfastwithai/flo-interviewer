@@ -24,6 +24,8 @@ from livekit.plugins import (
     noise_cancellation,
     silero,
     groq,
+    cartesia,
+    assemblyai,
     deepgram
 )
 
@@ -94,7 +96,11 @@ YOU MUST FOLLOW THESE RULES:
 INTERVIEW FLOW:
 - Start with a brief introduction: "Welcome {candidate_name}, I am an interviewer for the {role} role and I will be taking your interview. Let's begin."
 - Immediately ask Question #1 exactly as written above
-- After the candidate answers, acknowledge and move to Question #2
+- After the candidate answers, acknowledge it
+- Then ask the candidate if he wants to add more details to his answer
+- If he wants to add more details, ask him to do so
+- If he doesn't want to add more details, move to Question #2
+- If the candidate doesn't know the answer, move to the next question
 - Continue in exact order through all questions
 - After the last question, ask the candidate if they have any questions for you
 - If they have questions, answer them
@@ -112,9 +118,20 @@ FAILURE TO FOLLOW THESE INSTRUCTIONS WILL RESULT IN TERMINATION.
         # Pass FULL instructions to parent class
         super().__init__(
             instructions=full_instructions,  # Using full instructions from the start
-            stt=deepgram.STT(model="nova-3"),
-            llm=openai.LLM(model="gpt-4.1"),
-            tts=openai.TTS(voice="alloy"),
+            stt=assemblyai.STT(
+            end_of_turn_confidence_threshold=0.7,
+            min_end_of_turn_silence_when_confident=160,
+            max_turn_silence=2400,
+        ),
+        llm=openai.LLM(
+            model="gpt-4o-mini",
+            temperature=0.7,
+        ),
+        tts=cartesia.TTS(
+      model="sonic-2",
+      voice="1259b7e3-cb8a-43df-9446-30971a46b8b0",
+   ),
+        vad=silero.VAD.load(),
             turn_detection=MultilingualModel(),
         )
         
@@ -408,6 +425,7 @@ async def entrypoint(ctx: JobContext):
     def on_metrics_collected(agent_metrics: metrics.AgentMetrics):
         metrics.log_metrics(agent_metrics)
         usage_collector.collect(agent_metrics)
+        
 
     session = AgentSession(
         vad=ctx.proc.userdata["vad"],
