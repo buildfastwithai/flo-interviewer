@@ -4,9 +4,11 @@ A sophisticated AI-powered FastAPI backend for conducting and analyzing technica
 
 ## 🐳 Docker Deployment (Recommended)
 
+> **📖 For detailed Docker documentation, see [DOCKER_README.md](DOCKER_README.md)**
+
 ### Prerequisites for Ubuntu
 
-1. **Install Docker and Docker Compose**:
+1. **Install Docker**:
 
 ```bash
 # Update package index
@@ -25,7 +27,7 @@ echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docke
 sudo apt update
 
 # Install Docker
-sudo apt install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+sudo apt install docker-ce docker-ce-cli containerd.io
 
 # Add your user to docker group (optional, to run docker without sudo)
 sudo usermod -aG docker $USER
@@ -38,7 +40,6 @@ newgrp docker
 
 ```bash
 docker --version
-docker compose version
 ```
 
 ### Environment Setup
@@ -111,32 +112,21 @@ docker run -d \
   flo-interviewer-backend
 ```
 
-3. **Alternative: Using Docker Compose** (create `docker-compose.yml`):
-
-```yaml
-version: "3.8"
-services:
-  backend:
-    build: .
-    ports:
-      - "8000:8000"
-    env_file:
-      - .env
-    volumes:
-      - ./logs:/app/logs
-      - ./uploads:/app/uploads
-      - ./interview_data:/app/interview_data
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-```
+3. **Run with Volume Mounts for Data Persistence**:
 
 ```bash
-# Run with Docker Compose
-docker compose up -d
+# Run with persistent data volumes
+docker run -d \
+  --name flo-interviewer-backend \
+  --env-file .env \
+  -p 8000:8000 \
+  -v $(pwd)/logs:/app/logs \
+  -v $(pwd)/uploads:/app/uploads \
+  -v $(pwd)/interview_data:/app/interview_data \
+  -v $(pwd)/user_uploads:/app/user_uploads \
+  -v $(pwd)/transcriptions:/app/transcriptions \
+  --restart unless-stopped \
+  flo-interviewer-backend
 ```
 
 ### Docker Management Commands

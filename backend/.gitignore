@@ -170,4 +170,3 @@ credentials/
 
 # Docker build cache
 .docker-cache/
-docker-compose.override.yml
