@@ -30,6 +30,11 @@ IMPORTANT: Generate the EXACT number of questions specified for each skill - no 
 
 ${skillsFormatted}
 
+IMPORTANT:
+1. You are creating questions that will be asked in an interview.
+2. The questions should be in the format of interview questions like how interviewer will ask the question to the candidate.
+3. Question should not be long.
+
 Create questions that test the candidate's knowledge and experience:
 - For PROFESSIONAL level skills, create challenging, in-depth questions.
 - For INTERMEDIATE level skills, create moderately difficult questions.

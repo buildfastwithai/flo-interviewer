@@ -274,7 +274,10 @@ Example response format:
   ]
 }
 
-IMPORTANT: Use the transcript to assess the skills. Do not make up any information.
+IMPORTANT: 
+1.Use the transcript to assess the skills. Do not make up any information.
+
+
 
 Transcript starts here:
 ${transcript}
@@ -421,7 +424,8 @@ async function generateInterviewInsightsWithOpenAI(transcript: string, jobRole: 
                       "next_steps": ["Next step 1", "Next step 2"]
                     }
 
-                    IMPORTANT: Use the transcript to assess the interview insights. Do not make up any information.
+                    IMPORTANT: 1.Use the transcript to assess the interview insights. Do not make up any information.
+                    2. Judge the candidate's performance based on the transcript.
 
 Transcript starts here:
 ${transcript}
@@ -483,7 +487,8 @@ Example response format:
   ]
 }
 
-IMPORTANT: Use the transcript to assess the interview insights. Do not make up any information.
+IMPORTANT: 1.Use the transcript to assess the interview insights. Do not make up any information.
+2. Judge the candidate's performance based on the transcript.
 
 Transcript starts here:
 ${transcript}
@@ -561,7 +566,8 @@ Hiring Recommendation: ${insights.hiring_recommendation}
 
 Please provide a 2-3 paragraph executive summary suitable for hiring managers. Focus on being clear, concise, and actionable.
 
-IMPORTANT: Use the transcript to assess the interview insights. Do not make up any information.
+IMPORTANT: 1.Use the transcript to assess the interview insights. Do not make up any information.
+2. Judge the candidate's performance based on the transcript.
 
 Transcript starts here:
 ${transcript}

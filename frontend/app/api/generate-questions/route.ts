@@ -26,6 +26,12 @@ const generatePrompt = (
   return `Generate exactly ${batchSize} interview questions for the skill "${skillName}" at a ${level} level (${effectiveDifficulty} difficulty).
 The questions should be challenging but fair, testing both theoretical knowledge and practical application.
 
+IMPORTANT:
+1. You are creating questions that will be asked in an interview.
+2. The questions should be in the format of interview questions like how interviewer will ask the question to the candidate.
+3. Question should not be long.
+
+
 For each question, randomly choose one of these question formats and design the question accordingly:
 1. "Open-ended" - Requires a descriptive or narrative answer. Useful for assessing communication, reasoning, or opinion-based responses.
 2. "Coding" - Candidate writes or debugs code. Used for evaluating problem-solving skills, algorithms, and programming language proficiency.
