@@ -94,6 +94,7 @@ models/
 .dockerignore
 Dockerfile.prod
 .docker/
+start.sh
 
 # IDE and Editor files
 .vscode/
@@ -141,6 +142,9 @@ interview_data/
 user_uploads/
 transcriptions/
 
+# KMS logs
+KMS/logs/
+
 # Large files that shouldn't be in repo
 *.wav
 *.mp3
@@ -158,3 +162,12 @@ credentials/
 
 # Monitoring and analytics
 .sentry/
+
+# Process and runtime files
+*.pid
+*.pidfile
+.celery*
+
+# Docker build cache
+.docker-cache/
+docker-compose.override.yml
