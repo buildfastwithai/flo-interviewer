@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, Suspense } from "react";
 import { Room, RoomEvent } from "livekit-client";
 import {
   BarVisualizer,
@@ -391,11 +391,16 @@ export default function InterviewPage() {
   return (
     <div data-lk-theme="default" className="flex h-screen bg-background">
       {!userData ? (
-        <UserForm 
-          onSubmit={onJoinInterview} 
-          isSubmitting={isSubmitting} 
-          error={error} 
-        />
+        <Suspense fallback={
+          <div className="w-full h-full flex items-center justify-center">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+              <p className="mt-4">Loading...</p>
+            </div>
+          </div>
+        }>
+          <UserForm onSubmit={onJoinInterview} isSubmitting={isSubmitting} error={error} />
+        </Suspense>
       ) : (
         <RoomContext.Provider value={room}>
           <InterviewInterface 
