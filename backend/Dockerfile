@@ -30,9 +30,9 @@ RUN mkdir -p /app/data/logs
 RUN mkdir -p /app/data/uploads
 
 # Create non-root user for security
-RUN useradd --create-home --shell /bin/bash app && \
-    chown -R app:app /app
-USER app
+# RUN useradd --create-home --shell /bin/bash app && \
+#     chown -R app:app /app
+# USER app
 
 # Download required files as specified in README.md
 RUN python3 agent.py download-files
