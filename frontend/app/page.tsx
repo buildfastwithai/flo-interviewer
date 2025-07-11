@@ -296,7 +296,7 @@ export default function HomePage() {
                 bgGradient: "from-[#2663FF]/20 to-[#1D244F]/20",
                 link: "https://interview-analysis-app-2w6gi.ondigitalocean.app/",
                 launch: true,
-                self: true,
+                self: false,
               },
             ].map((feature, i) => (
               <motion.div
