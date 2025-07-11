@@ -140,7 +140,7 @@ export default function HomePage() {
               </p>
             </BoxReveal>
 
-            <motion.div
+            {/* <motion.div
               className="flex flex-col sm:flex-row gap-4 pt-4"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -155,7 +155,7 @@ export default function HomePage() {
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </span>
               </InteractiveHoverButton>
-            </motion.div>
+            </motion.div> */}
           </motion.div>
 
           <motion.div
@@ -267,7 +267,7 @@ export default function HomePage() {
               {
                 title: "JD Question Generator",
                 description:
-                  "Upload a Job Description and instantly generate custom interview questions using our Gen AI engine trained on 10K+ JDs.",
+                  "Upload a Job Description and instantly generate custom interview questions using our Gen AI.",
                 icon: <Users className="w-8 h-8" />,
                 gradient: "from-[#2663FF] to-[#1D244F]",
                 bgGradient: "from-[#2663FF]/20 to-[#1D244F]/20",
@@ -334,7 +334,7 @@ export default function HomePage() {
                         target={feature.self ? "_self" : "_blank"}
                         className="flex items-center gap-2 text-[#2663FF] font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                       >
-                        <span className="text-[#F7F7FA]">Learn more</span>{" "}
+                        <span className="text-[#F7F7FA]">View App</span>{" "}
                         <ArrowRight className="w-4 h-4 text-[#F7F7FA]" />
                       </Link>
                     ) : (
