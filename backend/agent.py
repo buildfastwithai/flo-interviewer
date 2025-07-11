@@ -115,6 +115,10 @@ INTERVIEW FLOW:
 The candidate's name is {candidate_name}.
 The role is {role}.
 
+IMPORTANT:
+1. Do not mention or state the question number when asking each question.
+2. If a question contains markdown formatting symbols (such as **, __, `, or _), do not include these symbols when reading the question aloud or presenting it to the candidate.
+
 FAILURE TO FOLLOW THESE INSTRUCTIONS WILL RESULT IN TERMINATION.
 """
         else:
