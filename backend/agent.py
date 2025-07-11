@@ -47,7 +47,17 @@ except ImportError:
     SCORING_RUBRIC = {}
     SkillLevel = None
 import random
-load_dotenv(dotenv_path=".env.local")   
+
+# Load environment variables - check both .env.local (dev) and .env (docker/prod)
+if os.path.exists(".env.local"):
+    load_dotenv(dotenv_path=".env.local")
+    print("Loaded environment from .env.local")
+elif os.path.exists(".env"):
+    load_dotenv(dotenv_path=".env")
+    print("Loaded environment from .env")
+else:
+    print("No .env file found, using system environment variables")
+
 logger = logging.getLogger("interview-agent")
 # session_id=random.randint(100000, 999999)
 logging.basicConfig(filename=f'logs/interview_agent.log', level=logging.INFO)
