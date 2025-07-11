@@ -27,7 +27,6 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 
-
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
   visible: (i: number) => ({
@@ -53,7 +52,7 @@ const scaleIn = {
   },
 };
 
-  export default function HomePage() {
+export default function HomePage() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
@@ -148,7 +147,10 @@ const scaleIn = {
               transition={{ delay: 0.6, duration: 0.6 }}
             >
               <InteractiveHoverButton className="group bg-[#f7a828] hover:bg-[#f7a828]/90 rounded-full px-8 py-4 text-lg font-medium transition-all duration-300 shadow-2xl hover:shadow-[#f7a828]/40 transform hover:-translate-y-1 text-white">
-                <span className="flex items-center gap-2" onClick={() => router.push("/jd-qna")}>
+                <span
+                  className="flex items-center gap-2"
+                  onClick={() => router.push("/jd-qna")}
+                >
                   Get Started
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </span>
@@ -227,7 +229,7 @@ const scaleIn = {
             transition={{ duration: 0.6 }}
             viewport={{ once: true }}
           >
-           <motion.div
+            <motion.div
               className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#2663FF]/10 to-[#2663FF]/5 rounded-full border border-[#2663FF]/20 backdrop-blur-sm mb-6"
               whileHover={{ scale: 1.05 }}
             >
@@ -236,7 +238,6 @@ const scaleIn = {
                 AI-Powered Solutions
               </span>
             </motion.div>
-
 
             <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-white via-[#F7F7FA] to-[#F7F7FA]/80 bg-clip-text text-transparent">
               Supercharge Hiring with
@@ -270,9 +271,9 @@ const scaleIn = {
                 icon: <Users className="w-8 h-8" />,
                 gradient: "from-[#2663FF] to-[#1D244F]",
                 bgGradient: "from-[#2663FF]/20 to-[#1D244F]/20",
-                link: "/jd-qna",
+                link: "https://jd-question-generator-app-k7rmd.ondigitalocean.app/",
                 launch: true,
-                self: true,
+                self: false,
               },
 
               {
@@ -293,7 +294,7 @@ const scaleIn = {
                 icon: <Star className="w-8 h-8" />,
                 gradient: "from-[#2663FF] to-[#1D244F]",
                 bgGradient: "from-[#2663FF]/20 to-[#1D244F]/20",
-                link: "/interview-evaluation",
+                link: "https://interview-analysis-app-2w6gi.ondigitalocean.app/",
                 launch: true,
                 self: true,
               },
@@ -319,8 +320,12 @@ const scaleIn = {
                     </div>
 
                     <div className="space-y-3">
-                      <h3 className="text-2xl font-bold text-white">{feature.title}</h3>
-                      <p className="text-[#F7F7FA]/80 leading-relaxed">{feature.description}</p>
+                      <h3 className="text-2xl font-bold text-white">
+                        {feature.title}
+                      </h3>
+                      <p className="text-[#F7F7FA]/80 leading-relaxed">
+                        {feature.description}
+                      </p>
                     </div>
 
                     {feature.launch ? (
@@ -329,7 +334,8 @@ const scaleIn = {
                         target={feature.self ? "_self" : "_blank"}
                         className="flex items-center gap-2 text-[#2663FF] font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                       >
-                        <span className="text-[#F7F7FA]">Learn more</span> <ArrowRight className="w-4 h-4 text-[#F7F7FA]" />
+                        <span className="text-[#F7F7FA]">Learn more</span>{" "}
+                        <ArrowRight className="w-4 h-4 text-[#F7F7FA]" />
                       </Link>
                     ) : (
                       <span className="flex items-center gap-2 text-[#F7F7FA]/70 font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-300">
@@ -353,7 +359,10 @@ const scaleIn = {
               size="lg"
               className="group bg-[#f7a828] hover:bg-[#f7a828]/90 shadow-2xl hover:shadow-[#f7a828]/25 transform hover:-translate-y-1 transition-all duration-300 text-white"
             >
-              <span className="flex items-center gap-2" onClick={() => router.push("/interview")}>
+              <span
+                className="flex items-center gap-2"
+                onClick={() => router.push("/interview")}
+              >
                 Try AI Interview Suite
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </span>
@@ -558,7 +567,10 @@ const scaleIn = {
               size="lg"
               className="group bg-[#f7a828] hover:bg-[#f7a828]/90 shadow-2xl hover:shadow-[#f7a828]/25 transform hover:-translate-y-1 transition-all duration-300 text-white"
             >
-              <span className="flex items-center gap-2"  onClick={() => router.push("/create-interview")}>
+              <span
+                className="flex items-center gap-2"
+                onClick={() => router.push("/create-interview")}
+              >
                 Start Interview as a Service
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </span>
