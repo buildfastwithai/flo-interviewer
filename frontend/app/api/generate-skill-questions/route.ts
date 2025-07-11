@@ -41,6 +41,7 @@ IMPORTANT:
 1. You are creating questions that will be asked in an interview.
 2. The questions should be in the format of interview questions like how interviewer will ask the question to the candidate.
 3. Question should not be long.
+4. In the question, do not use any markdown formatting—present all content as plain text only.
 
 For each question, randomly choose one of these question formats and design the question accordingly:
 1. "Open-ended" - Requires a descriptive or narrative answer. Useful for assessing communication, reasoning, or opinion-based responses.
