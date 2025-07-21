@@ -192,10 +192,10 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 # Test configuration
-python test_setup.py
+python agent.py download-files
 
 # Start the interview agent
-python agent.py
+python agent.py dev
 ```
 
 ## Detailed Setup Instructions
