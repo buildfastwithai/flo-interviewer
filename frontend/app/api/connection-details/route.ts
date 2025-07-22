@@ -148,6 +148,7 @@ export async function GET(request: NextRequest) {
         interviewId: metadata.interviewId,
         roomId: metadata.roomId,
       };
+      console.log(`Connection details: ${JSON.stringify(data)}`);
 
       return NextResponse.json(data, { headers });
     } catch (tokenError) {

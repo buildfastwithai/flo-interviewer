@@ -2,6 +2,7 @@ import logging
 import json
 import os
 import aiohttp
+import asyncio
 from datetime import datetime, date
 from typing import Dict, List, Optional
 from enum import Enum
@@ -19,6 +20,7 @@ from livekit.agents import (
     metrics,
     RoomInputOptions,
 )
+from livekit.agents.metrics import LLMMetrics, STTMetrics, TTSMetrics, EOUMetrics
 from livekit.plugins import (
     openai,
     noise_cancellation,
@@ -90,10 +92,12 @@ YOU MUST FOLLOW THESE RULES:
 4. Then immediately proceed to the next question in the numbered list
 5. If the candidate says they don't know, move to the next question
 6. DO NOT SKIP QUESTIONS under any circumstances
-7. DO NOT MODIFY THE WORDING of any question
+7. Present each question in a natural, conversational manner as a real interviewer would, but NEVER alter the core content, meaning, or difficulty level of any question
 8. STRICTLY FOLLOW THE NUMBERED ORDER - after question 1, ask question 2, then 3, and so on
 9.Don't ask too many follow up questions to the same question only 1-2 follow up questions to the same question
 10. Max 6 follow up questions in the entire interview
+11. IF THERE IS A NUMERICAL VALUE IN THE QUESTION, THEN CONVERT THE NUMERICAL VALUE TO TEXT IN A WAY THAT IS EASY TO UNDERSTAND, SUCH AS 20,000 AS "TWENTY THOUSAND RUPEES"
+12. NEVER ANSWER THE QUESTION YOURSELF or Give Hint, ALWAYS ASK THE CANDIDATE TO ANSWER THE QUESTION 
 
 INTERVIEW FLOW:
 - Start with a brief introduction: "Welcome {candidate_name}, I am an interviewer for the {role} role and I will be taking your interview.
@@ -106,7 +110,7 @@ INTERVIEW FLOW:
 - If he doesn't want to add more details.
 - If only required, ask follow up questions to the answer that would suitable to previous question and candidate's answer
 - If not required, move to the next question
-- If the candidate doesn't know the answer, move to the next question
+- If the candidate says "I don't know," or something similar, respond politely and continue with the next question.
 - Continue in exact order through all questions
 - After the last question, ask the candidate if they have any questions for you
 - If they have questions, answer them
@@ -119,7 +123,27 @@ IMPORTANT:
 1. Do not mention or state the question number when asking each question.
 2. If a question contains markdown formatting symbols (such as **, __, `, or _), do not include these symbols when reading the question aloud or presenting it to the candidate.
 
+
+CONTEXTUAL TRANSITIONS (USE ONLY WHEN APPROPRIATE)
+
+Before asking a question, if it clearly belongs to a distinct category or topic, you may use a brief, relevant transition phrase to introduce that section. Use each transition phrase only once, before the first question in its respective category, and only if it is contextually appropriate.
+
+Examples of transition phrases:
+- For a new business, technical, behavioral, or scenario-based section, you may say:  
+  "Let's move on to the next section."  
+  "Now, let's take a look at a new type of question."  
+  "We'll now discuss a different topic."  
+  "Let's proceed to the next category."
+
+Guidelines:
+- Use a transition phrase only once per category or topic, and only if it helps clarify the change in question type.
+- Do not invent new transition phrases beyond simple, neutral introductions.
+- Do not repeat or elaborate on transition phrases.
+- Always follow the transition phrase immediately with the exact question from the list, without any additional commentary or interruption.
+
 FAILURE TO FOLLOW THESE INSTRUCTIONS WILL RESULT IN TERMINATION.
+
+
 """
         else:
             # Fallback instructions if no questions provided
@@ -129,9 +153,9 @@ FAILURE TO FOLLOW THESE INSTRUCTIONS WILL RESULT IN TERMINATION.
         super().__init__(
             instructions=full_instructions,  # Using full instructions from the start
             stt=assemblyai.STT(
-            end_of_turn_confidence_threshold=0.7,
+            end_of_turn_confidence_threshold=0.5,
             min_end_of_turn_silence_when_confident=160,
-            max_turn_silence=2400,
+            max_turn_silence=3000,
         ),
         llm=openai.LLM(
             model="gpt-4o-mini",
@@ -160,6 +184,14 @@ FAILURE TO FOLLOW THESE INSTRUCTIONS WILL RESULT IN TERMINATION.
         self.all_questions = all_questions or []
         self.questions_list = questions_list
         
+        # Initialize metrics storage
+        self.metrics_data = {
+            "llm": [],
+            "stt": [],
+            "tts": [],
+            "eou": []
+        }
+        
         # NOTE: Interview data storage is handled by the frontend
         # This is kept only for local logging/tracking, not for database storage
         self.interview_data = {
@@ -170,7 +202,44 @@ FAILURE TO FOLLOW THESE INSTRUCTIONS WILL RESULT IN TERMINATION.
             "duration_minutes": 0,
             "room_id": room_id or "",
             "interview_id": interview_id or "",
+            "metrics": self.metrics_data
         }
+        
+        # Set up metrics collectors
+        def llm_metrics_wrapper(metrics: LLMMetrics):
+            asyncio.create_task(self.on_llm_metrics_collected(metrics))
+        
+        def stt_metrics_wrapper(metrics: STTMetrics):
+            asyncio.create_task(self.on_stt_metrics_collected(metrics))
+        
+        def eou_metrics_wrapper(metrics: EOUMetrics):
+            asyncio.create_task(self.on_eou_metrics_collected(metrics))
+        
+        def tts_metrics_wrapper(metrics: TTSMetrics):
+            asyncio.create_task(self.on_tts_metrics_collected(metrics))
+        
+        # Attach listeners to the appropriate components
+        if hasattr(self, 'llm'):
+            self.llm.on("metrics_collected", llm_metrics_wrapper)
+        
+        if hasattr(self, 'stt'):
+            self.stt.on("metrics_collected", stt_metrics_wrapper)
+            self.stt.on("eou_metrics_collected", eou_metrics_wrapper)
+        
+        if hasattr(self, 'tts'):
+            self.tts.on("metrics_collected", tts_metrics_wrapper)
+
+    async def on_llm_metrics_collected(self, metrics: LLMMetrics) -> None:
+        """Collect and store LLM metrics"""
+        metrics_obj = {
+            "prompt_tokens": metrics.prompt_tokens,
+            "completion_tokens": metrics.completion_tokens,
+            "tokens_per_second": round(metrics.tokens_per_second, 4),
+            "ttft": round(metrics.ttft, 4),
+            "timestamp": datetime.now().isoformat()
+        }
+        self.metrics_data["llm"].append(metrics_obj)
+        logger.info(f"LLM Metrics: {json.dumps(metrics_obj, indent=2)}")
 
     async def on_enter(self):
         # Get the first question to start with
@@ -182,7 +251,117 @@ FAILURE TO FOLLOW THESE INSTRUCTIONS WILL RESULT IN TERMINATION.
         
         # Start with the introduction and first question
         await self.session.say(intro_text, allow_interruptions=True)
-    
+
+    async def on_stt_metrics_collected(self, metrics: STTMetrics) -> None:
+        """Collect and store STT metrics"""
+        metrics_obj = {
+            "duration": round(metrics.duration, 4),
+            "audio_duration": round(metrics.audio_duration, 4),
+            "streamed": metrics.streamed,
+            "timestamp": datetime.now().isoformat()
+        }
+        self.metrics_data["stt"].append(metrics_obj)
+        logger.info(f"STT Metrics: {json.dumps(metrics_obj, indent=2)}")
+
+    async def on_eou_metrics_collected(self, metrics: EOUMetrics) -> None:
+        """Collect and store EOU metrics"""
+        metrics_obj = {
+            "end_of_utterance_delay": round(metrics.end_of_utterance_delay, 4),
+            "transcription_delay": round(metrics.transcription_delay, 4),
+            "timestamp": datetime.now().isoformat()
+        }
+        self.metrics_data["eou"].append(metrics_obj)
+        logger.info(f"EOU Metrics: {json.dumps(metrics_obj, indent=2)}")
+
+    async def on_tts_metrics_collected(self, metrics: TTSMetrics) -> None:
+        """Collect and store TTS metrics"""
+        metrics_obj = {
+            "ttfb": round(metrics.ttfb, 4),
+            "duration": round(metrics.duration, 4),
+            "audio_duration": round(metrics.audio_duration, 4),
+            "streamed": metrics.streamed,
+            "timestamp": datetime.now().isoformat()
+        }
+        self.metrics_data["tts"].append(metrics_obj)
+        logger.info(f"TTS Metrics: {json.dumps(metrics_obj, indent=2)}")
+
+    async def on_exit(self):
+        """Store final metrics and summary when interview ends"""
+        # Calculate average metrics
+        avg_metrics = {
+            "llm": self._calculate_avg_llm_metrics(),
+            "stt": self._calculate_avg_stt_metrics(),
+            "tts": self._calculate_avg_tts_metrics(),
+            "eou": self._calculate_avg_eou_metrics()
+        }
+        
+        # Update interview data with final metrics
+        self.interview_data["metrics"]["averages"] = avg_metrics
+        self.interview_data["end_time"] = datetime.now().isoformat()
+        self.interview_data["duration_minutes"] = (
+            datetime.fromisoformat(self.interview_data["end_time"]) - 
+            datetime.fromisoformat(self.interview_data["start_time"])
+        ).total_seconds() / 60
+        
+        # Log final metrics
+        logger.info(f"Interview ended. Final metrics: {json.dumps(avg_metrics, indent=2)}")
+        
+        # You can add code here to send metrics to an API endpoint if needed
+
+    def _calculate_avg_llm_metrics(self) -> Dict:
+        """Calculate average LLM metrics"""
+        llm_data = self.metrics_data["llm"]
+        if not llm_data:
+            return {}
+            
+        avg = {
+            "prompt_tokens": sum(m["prompt_tokens"] for m in llm_data) / len(llm_data),
+            "completion_tokens": sum(m["completion_tokens"] for m in llm_data) / len(llm_data),
+            "tokens_per_second": sum(m["tokens_per_second"] for m in llm_data) / len(llm_data),
+            "ttft": sum(m["ttft"] for m in llm_data) / len(llm_data),
+            "total_tokens": sum(m["prompt_tokens"] + m["completion_tokens"] for m in llm_data)
+        }
+        return {k: round(v, 4) for k, v in avg.items()}
+
+    def _calculate_avg_stt_metrics(self) -> Dict:
+        """Calculate average STT metrics"""
+        stt_data = self.metrics_data["stt"]
+        if not stt_data:
+            return {}
+            
+        avg = {
+            "duration": sum(m["duration"] for m in stt_data) / len(stt_data),
+            "audio_duration": sum(m["audio_duration"] for m in stt_data) / len(stt_data),
+            "total_audio_processed": sum(m["audio_duration"] for m in stt_data)
+        }
+        return {k: round(v, 4) for k, v in avg.items()}
+
+    def _calculate_avg_tts_metrics(self) -> Dict:
+        """Calculate average TTS metrics"""
+        tts_data = self.metrics_data["tts"]
+        if not tts_data:
+            return {}
+            
+        avg = {
+            "ttfb": sum(m["ttfb"] for m in tts_data) / len(tts_data),
+            "duration": sum(m["duration"] for m in tts_data) / len(tts_data),
+            "audio_duration": sum(m["audio_duration"] for m in tts_data) / len(tts_data),
+            "total_audio_generated": sum(m["audio_duration"] for m in tts_data)
+        }
+        return {k: round(v, 4) for k, v in avg.items()}
+
+    def _calculate_avg_eou_metrics(self) -> Dict:
+        """Calculate average EOU metrics"""
+        eou_data = self.metrics_data["eou"]
+        if not eou_data:
+            return {}
+            
+        avg = {
+            "end_of_utterance_delay": sum(m["end_of_utterance_delay"] for m in eou_data) / len(eou_data),
+            "transcription_delay": sum(m["transcription_delay"] for m in eou_data) / len(eou_data)
+        }
+        return {k: round(v, 4) for k, v in avg.items()}
+
     def update_instructions(self, new_instructions: str):
         """Update the agent's instructions at runtime"""
         try:
@@ -449,19 +628,22 @@ async def entrypoint(ctx: JobContext):
     # Trigger the on_metrics_collected function when metrics are collected
     session.on("metrics_collected", on_metrics_collected)
 
+    # Create the agent instance
+    interview_agent = InterviewAgent(
+        role=role,
+        candidate_name=candidate_name,
+        skill_level=skill_level,
+        record_id=record_id,
+        room_name=ctx.room.name,
+        room_id=room_id,
+        interview_id=interview_id,
+        all_questions=all_questions,
+        questions_list=questions_list
+    )
+
     await session.start(
         room=ctx.room,
-        agent=InterviewAgent(
-            role=role,
-            candidate_name=candidate_name,
-            skill_level=skill_level,
-            record_id=record_id,
-            room_name=ctx.room.name,
-            room_id=room_id,
-            interview_id=interview_id,
-            all_questions=all_questions,  # Pass ALL questions to the agent
-            questions_list=questions_list  # Pass formatted questions list to the agent
-        ),
+        agent=interview_agent,
         room_input_options=RoomInputOptions(
             noise_cancellation=noise_cancellation.BVC(),
         ),
