@@ -117,7 +117,7 @@ export function QuestionDialog({
       <DialogTrigger asChild>
         <div className="cursor-pointer hover:underline">{currentQuestion}</div>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-3xl">
+      <DialogContent className="sm:max-w-3xl bg-white">
         <DialogHeader>
           <DialogTitle>{currentQuestion}</DialogTitle>
           <div className="flex gap-2 mt-2">

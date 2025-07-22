@@ -68,7 +68,7 @@ export function GlobalFeedbackDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg bg-white  ">
         <DialogHeader>
           <DialogTitle>Global Feedback for All Questions</DialogTitle>
           <DialogDescription>

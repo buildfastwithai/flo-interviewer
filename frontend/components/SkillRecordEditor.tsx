@@ -1344,7 +1344,7 @@ export default function SkillRecordEditor({ record }: SkillRecordEditorProps) {
 
     return (
       <Dialog open={feedbackDialogOpen} onOpenChange={setFeedbackDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md bg-white">
           <DialogHeader>
             <DialogTitle>Feedback for Question</DialogTitle>
             <DialogDescription>
