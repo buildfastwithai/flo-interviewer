@@ -5,6 +5,7 @@ import asyncio
 from datetime import datetime, date
 from typing import Dict, List, Optional
 from enum import Enum
+from dataclasses import dataclass
 
 from dotenv import load_dotenv
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
@@ -18,6 +19,7 @@ from livekit.agents import (
     cli,
     metrics,
     RoomInputOptions,
+    function_tool,
 )
 from livekit.agents.metrics import LLMMetrics, STTMetrics, TTSMetrics, EOUMetrics
 from livekit.plugins import (
@@ -45,17 +47,523 @@ try:
 except ImportError:
     # Fallback if config file doesn't exist
     DynamicInterviewTemplate = None
+
+# Import system prompt functions
+from system_prompt import get_interview_system_prompt, get_fallback_system_prompt
 # import random
 
 load_dotenv(dotenv_path=".env.local")   
 # session_id=random.randint(100000, 999999)
 
+def format_question_for_speech(question: str) -> str:
+    """Format question for natural speech, handling numbers and structure"""
+    import re
+    
+    # Convert numbers to natural speech
+    def replace_numbers(match):
+        number = match.group()
+        
+        # Handle currency with numbers
+        if '₹' in number:
+            num_str = number.replace('₹', '')
+            try:
+                num_val = int(num_str.replace(',', ''))
+                if num_val >= 1000:
+                    if num_val == 20000:
+                        return "twenty thousand rupees"
+                    elif num_val == 100:
+                        return "one hundred rupees"
+                    elif num_val == 80:
+                        return "eighty rupees"
+                    else:
+                        # Convert large numbers
+                        return f"{number_to_words(num_val)} rupees"
+                else:
+                    return f"{number_to_words(num_val)} rupees"
+            except:
+                return number
+        
+        # Handle regular numbers
+        try:
+            num_val = int(number.replace(',', ''))
+            return number_to_words(num_val)
+        except:
+            return number
+    
+    # Replace currency and numbers
+    question = re.sub(r'₹[\d,]+', replace_numbers, question)
+    question = re.sub(r'\b\d+(?:,\d{3})*\b', replace_numbers, question)
+    
+    # Handle percentages
+    question = re.sub(r'(\d+)%', lambda m: f"{number_to_words(int(m.group(1)))} percent", question)
+    
+    return question
+
+def number_to_words(num: int) -> str:
+    """Convert number to words for natural speech"""
+    if num == 0:
+        return "zero"
+    elif num == 1:
+        return "one"
+    elif num == 50:
+        return "fifty"
+    elif num == 80:
+        return "eighty"
+    elif num == 100:
+        return "one hundred"
+    elif num == 200:
+        return "two hundred"
+    elif num == 20000:
+        return "twenty thousand"
+    else:
+        # Basic conversion for common numbers
+        ones = ["", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"]
+        teens = ["ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"]
+        tens = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"]
+        
+        if num < 10:
+            return ones[num]
+        elif num < 20:
+            return teens[num - 10]
+        elif num < 100:
+            return tens[num // 10] + ("" if num % 10 == 0 else " " + ones[num % 10])
+        elif num < 1000:
+            return ones[num // 100] + " hundred" + ("" if num % 100 == 0 else " " + number_to_words(num % 100))
+        elif num < 100000:
+            return number_to_words(num // 1000) + " thousand" + ("" if num % 1000 == 0 else " " + number_to_words(num % 1000))
+        else:
+            return str(num)  # Fallback for very large numbers
+
+def extract_main_scenario_and_tasks(question: str) -> tuple:
+    """Extract main scenario and individual tasks from a multi-part question"""
+    import re
+    
+    # Look for task patterns
+    task_patterns = [
+        r'Task for Candidates?:\s*(.+?)(?=\n\n|\Z)',
+        r'(?:Tasks?|Questions?):\s*(.+?)(?=\n\n|\Z)',
+        r'(\d+\.\s+.+?)(?=\n\d+\.|\Z)'
+    ]
+    
+    main_scenario = question
+    tasks = []
+    
+    # Try to find numbered tasks
+    numbered_tasks = re.findall(r'\d+\.\s+([^?]+\??)', question, re.MULTILINE | re.DOTALL)
+    if numbered_tasks:
+        # Extract everything before the first numbered task as scenario
+        first_task_match = re.search(r'\d+\.\s+', question)
+        if first_task_match:
+            main_scenario = question[:first_task_match.start()].strip()
+            tasks = [task.strip() for task in numbered_tasks]
+    
+    # Clean up the main scenario
+    main_scenario = re.sub(r'Problem Statement:\s*', '', main_scenario)
+    main_scenario = re.sub(r'Task for Candidates?:\s*.*', '', main_scenario, flags=re.DOTALL)
+    main_scenario = main_scenario.strip()
+    
+    return main_scenario, tasks
+
+def are_tasks_dependent(tasks: List[str]) -> bool:
+    """Check if tasks are dependent on each other (requires previous answers)"""
+    if not tasks or len(tasks) <= 1:
+        return False
+    
+    # Keywords that indicate dependency on previous answers
+    dependency_keywords = [
+        'based on', 'using the', 'from the above', 'given the result',
+        'should the', 'justify your answer', 'considering',
+        'using your calculation', 'based on your', 'from your answer'
+    ]
+    
+    # Check if any task (except the first) contains dependency keywords
+    for i, task in enumerate(tasks[1:], 1):  # Start from second task
+        task_lower = task.lower()
+        for keyword in dependency_keywords:
+            if keyword in task_lower:
+                return True
+    
+    # Also check if later tasks reference calculations or results
+    calculation_keywords = ['calculate', 'result', 'answer', 'revenue', 'price', 'cost']
+    first_task_lower = tasks[0].lower()
+    has_calculation = any(keyword in first_task_lower for keyword in calculation_keywords)
+    
+    if has_calculation:
+        # If first task involves calculations, later tasks likely depend on it
+        for task in tasks[1:]:
+            task_lower = task.lower()
+            if any(keyword in task_lower for keyword in ['should', 'recommend', 'suggest', 'justify']):
+                return True
+    
+    return False
+
 
 class InterviewStage(Enum):
     INTRODUCTION = "introduction"
+    QUESTION = "question"
+    FOLLOW_UP = "follow_up"
+    MOVING_ON = "moving_on"
+    FINAL_QUESTIONS = "final_questions"
+    COMPLETED = "completed"
 
+@dataclass
+class InterviewState:
+    """Shared state across workflow agents"""
+    candidate_name: str
+    role: str
+    current_question_index: int = 0
+    all_questions: List[str] = None
+    last_answer_was_unknown: bool = False
+    asked_follow_up: bool = False
+    stage: InterviewStage = InterviewStage.INTRODUCTION
+    interview_started: bool = False
+    # For multi-part questions
+    current_main_scenario: str = ""
+    current_tasks: List[str] = None
+    current_task_index: int = 0
+    is_multi_part_question: bool = False
+    tasks_are_dependent: bool = False
+    skip_remaining_tasks: bool = False
+
+
+class IntroductionAgent(Agent):
+    """Agent for handling interview introduction and readiness check"""
+    
+    def __init__(self, state: InterviewState):
+        super().__init__(
+            instructions=f"""You are an interviewer for the {state.role} position. 
+Your role is to welcome the candidate and check if they're ready to begin.
+
+Say: "Welcome {state.candidate_name}, I am an interviewer for the {state.role} position. I will be conducting your interview today. Are you ready to begin the interview?"
+
+If they say they're ready, use the start_interview tool.
+If they're not ready, be supportive and wait for them to indicate readiness.""",
+            stt=assemblyai.STT(
+                end_of_turn_confidence_threshold=0.5,
+                min_end_of_turn_silence_when_confident=160,
+                max_turn_silence=3000,
+            ),
+            llm=openai.LLM(
+                model="gpt-4.1-mini",
+                temperature=0.7,
+            ),
+            tts=cartesia.TTS(
+                model="sonic-2",
+                voice="1259b7e3-cb8a-43df-9446-30971a46b8b0",
+            ),
+            vad=silero.VAD.load(),
+        )
+        self.state = state
+    
+    async def on_enter(self):
+        """Start the introduction when agent enters"""
+        intro_message = f"Welcome {self.state.candidate_name}, I am an interviewer for the {self.state.role} position. I will be conducting your interview today. Are you ready to begin the interview?"
+        log_info(f"IntroductionAgent starting with message: {intro_message}")
+        await self.session.say(intro_message, allow_interruptions=True)
+    
+    @function_tool()
+    async def start_interview(self):
+        """Start the main interview when candidate is ready"""
+        self.state.interview_started = True
+        self.state.stage = InterviewStage.QUESTION
+        return QuestionAgent(self.state)
+
+class QuestionAgent(Agent):
+    """Agent for asking interview questions and managing flow"""
+    
+    def __init__(self, state: InterviewState):
+        # Determine what to ask based on current state
+        if state.is_multi_part_question and state.current_tasks and state.current_task_index < len(state.current_tasks):
+            # We're in a multi-part question, ask the current task
+            current_content = state.current_tasks[state.current_task_index]
+            context = "multi-part question task"
+        elif state.all_questions and state.current_question_index < len(state.all_questions):
+            # Regular question or new multi-part question
+            current_content = state.all_questions[state.current_question_index]
+            context = "interview question"
+        else:
+            current_content = ""
+            context = "no question"
+        
+        super().__init__(
+            instructions=f"""You are conducting a technical interview. 
+Your current task: {context}
+
+After the candidate answers:
+- If they say "I don't know", "I'm not sure", "I have no idea", or similar, use handle_unknown_answer tool
+- If they provide a complete answer, use move_to_next_part tool
+- If they provide a partial answer, you MAY ask ONE follow-up using ask_follow_up tool
+- If you've already asked a follow-up, use move_to_next_part tool
+
+CRITICAL: When moving on, do NOT use transition phrases - just acknowledge briefly.
+IMPORTANT: Never create your own questions. Stick to the provided content.""",
+            stt=assemblyai.STT(
+                end_of_turn_confidence_threshold=0.5,
+                min_end_of_turn_silence_when_confident=160,
+                max_turn_silence=3000,
+            ),
+            llm=openai.LLM(
+                model="gpt-4.1-mini",
+                temperature=0.7,
+            ),
+            tts=cartesia.TTS(
+                model="sonic-2",
+                voice="1259b7e3-cb8a-43df-9446-30971a46b8b0",
+            ),
+            vad=silero.VAD.load(),
+        )
+        self.state = state
+    
+    async def on_enter(self):
+        log_info(f"QuestionAgent entered. Questions available: {len(self.state.all_questions) if self.state.all_questions else 0}")
+        
+        if self.state.is_multi_part_question and self.state.current_tasks and self.state.current_task_index < len(self.state.current_tasks):
+            # We're continuing with a multi-part question
+            task = self.state.current_tasks[self.state.current_task_index]
+            formatted_task = format_question_for_speech(task)
+            log_info(f"Asking task {self.state.current_task_index + 1}: {task}")
+            await self.session.say(formatted_task, allow_interruptions=True)
+            
+        elif (self.state.all_questions and 
+              self.state.current_question_index < len(self.state.all_questions)):
+            # New question - check if it's multi-part
+            question = self.state.all_questions[self.state.current_question_index]
+            main_scenario, tasks = extract_main_scenario_and_tasks(question)
+            
+            if tasks and len(tasks) > 1:
+                # This is a multi-part question
+                self.state.is_multi_part_question = True
+                self.state.current_main_scenario = main_scenario
+                self.state.current_tasks = tasks
+                self.state.current_task_index = 0
+                self.state.tasks_are_dependent = are_tasks_dependent(tasks)
+                self.state.skip_remaining_tasks = False
+                
+                log_info(f"Multi-part question detected. Tasks are {'dependent' if self.state.tasks_are_dependent else 'independent'}")
+                
+                # Present the main scenario first
+                formatted_scenario = format_question_for_speech(main_scenario)
+                log_info(f"Presenting scenario for question {self.state.current_question_index + 1}: {main_scenario}")
+                await self.session.say(f"{formatted_scenario}. Let me ask you the first part.", allow_interruptions=True)
+                
+                # Then ask the first task
+                first_task = format_question_for_speech(tasks[0])
+                await self.session.say(first_task, allow_interruptions=True)
+            else:
+                # Regular single question
+                formatted_question = format_question_for_speech(question)
+                log_info(f"Asking question {self.state.current_question_index + 1}: {question}")
+                await self.session.say(formatted_question, allow_interruptions=True)
+        else:
+            # Fallback if no questions available
+            log_warning("No questions available or index out of range")
+            await self.session.say("I don't have any questions to ask at the moment.", allow_interruptions=True)
+    
+    @function_tool()
+    async def handle_unknown_answer(self):
+        """Handle when candidate says they don't know the answer"""
+        self.state.last_answer_was_unknown = True
+        
+        if self.state.is_multi_part_question and self.state.tasks_are_dependent:
+            # If tasks are dependent and they don't know the first part, skip remaining parts
+            if self.state.current_task_index == 0:
+                log_info("Candidate doesn't know first part of dependent question - skipping remaining tasks")
+                self.state.skip_remaining_tasks = True
+                await self.session.say("That's alright.", allow_interruptions=False)
+                # Move to next complete question
+                return self._move_to_next_complete_question()
+            else:
+                # Continue with remaining tasks even if they don't know a middle part
+                return self.move_to_next_part()
+        else:
+            # For independent tasks or single questions, just move to next part
+            return self.move_to_next_part()
+    
+    @function_tool()
+    async def ask_follow_up(self, follow_up_question: str):
+        """Ask a relevant follow-up question based on the candidate's answer"""
+        if not self.state.asked_follow_up:
+            self.state.asked_follow_up = True
+            self.state.stage = InterviewStage.FOLLOW_UP
+            return FollowUpAgent(self.state, follow_up_question)
+        else:
+            # Already asked follow-up, move to next part
+            return self.move_to_next_part()
+    
+    def _move_to_next_complete_question(self):
+        """Helper method to move to the next complete question, skipping remaining parts"""
+        # Reset multi-part question state
+        self.state.is_multi_part_question = False
+        self.state.current_tasks = None
+        self.state.current_task_index = 0
+        self.state.current_main_scenario = ""
+        self.state.tasks_are_dependent = False
+        self.state.skip_remaining_tasks = False
+        self.state.current_question_index += 1
+        
+        # Check if we've finished all questions
+        if self.state.current_question_index >= len(self.state.all_questions):
+            # All questions completed, move to final questions
+            self.state.stage = InterviewStage.FINAL_QUESTIONS
+            return FinalQuestionsAgent(self.state)
+        else:
+            # More questions to ask
+            self.state.stage = InterviewStage.QUESTION
+            return QuestionAgent(self.state)
+
+    @function_tool()
+    async def move_to_next_part(self):
+        """Move to the next part of the question or next question"""
+        self.state.asked_follow_up = False
+        self.state.last_answer_was_unknown = False
+        
+        if self.state.is_multi_part_question and self.state.current_tasks and not self.state.skip_remaining_tasks:
+            # Check if there are more tasks in the current question
+            self.state.current_task_index += 1
+            
+            if self.state.current_task_index < len(self.state.current_tasks):
+                # More tasks in this question
+                log_info(f"Moving to task {self.state.current_task_index + 1} of current question")
+                return QuestionAgent(self.state)
+            else:
+                # Done with all tasks, move to next question
+                return self._move_to_next_complete_question()
+        else:
+            # Regular question or skipping remaining tasks, move to next complete question
+            return self._move_to_next_complete_question()
+
+class FollowUpAgent(Agent):
+    """Agent for handling follow-up questions"""
+    
+    def __init__(self, state: InterviewState, follow_up_question: str):
+        super().__init__(
+            instructions=f"""You just asked a follow-up question: "{follow_up_question}"
+Listen to the candidate's response and then:
+- If they say "I don't know" or similar, use handle_unknown_answer tool
+- Otherwise use move_to_next_part to continue the interview
+Keep your acknowledgments brief like "I see" or "Thank you".""",
+            stt=assemblyai.STT(
+                end_of_turn_confidence_threshold=0.5,
+                min_end_of_turn_silence_when_confident=160,
+                max_turn_silence=3000,
+            ),
+            llm=openai.LLM(
+                model="gpt-4.1-mini",
+                temperature=0.7,
+            ),
+            tts=cartesia.TTS(
+                model="sonic-2",
+                voice="1259b7e3-cb8a-43df-9446-30971a46b8b0",
+            ),
+            vad=silero.VAD.load(),
+        )
+        self.state = state
+        self.follow_up_question = follow_up_question
+    
+    async def on_enter(self):
+        if self.follow_up_question:
+            await self.session.say(self.follow_up_question, allow_interruptions=True)
+        else:
+            await self.session.say("I have a follow-up question for you.", allow_interruptions=True)
+    
+    @function_tool()
+    async def handle_unknown_answer(self):
+        """Handle when candidate says they don't know the follow-up answer"""
+        self.state.last_answer_was_unknown = True
+        
+        if self.state.is_multi_part_question and self.state.tasks_are_dependent:
+            # If tasks are dependent and they don't know, we might need to skip remaining
+            log_info("Candidate doesn't know follow-up answer for dependent question")
+            await self.session.say("That's alright.", allow_interruptions=False)
+            # For now, just move to next part - could be enhanced to skip more intelligently
+            return self.move_to_next_part()
+        else:
+            # For independent tasks or single questions, just move to next part
+            return self.move_to_next_part()
+    
+    def _move_to_next_complete_question(self):
+        """Helper method to move to the next complete question, skipping remaining parts"""
+        # Reset multi-part question state
+        self.state.is_multi_part_question = False
+        self.state.current_tasks = None
+        self.state.current_task_index = 0
+        self.state.current_main_scenario = ""
+        self.state.tasks_are_dependent = False
+        self.state.skip_remaining_tasks = False
+        self.state.current_question_index += 1
+        
+        # Check if we've finished all questions
+        if self.state.current_question_index >= len(self.state.all_questions):
+            # All questions completed, move to final questions
+            self.state.stage = InterviewStage.FINAL_QUESTIONS
+            return FinalQuestionsAgent(self.state)
+        else:
+            # More questions to ask
+            self.state.stage = InterviewStage.QUESTION
+            return QuestionAgent(self.state)
+
+    @function_tool()
+    async def move_to_next_part(self):
+        """Move to the next part after follow-up"""
+        self.state.asked_follow_up = False
+        
+        if self.state.is_multi_part_question and self.state.current_tasks and not self.state.skip_remaining_tasks:
+            # Check if there are more tasks in the current question
+            self.state.current_task_index += 1
+            
+            if self.state.current_task_index < len(self.state.current_tasks):
+                # More tasks in this question
+                log_info(f"Moving to task {self.state.current_task_index + 1} of current question")
+                return QuestionAgent(self.state)
+            else:
+                # Done with all tasks, move to next question
+                return self._move_to_next_complete_question()
+        else:
+            # Regular question or skipping remaining tasks, move to next complete question
+            return self._move_to_next_complete_question()
+
+class FinalQuestionsAgent(Agent):
+    """Agent for handling final questions from the candidate"""
+    
+    def __init__(self, state: InterviewState):
+        super().__init__(
+            instructions=f"""The interview questions have been completed. 
+Ask: "Do you have any questions for me about the role or company?"
+
+Listen to their questions and answer them appropriately.
+When they indicate they have no more questions or are finished, use end_interview tool.
+
+IMPORTANT: Do NOT use transition phrases like "Let's move on" or "Let me ask" - this is the final part of the interview.""",
+            stt=assemblyai.STT(
+                end_of_turn_confidence_threshold=0.5,
+                min_end_of_turn_silence_when_confident=160,
+                max_turn_silence=3000,
+            ),
+            llm=openai.LLM(
+                model="gpt-4.1-mini",
+                temperature=0.7,
+            ),
+            tts=cartesia.TTS(
+                model="sonic-2",
+                voice="1259b7e3-cb8a-43df-9446-30971a46b8b0",
+            ),
+            vad=silero.VAD.load(),
+        )
+        self.state = state
+    
+    async def on_enter(self):
+        await self.session.say("Do you have any questions for me about the role or company?", allow_interruptions=True)
+    
+    @function_tool()
+    async def end_interview(self):
+        """End the interview"""
+        self.state.stage = InterviewStage.COMPLETED
+        closing_message = f"Thank you for your time today, {self.state.candidate_name}. This concludes our interview. Have a great day!"
+        await self.session.say(closing_message, allow_interruptions=False)
+        return None  # End the session
 
 class InterviewAgent(Agent):
+    """Legacy agent kept for compatibility - now uses workflow system"""
     def __init__(self, 
                  role: str = "Software Engineer", 
                  candidate_name: str = "Candidate",
@@ -67,102 +575,25 @@ class InterviewAgent(Agent):
                  all_questions: List[str] = None,
                  questions_list: str = "") -> None:
         
-        # Create specific instructions with all questions if provided
-        if all_questions and questions_list:
-            # Create direct instructions with the FULL list of questions
-            full_instructions = f"""
-STRICT INSTRUCTIONS FOR TECHNICAL INTERVIEWER:
-
-YOU MUST ONLY ASK THE EXACT QUESTIONS LISTED BELOW IN THE EXACT ORDER SHOWN:
-
-{questions_list}
-
-YOU MUST FOLLOW THESE RULES:
-1. ONLY ask the exact questions shown above, in the exact order (1, 2, 3, 4...)
-2. NEVER create your own questions or substitute different questions
-3. After each candidate answer, briefly acknowledge their response
-4. Then immediately proceed to the next question in the numbered list
-5. If the candidate says they don't know, move to the next question
-6. DO NOT SKIP QUESTIONS under any circumstances
-7. Present each question in a natural, conversational manner as a real interviewer would, but NEVER alter the core content, meaning, or difficulty level of any question
-8. STRICTLY FOLLOW THE NUMBERED ORDER - after question 1, ask question 2, then 3, and so on
-9.Don't ask too many follow up questions to the same question only 1-2 follow up questions to the same question
-10. Max 6 follow up questions in the entire interview
-11. IF THERE IS A NUMERICAL VALUE IN THE QUESTION, THEN CONVERT THE NUMERICAL VALUE TO TEXT IN A WAY THAT IS EASY TO UNDERSTAND, SUCH AS 20,000 AS "TWENTY THOUSAND RUPEES"
-12. NEVER ANSWER THE QUESTION YOURSELF or Give Hint, ALWAYS ASK THE CANDIDATE TO ANSWER THE QUESTION 
-13. For questions or scenarios with sub-questions, first present the main question/scenario as written above. Then, verify the candidate's understanding of the question/scenario before proceeding to ask the sub-questions in the order they appear.
-
-
-INTERVIEW FLOW:
-- Start with a brief introduction: "Welcome {candidate_name}, I am an interviewer for the {role} role and I will be taking your interview.
-- Ask the candidate if he is ready to begin the interview
-- If he is not ready, ask him to wait for a moment and then ask him if he is ready to begin the interview
-- If he is ready, then immediately ask Question #1 exactly as written above
-- After the candidate answers, acknowledge it
-- Then ask the candidate if he wants to add more details to his answer
-- If he wants to add more details, ask him to do so
-- If he doesn't want to add more details.
-- If only required, ask follow up questions to the answer that would suitable to previous question and candidate's answer
-- If not required, move to the next question
-- If the candidate says "I don't know," or something similar, respond politely and continue with the next question.
-- Continue in exact order through all questions
-- After the last question, ask the candidate if they have any questions for you
-- If they have questions, answer them
-- If they don't have questions, thank them for their time and ask them to end the interview and say goodbye and don't speak any more
-
-The candidate's name is {candidate_name}.
-The role is {role}.
-
-IMPORTANT:
-1. Do not mention or state the question number when asking each question.
-2. If a question contains markdown formatting symbols (such as **, __, `, or _), do not include these symbols when reading the question aloud or presenting it to the candidate.
-
-
-CONTEXTUAL TRANSITIONS (USE ONLY WHEN APPROPRIATE)
-
-Before asking a question, if it clearly belongs to a distinct category or topic, you may use a brief, relevant transition phrase to introduce that section. Use each transition phrase only once, before the first question in its respective category, and only if it is contextually appropriate.
-
-Examples of transition phrases:
-- For a new business, technical, behavioral, or scenario-based section, you may say:  
-  "Let's move on to the next section."  
-  "Now, let's take a look at a new type of question."  
-  "We'll now discuss a different topic."  
-  "Let's proceed to the next category."
-
-Guidelines:
-- Use a transition phrase only once per category or topic, and only if it helps clarify the change in question type.
-- Do not invent new transition phrases beyond simple, neutral introductions.
-- Do not repeat or elaborate on transition phrases.
-- Always follow the transition phrase immediately with the exact question from the list, without any additional commentary or interruption.
-
-FAILURE TO FOLLOW THESE INSTRUCTIONS WILL RESULT IN TERMINATION.
-
-
-"""
-        else:
-            # Fallback instructions if no questions provided
-            full_instructions = f"You are an interviewer for {role}. Wait for further instructions."
-        
-        # Pass FULL instructions to parent class
         super().__init__(
-            instructions=full_instructions,  # Using full instructions from the start
+            instructions="This is a workflow-based interview agent. Workflow will be managed externally.",
             stt=assemblyai.STT(
-            end_of_turn_confidence_threshold=0.5,
-            min_end_of_turn_silence_when_confident=160,
-            max_turn_silence=3000,
-        ),
-        llm=openai.LLM(
-            model="gpt-4.1",
-            temperature=0.7,
-        ),
-        tts=cartesia.TTS(
-      model="sonic-2",
-      voice="1259b7e3-cb8a-43df-9446-30971a46b8b0",
-   ),
-        vad=silero.VAD.load(),
-            turn_detection=MultilingualModel(),
+                end_of_turn_confidence_threshold=0.5,
+                min_end_of_turn_silence_when_confident=160,
+                max_turn_silence=3000,
+            ),
+            llm=openai.LLM(
+                model="gpt-4.1-mini",
+                temperature=0.7,
+            ),
+            tts=cartesia.TTS(
+                model="sonic-2",
+                voice="1259b7e3-cb8a-43df-9446-30971a46b8b0",
+            ),
+            vad=silero.VAD.load(),
         )
         
+        # Store configuration for workflow setup
         self.role = role
         self.candidate_name = candidate_name
         self.skill_level = skill_level
@@ -170,19 +601,13 @@ FAILURE TO FOLLOW THESE INSTRUCTIONS WILL RESULT IN TERMINATION.
         self.room_name = room_name
         self.room_id = room_id
         self.interview_id = interview_id
-        self.current_stage = InterviewStage.INTRODUCTION
-        self.current_skill_index = 0
-        self.current_question_index = 0
-        self.dynamic_template = None
-        self.using_dynamic_template = bool(record_id)
         self.all_questions = all_questions or []
         self.questions_list = questions_list
         
         # Initialize metrics collector
         self.metrics_collector = MetricsCollector()
         
-        # NOTE: Interview data storage is handled by the frontend
-        # This is kept only for local logging/tracking, not for database storage
+        # Interview data storage
         self.interview_data = {
             "start_time": datetime.now().isoformat(),
             "role": role,
@@ -195,6 +620,10 @@ FAILURE TO FOLLOW THESE INSTRUCTIONS WILL RESULT IN TERMINATION.
         }
         
         # Set up metrics collectors
+        self._setup_metrics_collectors()
+
+    def _setup_metrics_collectors(self):
+        """Set up metrics collection listeners"""
         def llm_metrics_wrapper(metrics: LLMMetrics):
             asyncio.create_task(self.metrics_collector.on_llm_metrics_collected(metrics))
         
@@ -218,17 +647,6 @@ FAILURE TO FOLLOW THESE INSTRUCTIONS WILL RESULT IN TERMINATION.
         if hasattr(self, 'tts'):
             self.tts.on("metrics_collected", tts_metrics_wrapper)
 
-    async def on_enter(self):
-        # Get the first question to start with
-        first_question = self.all_questions[0] if self.all_questions else ""
-        
-        # Create introduction text with first question
-        intro_text = f"Welcome {self.candidate_name}, I am an interviewer for the {self.role} and I will be taking your interview. Are you ready to begin the interview?"
-        log_info(f"Starting with introduction and first question: {intro_text}")
-        
-        # Start with the introduction and first question
-        await self.session.say(intro_text, allow_interruptions=True)
-
     async def on_exit(self):
         """Store final metrics and summary when interview ends"""
         # Calculate average metrics
@@ -244,20 +662,6 @@ FAILURE TO FOLLOW THESE INSTRUCTIONS WILL RESULT IN TERMINATION.
         
         # Log final metrics
         log_info(f"Interview ended. Final metrics: {json.dumps(avg_metrics, indent=2)}")
-        
-        # You can add code here to send metrics to an API endpoint if needed
-
-    def update_instructions(self, new_instructions: str):
-        """Update the agent's instructions at runtime"""
-        try:
-            if hasattr(self, 'session') and hasattr(self.session, 'llm') and hasattr(self.session.llm, 'update_system_prompt'):
-                self.session.llm.update_system_prompt(new_instructions)
-                log_info("Successfully updated agent instructions")
-            else:
-                log_warning("Could not update instructions - session or llm not available yet")
-        except Exception as e:
-            log_error("Error updating instructions", e)
-
 
     def log_interview_data(self, stage: str, data: Dict):
         """Log interview progress and data for quality assurance"""
@@ -379,22 +783,22 @@ async def entrypoint(ctx: JobContext):
     # Trigger the on_metrics_collected function when metrics are collected
     session.on("metrics_collected", on_metrics_collected)
 
-    # Create the agent instance
-    interview_agent = InterviewAgent(
-        role=role,
+    # Create the shared interview state
+    interview_state = InterviewState(
         candidate_name=candidate_name,
-        skill_level=skill_level,
-        record_id=record_id,
-        room_name=ctx.room.name,
-        room_id=room_id,
-        interview_id=interview_id,
-        all_questions=all_questions,
-        questions_list=questions_list
+        role=role,
+        all_questions=all_questions
     )
+    
+    log_info(f"Created interview state - Candidate: {candidate_name}, Role: {role}, Questions: {len(all_questions) if all_questions else 0}")
+
+    # Start with the introduction agent
+    initial_agent = IntroductionAgent(interview_state)
+    log_info("Starting with IntroductionAgent")
 
     await session.start(
         room=ctx.room,
-        agent=interview_agent,
+        agent=initial_agent,
         room_input_options=RoomInputOptions(
             noise_cancellation=noise_cancellation.BVC(),
         ),
