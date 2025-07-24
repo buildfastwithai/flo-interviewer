@@ -63,25 +63,16 @@ def format_question_for_speech(question: str) -> str:
     def replace_numbers(match):
         number = match.group()
         
-        # Handle currency with numbers
-        if '₹' in number:
-            num_str = number.replace('₹', '')
-            try:
-                num_val = int(num_str.replace(',', ''))
-                if num_val >= 1000:
-                    if num_val == 20000:
-                        return "twenty thousand rupees"
-                    elif num_val == 100:
-                        return "one hundred rupees"
-                    elif num_val == 80:
-                        return "eighty rupees"
-                    else:
-                        # Convert large numbers
-                        return f"{number_to_words(num_val)} rupees"
-                else:
-                    return f"{number_to_words(num_val)} rupees"
-            except:
-                return number
+        # Handle various currency symbols
+        currency_symbols = {'₹': 'rupees', '$': 'dollars', '€': 'euros', '£': 'pounds'}
+        for symbol, word in currency_symbols.items():
+            if symbol in number:
+                num_str = number.replace(symbol, '')
+                try:
+                    num_val = int(num_str.replace(',', ''))
+                    return f"{number_to_words(num_val)} {word}"
+                except:
+                    return number
         
         # Handle regular numbers
         try:
@@ -91,7 +82,7 @@ def format_question_for_speech(question: str) -> str:
             return number
     
     # Replace currency and numbers
-    question = re.sub(r'₹[\d,]+', replace_numbers, question)
+    question = re.sub(r'[₹$€£][\d,]+', replace_numbers, question)
     question = re.sub(r'\b\d+(?:,\d{3})*\b', replace_numbers, question)
     
     # Handle percentages
@@ -103,63 +94,82 @@ def number_to_words(num: int) -> str:
     """Convert number to words for natural speech"""
     if num == 0:
         return "zero"
-    elif num == 1:
-        return "one"
-    elif num == 50:
-        return "fifty"
-    elif num == 80:
-        return "eighty"
-    elif num == 100:
-        return "one hundred"
-    elif num == 200:
-        return "two hundred"
-    elif num == 20000:
-        return "twenty thousand"
+    
+    # Basic conversion for all numbers
+    ones = ["", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"]
+    teens = ["ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"]
+    tens = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"]
+    
+    if num < 0:
+        return "negative " + number_to_words(-num)
+    elif num < 10:
+        return ones[num]
+    elif num < 20:
+        return teens[num - 10]
+    elif num < 100:
+        return tens[num // 10] + ("" if num % 10 == 0 else " " + ones[num % 10])
+    elif num < 1000:
+        return ones[num // 100] + " hundred" + ("" if num % 100 == 0 else " " + number_to_words(num % 100))
+    elif num < 1000000:
+        return number_to_words(num // 1000) + " thousand" + ("" if num % 1000 == 0 else " " + number_to_words(num % 1000))
+    elif num < 1000000000:
+        return number_to_words(num // 1000000) + " million" + ("" if num % 1000000 == 0 else " " + number_to_words(num % 1000000))
     else:
-        # Basic conversion for common numbers
-        ones = ["", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"]
-        teens = ["ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"]
-        tens = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"]
-        
-        if num < 10:
-            return ones[num]
-        elif num < 20:
-            return teens[num - 10]
-        elif num < 100:
-            return tens[num // 10] + ("" if num % 10 == 0 else " " + ones[num % 10])
-        elif num < 1000:
-            return ones[num // 100] + " hundred" + ("" if num % 100 == 0 else " " + number_to_words(num % 100))
-        elif num < 100000:
-            return number_to_words(num // 1000) + " thousand" + ("" if num % 1000 == 0 else " " + number_to_words(num % 1000))
-        else:
-            return str(num)  # Fallback for very large numbers
+        return str(num)  # Fallback for very large numbers
 
 def extract_main_scenario_and_tasks(question: str) -> tuple:
     """Extract main scenario and individual tasks from a multi-part question"""
     import re
     
-    # Look for task patterns
-    task_patterns = [
-        r'Task for Candidates?:\s*(.+?)(?=\n\n|\Z)',
-        r'(?:Tasks?|Questions?):\s*(.+?)(?=\n\n|\Z)',
-        r'(\d+\.\s+.+?)(?=\n\d+\.|\Z)'
-    ]
-    
     main_scenario = question
     tasks = []
     
-    # Try to find numbered tasks
-    numbered_tasks = re.findall(r'\d+\.\s+([^?]+\??)', question, re.MULTILINE | re.DOTALL)
-    if numbered_tasks:
-        # Extract everything before the first numbered task as scenario
-        first_task_match = re.search(r'\d+\.\s+', question)
-        if first_task_match:
-            main_scenario = question[:first_task_match.start()].strip()
-            tasks = [task.strip() for task in numbered_tasks]
+    # Try to find numbered tasks (supports various formats)
+    numbered_patterns = [
+        r'\d+\.\s+([^?]+\??)',  # 1. Task content
+        r'\d+\)\s+([^?]+\??)',  # 1) Task content
+        r'[a-zA-Z]\.\s+([^?]+\??)',  # a. Task content
+        r'[a-zA-Z]\)\s+([^?]+\??)'   # a) Task content
+    ]
     
-    # Clean up the main scenario
-    main_scenario = re.sub(r'Problem Statement:\s*', '', main_scenario)
-    main_scenario = re.sub(r'Task for Candidates?:\s*.*', '', main_scenario, flags=re.DOTALL)
+    for pattern in numbered_patterns:
+        found_tasks = re.findall(pattern, question, re.MULTILINE | re.DOTALL)
+        if found_tasks and len(found_tasks) > 1:  # Only consider if multiple tasks found
+            # Extract everything before the first numbered task as scenario
+            first_task_match = re.search(pattern.replace('([^?]+\??)', ''), question)
+            if first_task_match:
+                main_scenario = question[:first_task_match.start()].strip()
+                tasks = [task.strip() for task in found_tasks]
+            break
+    
+    # Also check for other common task separators
+    if not tasks:
+        # Look for bullet points or other separators
+        bullet_patterns = [
+            r'[•\-\*]\s+([^?]+\??)',  # Bullet points
+            r'(?:Part|Question|Task)\s*\d+[:\.]?\s*([^?]+\??)'  # Part 1:, Question 1., etc.
+        ]
+        
+        for pattern in bullet_patterns:
+            found_tasks = re.findall(pattern, question, re.MULTILINE | re.DOTALL)
+            if found_tasks and len(found_tasks) > 1:
+                tasks = [task.strip() for task in found_tasks]
+                # For bullet points, keep more of the original text as scenario
+                main_scenario = re.split(r'[•\-\*]|\b(?:Part|Question|Task)\s*\d+', question)[0].strip()
+                break
+    
+    # Clean up the main scenario - remove common prefixes
+    cleanup_patterns = [
+        r'Problem Statement:\s*',
+        r'Task for Candidates?:\s*.*',
+        r'Background:\s*',
+        r'Context:\s*',
+        r'Scenario:\s*'
+    ]
+    
+    for pattern in cleanup_patterns:
+        main_scenario = re.sub(pattern, '', main_scenario, flags=re.DOTALL)
+    
     main_scenario = main_scenario.strip()
     
     return main_scenario, tasks
@@ -172,8 +182,10 @@ def are_tasks_dependent(tasks: List[str]) -> bool:
     # Keywords that indicate dependency on previous answers
     dependency_keywords = [
         'based on', 'using the', 'from the above', 'given the result',
-        'should the', 'justify your answer', 'considering',
-        'using your calculation', 'based on your', 'from your answer'
+        'should the', 'justify your answer', 'considering', 'given your',
+        'using your calculation', 'based on your', 'from your answer',
+        'in light of', 'taking into account', 'building on', 'following from',
+        'with reference to', 'according to your', 'as per your'
     ]
     
     # Check if any task (except the first) contains dependency keywords
@@ -183,16 +195,37 @@ def are_tasks_dependent(tasks: List[str]) -> bool:
             if keyword in task_lower:
                 return True
     
-    # Also check if later tasks reference calculations or results
-    calculation_keywords = ['calculate', 'result', 'answer', 'revenue', 'price', 'cost']
-    first_task_lower = tasks[0].lower()
-    has_calculation = any(keyword in first_task_lower for keyword in calculation_keywords)
+    # Check for various types of calculations or analysis in first task
+    calculation_keywords = [
+        'calculate', 'result', 'answer', 'solve', 'determine', 'find',
+        'compute', 'evaluate', 'analyze', 'assess', 'estimate'
+    ]
     
-    if has_calculation:
-        # If first task involves calculations, later tasks likely depend on it
+    # Business/financial keywords
+    business_keywords = ['revenue', 'price', 'cost', 'profit', 'sales', 'budget']
+    
+    # Technical/programming keywords  
+    technical_keywords = ['algorithm', 'function', 'code', 'implement', 'design']
+    
+    # General analysis keywords
+    analysis_keywords = ['compare', 'contrast', 'examine', 'investigate', 'study']
+    
+    all_analysis_keywords = calculation_keywords + business_keywords + technical_keywords + analysis_keywords
+    
+    first_task_lower = tasks[0].lower()
+    has_analysis = any(keyword in first_task_lower for keyword in all_analysis_keywords)
+    
+    if has_analysis:
+        # If first task involves analysis/calculation, check if later tasks reference decisions/recommendations
+        decision_keywords = [
+            'should', 'recommend', 'suggest', 'justify', 'explain why',
+            'what would you', 'how would you', 'do you think', 'advise',
+            'propose', 'conclude', 'decide', 'choose'
+        ]
+        
         for task in tasks[1:]:
             task_lower = task.lower()
-            if any(keyword in task_lower for keyword in ['should', 'recommend', 'suggest', 'justify']):
+            if any(keyword in task_lower for keyword in decision_keywords):
                 return True
     
     return False
@@ -286,7 +319,7 @@ class QuestionAgent(Agent):
             context = "no question"
         
         super().__init__(
-            instructions=f"""You are conducting a technical interview. 
+            instructions=f"""You are conducting an interview for the {state.role} position. 
 Your current task: {context}
 
 After the candidate answers:
@@ -528,9 +561,9 @@ class FinalQuestionsAgent(Agent):
     def __init__(self, state: InterviewState):
         super().__init__(
             instructions=f"""The interview questions have been completed. 
-Ask: "Do you have any questions for me about the role or company?"
+Ask: "Do you have any questions for me about the {state.role} role or the company?"
 
-Listen to their questions and answer them appropriately.
+Listen to their questions and answer them appropriately based on general knowledge about the role.
 When they indicate they have no more questions or are finished, use end_interview tool.
 
 IMPORTANT: Do NOT use transition phrases like "Let's move on" or "Let me ask" - this is the final part of the interview.""",
