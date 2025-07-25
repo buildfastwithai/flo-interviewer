@@ -257,6 +257,9 @@ class InterviewState:
     is_multi_part_question: bool = False
     tasks_are_dependent: bool = False
     skip_remaining_tasks: bool = False
+    # For hint system
+    hints_given_for_current_question: int = 0
+    max_hints_per_question: int = 2
 
 
 class IntroductionAgent(Agent):
@@ -323,13 +326,14 @@ class QuestionAgent(Agent):
 Your current task: {context}
 
 After the candidate answers:
-- If they say "I don't know", "I'm not sure", "I have no idea", or similar, use handle_unknown_answer tool
+- If they say "I don't know", "I'm not sure", "I have no idea", or similar, use provide_hint tool to help them
 - If they provide a complete answer, use move_to_next_part tool
 - If they provide a partial answer, you MAY ask ONE follow-up using ask_follow_up tool
 - If you've already asked a follow-up, use move_to_next_part tool
+- If you want to create a smooth transition between topic areas, use create_transition tool
 
-CRITICAL: When moving on, do NOT use transition phrases - just acknowledge briefly.
-IMPORTANT: Never create your own questions. Stick to the provided content.""",
+CRITICAL: When moving on, do NOT use transition phrases unless using create_transition - just acknowledge briefly.
+IMPORTANT: You can create helpful hints and supportive questions to guide the candidate toward the answer. Be encouraging and educational.""",
             stt=assemblyai.STT(
                 end_of_turn_confidence_threshold=0.5,
                 min_end_of_turn_silence_when_confident=160,
@@ -393,24 +397,43 @@ IMPORTANT: Never create your own questions. Stick to the provided content.""",
             await self.session.say("I don't have any questions to ask at the moment.", allow_interruptions=True)
     
     @function_tool()
-    async def handle_unknown_answer(self):
-        """Handle when candidate says they don't know the answer"""
+    async def provide_hint(self, hint_message: str = ""):
+        """Provide a helpful hint when candidate says they don't know the answer"""
         self.state.last_answer_was_unknown = True
+        self.state.hints_given_for_current_question += 1
         
-        if self.state.is_multi_part_question and self.state.tasks_are_dependent:
-            # If tasks are dependent and they don't know the first part, skip remaining parts
-            if self.state.current_task_index == 0:
-                log_info("Candidate doesn't know first part of dependent question - skipping remaining tasks")
-                self.state.skip_remaining_tasks = True
-                await self.session.say("That's alright.", allow_interruptions=False)
-                # Move to next complete question
-                return self._move_to_next_complete_question()
-            else:
-                # Continue with remaining tasks even if they don't know a middle part
-                return self.move_to_next_part()
-        else:
-            # For independent tasks or single questions, just move to next part
+        # Get the current question content for context
+        current_question = ""
+        if self.state.is_multi_part_question and self.state.current_tasks:
+            current_question = self.state.current_tasks[self.state.current_task_index]
+        elif self.state.all_questions and self.state.current_question_index < len(self.state.all_questions):
+            current_question = self.state.all_questions[self.state.current_question_index]
+        
+        # Check if we've reached the hint limit
+        if self.state.hints_given_for_current_question > self.state.max_hints_per_question:
+            log_info(f"Maximum hints reached for current question, moving on")
+            await self.session.say("That's okay, let's move on to the next question.", allow_interruptions=False)
             return self.move_to_next_part()
+        
+        # Provide encouragement and hint
+        if not hint_message:
+            # Generate a generic encouraging message
+            hint_message = "Let me give you a hint to help you think about this. Consider breaking down the problem into smaller parts. Take your time and think about what approach you might use."
+        
+        encouragement = "No worries! " if self.state.hints_given_for_current_question == 1 else "Let me provide another hint. "
+        full_message = encouragement + hint_message
+        
+        log_info(f"Providing hint {self.state.hints_given_for_current_question} for current question: {hint_message}")
+        await self.session.say(full_message, allow_interruptions=True)
+        
+        # Don't move to next part, wait for candidate to try again
+        return None
+    
+    @function_tool()
+    async def create_transition(self, transition_message: str):
+        """Create a smooth transition to the next section of questions"""
+        self.state.stage = InterviewStage.MOVING_ON
+        return MovingOnAgent(self.state, transition_message)
     
     @function_tool()
     async def ask_follow_up(self, follow_up_question: str):
@@ -433,6 +456,8 @@ IMPORTANT: Never create your own questions. Stick to the provided content.""",
         self.state.tasks_are_dependent = False
         self.state.skip_remaining_tasks = False
         self.state.current_question_index += 1
+        # Reset hint counter for new question
+        self.state.hints_given_for_current_question = 0
         
         # Check if we've finished all questions
         if self.state.current_question_index >= len(self.state.all_questions):
@@ -455,7 +480,8 @@ IMPORTANT: Never create your own questions. Stick to the provided content.""",
             self.state.current_task_index += 1
             
             if self.state.current_task_index < len(self.state.current_tasks):
-                # More tasks in this question
+                # More tasks in this question - reset hint counter for new task
+                self.state.hints_given_for_current_question = 0
                 log_info(f"Moving to task {self.state.current_task_index + 1} of current question")
                 return QuestionAgent(self.state)
             else:
@@ -472,9 +498,10 @@ class FollowUpAgent(Agent):
         super().__init__(
             instructions=f"""You just asked a follow-up question: "{follow_up_question}"
 Listen to the candidate's response and then:
-- If they say "I don't know" or similar, use handle_unknown_answer tool
+- If they say "I don't know" or similar, use provide_hint tool to help them
 - Otherwise use move_to_next_part to continue the interview
-Keep your acknowledgments brief like "I see" or "Thank you".""",
+Keep your acknowledgments brief like "I see" or "Thank you".
+You can create helpful hints and supportive questions to guide the candidate toward the answer.""",
             stt=assemblyai.STT(
                 end_of_turn_confidence_threshold=0.5,
                 min_end_of_turn_silence_when_confident=160,
@@ -500,19 +527,30 @@ Keep your acknowledgments brief like "I see" or "Thank you".""",
             await self.session.say("I have a follow-up question for you.", allow_interruptions=True)
     
     @function_tool()
-    async def handle_unknown_answer(self):
-        """Handle when candidate says they don't know the follow-up answer"""
+    async def provide_hint(self, hint_message: str = ""):
+        """Provide a helpful hint when candidate says they don't know the follow-up answer"""
         self.state.last_answer_was_unknown = True
+        self.state.hints_given_for_current_question += 1
         
-        if self.state.is_multi_part_question and self.state.tasks_are_dependent:
-            # If tasks are dependent and they don't know, we might need to skip remaining
-            log_info("Candidate doesn't know follow-up answer for dependent question")
-            await self.session.say("That's alright.", allow_interruptions=False)
-            # For now, just move to next part - could be enhanced to skip more intelligently
+        # Check if we've reached the hint limit
+        if self.state.hints_given_for_current_question > self.state.max_hints_per_question:
+            log_info(f"Maximum hints reached for follow-up question, moving on")
+            await self.session.say("That's okay, let's move on.", allow_interruptions=False)
             return self.move_to_next_part()
-        else:
-            # For independent tasks or single questions, just move to next part
-            return self.move_to_next_part()
+        
+        # Provide encouragement and hint
+        if not hint_message:
+            # Generate a generic encouraging message for follow-up
+            hint_message = "Think about this step by step. What's the key information from your previous answer that might help here?"
+        
+        encouragement = "Let me help you with that. " if self.state.hints_given_for_current_question == 1 else "Here's another way to think about it. "
+        full_message = encouragement + hint_message
+        
+        log_info(f"Providing follow-up hint {self.state.hints_given_for_current_question}: {hint_message}")
+        await self.session.say(full_message, allow_interruptions=True)
+        
+        # Don't move to next part, wait for candidate to try again
+        return None
     
     def _move_to_next_complete_question(self):
         """Helper method to move to the next complete question, skipping remaining parts"""
@@ -524,6 +562,8 @@ Keep your acknowledgments brief like "I see" or "Thank you".""",
         self.state.tasks_are_dependent = False
         self.state.skip_remaining_tasks = False
         self.state.current_question_index += 1
+        # Reset hint counter for new question
+        self.state.hints_given_for_current_question = 0
         
         # Check if we've finished all questions
         if self.state.current_question_index >= len(self.state.all_questions):
@@ -554,6 +594,60 @@ Keep your acknowledgments brief like "I see" or "Thank you".""",
         else:
             # Regular question or skipping remaining tasks, move to next complete question
             return self._move_to_next_complete_question()
+
+class MovingOnAgent(Agent):
+    """Agent for handling smooth transitions between question topics"""
+    
+    def __init__(self, state: InterviewState, transition_message: str = ""):
+        super().__init__(
+            instructions=f"""You are providing a smooth transition in the interview for the {state.role} position.
+Your role is to:
+- Acknowledge the completion of a topic area
+- Provide a brief, natural transition to the next section
+- Keep transitions concise and professional
+- Use the continue_interview tool to proceed to the next question
+
+Example transitions:
+- "Great, now let's move on to some technical questions."
+- "Thank you for those answers. Let's shift focus to system design."
+- "Perfect. Now I'd like to explore your experience with algorithms."
+
+Keep transitions brief and natural.""",
+            stt=assemblyai.STT(
+                end_of_turn_confidence_threshold=0.5,
+                min_end_of_turn_silence_when_confident=160,
+                max_turn_silence=3000,
+            ),
+            llm=openai.LLM(
+                model="gpt-4.1-mini",
+                temperature=0.7,
+            ),
+            tts=cartesia.TTS(
+                model="sonic-2",
+                voice="1259b7e3-cb8a-43df-9446-30971a46b8b0",
+            ),
+            vad=silero.VAD.load(),
+        )
+        self.state = state
+        self.transition_message = transition_message
+    
+    async def on_enter(self):
+        """Provide transition message and automatically continue"""
+        if self.transition_message:
+            await self.session.say(self.transition_message, allow_interruptions=False)
+        else:
+            await self.session.say("Let's continue with the next set of questions.", allow_interruptions=False)
+        
+        # Automatically continue after a brief pause
+        return await self.continue_interview()
+    
+    @function_tool()
+    async def continue_interview(self):
+        """Continue to the next question after transition"""
+        self.state.stage = InterviewStage.QUESTION
+        # Reset hint counter for new section
+        self.state.hints_given_for_current_question = 0
+        return QuestionAgent(self.state)
 
 class FinalQuestionsAgent(Agent):
     """Agent for handling final questions from the candidate"""
