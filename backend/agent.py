@@ -50,6 +50,10 @@ except ImportError:
 
 # Import system prompt functions
 from system_prompt import get_interview_system_prompt, get_fallback_system_prompt
+
+# Import model configuration
+from model_config import get_interview_models
+
 # import random
 
 load_dotenv(dotenv_path=".env.local")   
@@ -266,6 +270,7 @@ class IntroductionAgent(Agent):
     """Agent for handling interview introduction and readiness check"""
     
     def __init__(self, state: InterviewState):
+        models = get_interview_models()
         super().__init__(
             instructions=f"""You are an interviewer for the {state.role} position. 
 Your role is to welcome the candidate and check if they're ready to begin.
@@ -274,20 +279,10 @@ Say: "Welcome {state.candidate_name}, I am an interviewer for the {state.role} p
 
 If they say they're ready, use the start_interview tool.
 If they're not ready, be supportive and wait for them to indicate readiness.""",
-            stt=assemblyai.STT(
-                end_of_turn_confidence_threshold=0.5,
-                min_end_of_turn_silence_when_confident=160,
-                max_turn_silence=3000,
-            ),
-            llm=openai.LLM(
-                model="gpt-4.1-mini",
-                temperature=0.7,
-            ),
-            tts=cartesia.TTS(
-                model="sonic-2",
-                voice="1259b7e3-cb8a-43df-9446-30971a46b8b0",
-            ),
-            vad=silero.VAD.load(),
+            stt=models['stt'],
+            llm=models['llm'],
+            tts=models['tts'],
+            vad=models['vad'],
         )
         self.state = state
     
@@ -321,6 +316,7 @@ class QuestionAgent(Agent):
             current_content = ""
             context = "no question"
         
+        models = get_interview_models()
         super().__init__(
             instructions=f"""You are conducting an interview for the {state.role} position. 
 Your current task: {context}
@@ -334,20 +330,10 @@ After the candidate answers:
 
 CRITICAL: When moving on, do NOT use transition phrases unless using create_transition - just acknowledge briefly.
 IMPORTANT: You can create helpful hints and supportive questions to guide the candidate toward the answer. Be encouraging and educational.""",
-            stt=assemblyai.STT(
-                end_of_turn_confidence_threshold=0.5,
-                min_end_of_turn_silence_when_confident=160,
-                max_turn_silence=3000,
-            ),
-            llm=openai.LLM(
-                model="gpt-4.1-mini",
-                temperature=0.7,
-            ),
-            tts=cartesia.TTS(
-                model="sonic-2",
-                voice="1259b7e3-cb8a-43df-9446-30971a46b8b0",
-            ),
-            vad=silero.VAD.load(),
+            stt=models['stt'],
+            llm=models['llm'],
+            tts=models['tts'],
+            vad=models['vad'],
         )
         self.state = state
     
@@ -495,6 +481,7 @@ class FollowUpAgent(Agent):
     """Agent for handling follow-up questions"""
     
     def __init__(self, state: InterviewState, follow_up_question: str):
+        models = get_interview_models()
         super().__init__(
             instructions=f"""You just asked a follow-up question: "{follow_up_question}"
 Listen to the candidate's response and then:
@@ -502,20 +489,10 @@ Listen to the candidate's response and then:
 - Otherwise use move_to_next_part to continue the interview
 Keep your acknowledgments brief like "I see" or "Thank you".
 You can create helpful hints and supportive questions to guide the candidate toward the answer.""",
-            stt=assemblyai.STT(
-                end_of_turn_confidence_threshold=0.5,
-                min_end_of_turn_silence_when_confident=160,
-                max_turn_silence=3000,
-            ),
-            llm=openai.LLM(
-                model="gpt-4.1-mini",
-                temperature=0.7,
-            ),
-            tts=cartesia.TTS(
-                model="sonic-2",
-                voice="1259b7e3-cb8a-43df-9446-30971a46b8b0",
-            ),
-            vad=silero.VAD.load(),
+            stt=models['stt'],
+            llm=models['llm'],
+            tts=models['tts'],
+            vad=models['vad'],
         )
         self.state = state
         self.follow_up_question = follow_up_question
@@ -599,6 +576,7 @@ class MovingOnAgent(Agent):
     """Agent for handling smooth transitions between question topics"""
     
     def __init__(self, state: InterviewState, transition_message: str = ""):
+        models = get_interview_models()
         super().__init__(
             instructions=f"""You are providing a smooth transition in the interview for the {state.role} position.
 Your role is to:
@@ -613,20 +591,10 @@ Example transitions:
 - "Perfect. Now I'd like to explore your experience with algorithms."
 
 Keep transitions brief and natural.""",
-            stt=assemblyai.STT(
-                end_of_turn_confidence_threshold=0.5,
-                min_end_of_turn_silence_when_confident=160,
-                max_turn_silence=3000,
-            ),
-            llm=openai.LLM(
-                model="gpt-4.1-mini",
-                temperature=0.7,
-            ),
-            tts=cartesia.TTS(
-                model="sonic-2",
-                voice="1259b7e3-cb8a-43df-9446-30971a46b8b0",
-            ),
-            vad=silero.VAD.load(),
+            stt=models['stt'],
+            llm=models['llm'],
+            tts=models['tts'],
+            vad=models['vad'],
         )
         self.state = state
         self.transition_message = transition_message
@@ -653,6 +621,7 @@ class FinalQuestionsAgent(Agent):
     """Agent for handling final questions from the candidate"""
     
     def __init__(self, state: InterviewState):
+        models = get_interview_models()
         super().__init__(
             instructions=f"""The interview questions have been completed. 
 Ask: "Do you have any questions for me about the {state.role} role or the company?"
@@ -661,20 +630,10 @@ Listen to their questions and answer them appropriately based on general knowled
 When they indicate they have no more questions or are finished, use end_interview tool.
 
 IMPORTANT: Do NOT use transition phrases like "Let's move on" or "Let me ask" - this is the final part of the interview.""",
-            stt=assemblyai.STT(
-                end_of_turn_confidence_threshold=0.5,
-                min_end_of_turn_silence_when_confident=160,
-                max_turn_silence=3000,
-            ),
-            llm=openai.LLM(
-                model="gpt-4.1-mini",
-                temperature=0.7,
-            ),
-            tts=cartesia.TTS(
-                model="sonic-2",
-                voice="1259b7e3-cb8a-43df-9446-30971a46b8b0",
-            ),
-            vad=silero.VAD.load(),
+            stt=models['stt'],
+            llm=models['llm'],
+            tts=models['tts'],
+            vad=models['vad'],
         )
         self.state = state
     
@@ -702,22 +661,13 @@ class InterviewAgent(Agent):
                  all_questions: List[str] = None,
                  questions_list: str = "") -> None:
         
+        models = get_interview_models()
         super().__init__(
             instructions="This is a workflow-based interview agent. Workflow will be managed externally.",
-            stt=assemblyai.STT(
-                end_of_turn_confidence_threshold=0.5,
-                min_end_of_turn_silence_when_confident=160,
-                max_turn_silence=3000,
-            ),
-            llm=openai.LLM(
-                model="gpt-4.1-mini",
-                temperature=0.7,
-            ),
-            tts=cartesia.TTS(
-                model="sonic-2",
-                voice="1259b7e3-cb8a-43df-9446-30971a46b8b0",
-            ),
-            vad=silero.VAD.load(),
+            stt=models['stt'],
+            llm=models['llm'],
+            tts=models['tts'],
+            vad=models['vad'],
         )
         
         # Store configuration for workflow setup
