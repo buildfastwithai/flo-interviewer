@@ -27,7 +27,8 @@ from livekit.plugins import (
     groq,
     cartesia,
     assemblyai,
-    deepgram
+    deepgram,
+    
 )
 
 # Import our metrics collector
@@ -40,11 +41,13 @@ from logger import logger, log_info, log_error, log_warning, log_interview_data,
 try:
     from interview_config import (
         fetch_interview_template,
-        DynamicInterviewTemplate
+        DynamicInterviewTemplate,
+        cleanup_resources
     )
 except ImportError:
     # Fallback if config file doesn't exist
     DynamicInterviewTemplate = None
+    cleanup_resources = None
 # import random
 
 load_dotenv(dotenv_path=".env.local")   
@@ -392,13 +395,21 @@ async def entrypoint(ctx: JobContext):
         questions_list=questions_list
     )
 
-    await session.start(
-        room=ctx.room,
-        agent=interview_agent,
-        room_input_options=RoomInputOptions(
-            noise_cancellation=noise_cancellation.BVC(),
-        ),
-    )
+    try:
+        await session.start(
+            room=ctx.room,
+            agent=interview_agent,
+            room_input_options=RoomInputOptions(
+                noise_cancellation=noise_cancellation.BVC(),
+            ),
+        )
+    finally:
+        # Cleanup database connections and resources
+        if cleanup_resources:
+            try:
+                await cleanup_resources()
+            except Exception as e:
+                log_error(f"Error during cleanup: {str(e)}")
 
 if __name__ == "__main__":
     cli.run_app(

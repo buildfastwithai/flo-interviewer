@@ -4,13 +4,20 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies including Node.js for Prisma CLI
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
     libffi-dev \
     libssl-dev \
+    libpq-dev \
+    curl \
+    && curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Prisma CLI globally
+RUN npm install -g prisma
 
 # Copy requirements first for better caching
 COPY requirements.txt .
@@ -18,8 +25,14 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy Prisma schema
+COPY schema.prisma .
+
 # Copy application code
 COPY . .
+
+# Generate Prisma client
+RUN prisma generate
 
 # Create necessary directories
 RUN mkdir -p logs uploads interview_data user_uploads transcriptions
