@@ -1,24 +1,60 @@
+# Built-in
 import logging
 import json
 from datetime import datetime
 import os
+import sys
+import io
 
 # Ensure logs directory exists
 os.makedirs('logs', exist_ok=True)
 
 # Create and configure the logger
-def setup_logger(name="interview-agent", log_file=None):
-    """Set up and configure a logger with the given name and log file"""
+def setup_logger(name: str = "interview-agent", log_file: str | None = None):
+    """Return a UTF-8 safe logger.
+
+    * Prevent messages from propagating to the *root* logger so that Python's
+      default ``StreamHandler`` (which uses the current code-page on Windows)
+      does not attempt to write Unicode characters that the console cannot
+      encode.
+    * Add our own handlers only **once** (function can be called multiple
+      times safely).
+    * Force UTF-8 encoding for both file and console output.
+    """
+
     logger = logging.getLogger(name)
-    
-    # If a log file is specified, create a file handler
-    if log_file:
-        file_handler = logging.FileHandler(log_file)
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
-    
+
+    # If handlers are already configured, just return the logger to avoid
+    # adding duplicate handlers every time this function is called.
+    if logger.handlers:
+        return logger
+
     logger.setLevel(logging.INFO)
+
+    # Do **not** pass log records to the root logger. This avoids the default
+    # StreamHandler that writes using the active Windows code-page, which can
+    # raise ``UnicodeEncodeError`` for characters like the Rupee symbol (₹).
+    logger.propagate = False
+
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+
+    # File handler (always UTF-8)
+    if log_file is None:
+        log_file = "logs/interview_agent.log"
+
+    file_handler = logging.FileHandler(log_file, encoding="utf-8")
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+
+    # Console handler with UTF-8; wrap sys.stderr in a UTF-8 TextIOWrapper so
+    # that the stream can safely handle any Unicode character.
+    utf8_stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+    stream_handler = logging.StreamHandler(utf8_stderr)
+    stream_handler.setFormatter(formatter)
+    logger.addHandler(stream_handler)
+
     return logger
 
 # Create the default logger

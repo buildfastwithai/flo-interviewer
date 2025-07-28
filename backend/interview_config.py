@@ -57,13 +57,16 @@ async def fetch_interview_template(record_id: str, room_name: str = None) -> Opt
     Fetch interview questions and configuration from the API for a specific record ID
     """
     # Check if template is already cached
-    if record_id in DYNAMIC_TEMPLATES:
-        logger.info(f"Using cached template for record {record_id}")
-        return DYNAMIC_TEMPLATES[record_id]
+    # if record_id in DYNAMIC_TEMPLATES:
+    #     logger.info(f"Using cached template for record {record_id}")
+    #     return DYNAMIC_TEMPLATES[record_id]
     
     # API endpoint to fetch record data
-    api_url = os.getenv('NEXTJS_API_URL', 'http://localhost:3000')
+    api_url = os.getenv('NEXTJS_API_URL')
     endpoint = f"{api_url}/api/interview-template"
+
+    print(f"Fetching interview template for record {record_id} wiyh api url {endpoint}")
+    logger.info(f"Fetching interview template for record {record_id} wiyh api url {endpoint}")
     
     try:
         async with aiohttp.ClientSession() as session:
