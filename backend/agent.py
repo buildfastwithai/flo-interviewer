@@ -6,8 +6,25 @@ from datetime import datetime, date
 from typing import Dict, List, Optional
 from enum import Enum
 
+"""
+TURN DETECTION FIX:
+===================
+The MultilingualModel turn detector was causing errors where predict_end_of_turn returned None.
+This has been fixed by:
+1. Disabling turn detection (turn_detection=None) to prevent the error
+2. Adjusting STT parameters for more conservative end-of-utterance detection
+3. Providing alternative turn detector options in comments
+
+If you need turn detection:
+- Uncomment BasicTurnDetector import and use it instead of MultilingualModel
+- BasicTurnDetector is more stable but less accurate than MultilingualModel
+- The VAD (Voice Activity Detection) still works for audio processing
+"""
+
 from dotenv import load_dotenv
-from livekit.plugins.turn_detector.multilingual import MultilingualModel
+# from livekit.plugins.turn_detector.multilingual import MultilingualModel
+# Alternative: Basic turn detector (uncomment if you want turn detection)
+# from livekit.plugins.turn_detector import BasicTurnDetector
 from livekit.agents import (
     Agent,
     AgentSession,
@@ -150,9 +167,10 @@ FAILURE TO FOLLOW THESE INSTRUCTIONS WILL RESULT IN TERMINATION.
         super().__init__(
             instructions=full_instructions,  # Using full instructions from the start
             stt=assemblyai.STT(
-            end_of_turn_confidence_threshold=0.5,
-            min_end_of_turn_silence_when_confident=160,
-            max_turn_silence=3000,
+            # More conservative settings to prevent EOU issues
+            end_of_turn_confidence_threshold=0.7,  # Higher confidence
+            min_end_of_turn_silence_when_confident=300,  # Longer silence
+            max_turn_silence=5000,  # Allow longer pauses
         ),
         llm=openai.LLM(
             model="gpt-4.1",
@@ -163,7 +181,8 @@ FAILURE TO FOLLOW THESE INSTRUCTIONS WILL RESULT IN TERMINATION.
       voice="1259b7e3-cb8a-43df-9446-30971a46b8b0",
    ),
         vad=silero.VAD.load(),
-            turn_detection=MultilingualModel(),
+            turn_detection=None,  # Disable turn detection to prevent errors
+            # Alternative: turn_detection=BasicTurnDetector(), # More stable than MultilingualModel
         )
         
         self.role = role

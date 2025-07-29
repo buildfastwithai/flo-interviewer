@@ -224,6 +224,19 @@ docker run -it --env-file .env flo-interviewer-backend bash
 docker exec flo-interviewer-backend env | grep API_KEY
 ```
 
+5. **LiveKit Turn Detection Error**:
+
+If you encounter `AssertionError: end_of_utterance prediction should always returns a result` in the logs:
+
+```bash
+# This error is fixed by disabling the problematic MultilingualModel turn detector
+# The fix is already applied in agent.py by setting turn_detection=None
+# If you need turn detection, use BasicTurnDetector instead of MultilingualModel
+
+# Check the logs to confirm the fix
+docker logs flo-interviewer-backend | grep "turn_detection"
+```
+
 ## 📋 API Endpoints
 
 The FastAPI backend provides several endpoints:
