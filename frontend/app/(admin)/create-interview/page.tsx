@@ -345,7 +345,7 @@ export default function CreateInterviewPage() {
                           variant="outline" 
                           size="sm" 
                           className="border-[#F7F7FA] text-[#2663FF] hover:bg-[#2663FF]/10 shadow-sm transition-all duration-200"
-                          onClick={() => router.push(`/interview?code=${interview.accessCode}`)}
+                          onClick={() => router.push(`/interview-v2.1?code=${interview.accessCode}`)}
                         >
                           <LinkIcon className="h-4 w-4 mr-1" />
                           Join Interview
