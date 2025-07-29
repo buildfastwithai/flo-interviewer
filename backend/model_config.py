@@ -63,7 +63,7 @@ class AlternativeModelConfigs:
     def get_groq_llm():
         """Groq LLM alternative"""
         return groq.LLM(
-            model="llama3-70b-8192",
+            model="meta-llama/llama-4-scout-17b-16e-instruct",
             temperature=0.7,
         )
     
@@ -92,7 +92,7 @@ def get_interview_models():
     """
     return {
         'stt': ModelConfig.get_stt(),
-        'llm': ModelConfig.get_llm(),  # Change to AlternativeModelConfigs.get_faster_llm() for development
+        'llm': AlternativeModelConfigs.get_groq_llm(),  # Change to AlternativeModelConfigs.get_faster_llm() for development
         'tts': ModelConfig.get_tts(),
         'vad': ModelConfig.get_vad()
     }
