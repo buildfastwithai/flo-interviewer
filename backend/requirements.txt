@@ -58,6 +58,7 @@ livekit-plugins-google==1.1.3
 livekit-plugins-groq==1.1.3
 livekit-plugins-noise-cancellation==0.2.4
 livekit-plugins-openai==1.1.3
+livekit-plugins-sarvam==1.1.3
 livekit-plugins-silero==1.1.3
 livekit-plugins-turn-detector==1.1.3
 livekit-protocol==1.0.4
