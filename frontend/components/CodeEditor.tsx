@@ -358,7 +358,7 @@ export function CodeEditor({
                 )}
               </SelectValue>
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-white border-slate-700/50 backdrop-blur-sm text-black">
               {themes.map((themeOption) => (
                 <SelectItem key={themeOption.value} value={themeOption.value}>
                   <div className="flex items-center gap-2">
