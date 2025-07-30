@@ -548,9 +548,9 @@ Please ask this question in a natural, conversational manner. Don't mention ques
             <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse" />
             Live Session
           </Badge>
-          <Button variant="ghost" size="sm">
+          {/* <Button variant="ghost" size="sm">
             <Settings className="w-4 h-4" />
-          </Button>
+          </Button> */}
         </div>
       </motion.div>
 
