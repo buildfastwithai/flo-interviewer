@@ -203,7 +203,9 @@ export default function InterviewV21Page() {
         await askQuestion(nextIndex)
       } else {
         setInterviewStage("closing")
-        await voiceAgent.speak(template.closingTemplate)
+        const candidateFirstName = userData?.name?.split(' ')[0] || 'there'
+        const warmClosing = `Hey ${candidateFirstName}, do you have any questions for me about the role or the company?`
+        await voiceAgent.speak(warmClosing)
         setIsQuestionReady(true)
       }
     } else if (interviewStage === "closing") {
@@ -237,13 +239,41 @@ export default function InterviewV21Page() {
     }
 
     const transcriptContext = voiceAgent.transcript.map((t) => `${t.speaker}: ${t.text}`).join("\n")
+    const candidateFirstName = userData?.name?.split(' ')[0] || 'there'
 
+    // Enhanced prompt for more human-like conversation
     const prompt = `
+You are a warm, professional, and human interviewer conducting a technical interview. Your goal is to create a comfortable, conversational atmosphere while maintaining the structure of the interview.
+
+INTERVIEW PERSONALITY & COMMUNICATION STYLE:
+- Be warm, friendly, and encouraging throughout the interview
+- Use natural conversational phrases like "That's great to hear," "Alright, that's interesting," "I appreciate you sharing that"
+- Add human pauses and thinking moments - "Hmm, that's a good point," "Let me think about that for a moment"
+- Use the candidate's first name naturally in conversation
+- Speak in a conversational tone, not robotic or rapid-fire
+- Show genuine interest in their responses with phrases like "That's really interesting," "I see what you mean"
+- Use natural transitions like "Alright, now let's move on to something else," "Great, let's explore another area"
+- Only use full name of the candidate in starting of the interview and after that use only first name
+
 Previous conversation:
 ${transcriptContext}
 
-Current question (Question ${questionIndex + 1}):
+Current question to ask (Question ${questionIndex + 1}):
 ${questionText}
+
+HUMAN TOUCHES TO ADD:
+- Use natural pauses and thinking moments
+- Show genuine interest with phrases like "That's fascinating," "I'm curious about..."
+- Use conversational connectors: "You know," "Actually," "Well," "So," "Now,"
+- Add warmth with phrases like "I really appreciate you taking the time," "This is really helpful"
+- Use natural acknowledgments: "That makes sense," "I understand," "That's a good approach"
+- Show empathy: "I can see why you'd think that," "That's a challenging situation"
+- Sometimes use "Umm..." ,"Ahh...","Hmm..." so it sounds like a human is speaking
+
+
+The candidate's first name is ${candidateFirstName}.
+
+Remember: You're having a conversation with a real person. Be human, be warm, be professional, but most importantly, be yourself as an interviewer.
 
 Please ask this question in a natural, conversational manner. Don't mention question numbers.
     `
@@ -262,8 +292,13 @@ Please ask this question in a natural, conversational manner. Don't mention ques
   // End interview
   const endInterview = async () => {
     const endTime = new Date().toISOString()
+    const candidateFirstName = userData?.name?.split(' ')[0] || 'there'
 
     try {
+      // Add final closing message
+      const finalClosing = `That's totally fine! Thank you so much for your time today, ${candidateFirstName}. It was great talking with you. You can go ahead and end the call whenever you're ready. Take care!`
+      await voiceAgent.speak(finalClosing)
+
       await updateInterviewData({
         interviewId: interviewData?.interviewId,
         transcript: JSON.stringify(voiceAgent.transcript),
@@ -620,14 +655,18 @@ Please ask this question in a natural, conversational manner. Don't mention ques
               }}
             >
               <div className="text-lg font-medium mb-1">
-                {voiceAgent.isSpeaking ? "AI Speaking..." : voiceAgent.isListening ? "Listening..." : "Ready to Listen"}
+                {voiceAgent.isSpeaking 
+                  ? "Interviewer Speaking..." 
+                  : voiceAgent.isListening 
+                    ? "Listening to You..." 
+                    : "Ready to Listen"}
               </div>
               <div className="text-sm opacity-75">
                 {voiceAgent.isSpeaking
-                  ? "Please wait for the AI to finish"
+                  ? "Please wait while the interviewer speaks"
                   : voiceAgent.isListening
-                    ? "Flo Interviewer is processing your speech"
-                    : "Tap the microphone to start speaking"}
+                    ? "The interviewer is listening to your response"
+                    : "Tap the microphone when you're ready to speak"}
               </div>
             </motion.div>
 
@@ -734,7 +773,13 @@ Please ask this question in a natural, conversational manner. Don't mention ques
                               )}
                             </div>
 
-                            <Card className="bg-gradient-to-br from-slate-50 to-slate-100 border-slate-200">
+                            <div className="flex items-center gap-2 text-slate-600 text-sm bg-slate-50 rounded-lg p-4 mb-4">
+                              <Clock className="w-4 h-4" />
+                              <span>Take your time to think through your answer thoroughly</span>
+                            </div>
+
+                                    <ScrollArea className="h-[20vh]">
+                            <Card className="bg-gradient-to-br from-slate-50 to-slate-100 border-slate-200 h-[20vh]">
                               <CardContent className="p-8">
                                 <div className="prose prose-slate max-w-none">
                                   <p className="text-xl text-slate-800 leading-relaxed font-medium">
@@ -743,11 +788,9 @@ Please ask this question in a natural, conversational manner. Don't mention ques
                                 </div>
                               </CardContent>
                             </Card>
+                                    </ScrollArea>
 
-                            <div className="flex items-center gap-2 text-slate-600 text-sm bg-slate-50 rounded-lg p-4">
-                              <Clock className="w-4 h-4" />
-                              <span>Take your time to think through your answer thoroughly</span>
-                            </div>
+
                           </div>
                         )}
 
@@ -804,7 +847,7 @@ Please ask this question in a natural, conversational manner. Don't mention ques
                               </div>
                               <div className={`max-w-lg ${entry.speaker === "candidate" ? "text-right" : ""}`}>
                                 <div className="text-xs text-slate-500 mb-1">
-                                  {entry.speaker === "interviewer" ? "AI Interviewer" : userData?.name || "You"}
+                                  {entry.speaker === "interviewer" ? "Interviewer" : userData?.name || "You"}
                                   <span className="ml-2">
                                     {new Date(entry.timestamp).toLocaleTimeString([], {
                                       hour: "2-digit",

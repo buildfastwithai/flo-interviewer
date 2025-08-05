@@ -172,6 +172,15 @@ export const useAssemblyVoiceAgent = () => {
       return new Promise(async (resolve) => {
         try {
           setIsSpeaking(true)
+          setTranscript((prev) => [
+            ...prev,
+            {
+              speaker: "interviewer",
+              text,
+              timestamp: new Date().toISOString(),
+              questionNumber,
+            },
+          ])
 
           const response = await fetch("/api/assembly-tts", {
             method: "POST",
@@ -197,15 +206,7 @@ export const useAssemblyVoiceAgent = () => {
 
           audio.onended = () => {
             setIsSpeaking(false)
-            setTranscript((prev) => [
-              ...prev,
-              {
-                speaker: "interviewer",
-                text,
-                timestamp: new Date().toISOString(),
-                questionNumber,
-              },
-            ])
+            
             URL.revokeObjectURL(audioUrl)
             resolve()
           }
