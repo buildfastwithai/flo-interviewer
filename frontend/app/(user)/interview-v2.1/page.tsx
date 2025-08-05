@@ -36,7 +36,10 @@ import { useSearchParams } from "next/navigation"
 import InterviewFeedback from "@/components/interview-feedback"
 import { CodeEditor } from "@/components/CodeEditor"
 import { SelectTrigger, SelectValue, SelectContent, SelectItem, Select } from "@/components/ui/select"
+/* --- STT, TTS, and LLM version of code (commented out for OpenAI S2S migration) ---
 import { useAssemblyVoiceAgent } from "@/hooks/useAssemblyVoiceAgent"
+--- END STT, TTS, and LLM version of code --- */
+import { useOpenAIS2SAgent } from "@/hooks/useOpenAIS2SAgent"
 import { VoiceSelector } from "@/components/VoiceSelector"
 
 interface UserFormData {
@@ -99,7 +102,10 @@ export default function InterviewV21Page() {
   const [activeTab, setActiveTab] = useState("question")
   const transcriptScrollRef = useRef<HTMLDivElement>(null)
 
+  /* --- STT, TTS, and LLM version of code (commented out for OpenAI S2S migration) ---
   const voiceAgent = useAssemblyVoiceAgent()
+  --- END STT, TTS, and LLM version of code --- */
+  const voiceAgent = useOpenAIS2SAgent()
   const searchParams = useSearchParams()
   const startTimeRef = useRef<string>(new Date().toISOString())
 
@@ -481,9 +487,25 @@ Please ask this question in a natural, conversational manner. Don't mention ques
 
   // Auto-scroll transcript when new messages come in
   useEffect(() => {
-    if (transcriptScrollRef.current) {
-      transcriptScrollRef.current.scrollTop = transcriptScrollRef.current.scrollHeight
+    const scrollToBottom = () => {
+      if (transcriptScrollRef.current) {
+        const scrollElement = transcriptScrollRef.current.querySelector('[data-radix-scroll-area-viewport]')
+        if (scrollElement) {
+          scrollElement.scrollTo({
+            top: scrollElement.scrollHeight,
+            behavior: 'smooth'
+          })
+        }
+      }
     }
+
+    // Scroll immediately
+    scrollToBottom()
+    
+    // Also scroll after a short delay to ensure animations are complete
+    const timeoutId = setTimeout(scrollToBottom, 150)
+    
+    return () => clearTimeout(timeoutId)
   }, [voiceAgent.transcript])
 
   // Handle code submission
@@ -780,9 +802,9 @@ Please ask this question in a natural, conversational manner. Don't mention ques
 
                                     <ScrollArea className="h-[20vh]">
                             <Card className="bg-gradient-to-br from-slate-50 to-slate-100 border-slate-200 h-[20vh]">
-                              <CardContent className="p-8">
+                              <CardContent className="p-8 h-[20vh] overflow-y-auto">
                                 <div className="prose prose-slate max-w-none">
-                                  <p className="text-xl text-slate-800 leading-relaxed font-medium">
+                                  <p className="text-xl text-slate-800 leading-relaxed font-medium ">
                                     {getCurrentQuestion()?.displayText}
                                   </p>
                                 </div>
