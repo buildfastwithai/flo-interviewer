@@ -376,3 +376,112 @@ For issues and questions:
 1. Check the troubleshooting section above
 2. Review the logs in `backend/logs/`
 3. Open an issue in the repository
+
+# Interview Metrics Logging System
+
+This system tracks performance metrics for TTS (Text-to-Speech), STT (Speech-to-Text), and LLM (Language Model) operations during interviews.
+
+## Metrics Structure
+
+### Conversation Metrics
+Each conversation tracks detailed latency metrics:
+
+```typescript
+interface ConversationMetrics {
+  tts: {
+    total: number      // Total TTS duration
+    ttfb: number      // Time to first byte
+    ttft: number      // Time to first token
+  }
+  stt: {
+    total: number      // Total STT duration
+    ttfb: number      // Time to first byte
+    ttft: number      // Time to first token
+  }
+  llm: {
+    total: number      // Total LLM duration
+    ttfb: number      // Time to first byte
+    ttft: number      // Time to first token
+  }
+  timestamp: string
+}
+```
+
+### Interview Metrics
+Aggregated metrics for each interview:
+
+```typescript
+interface InterviewMetrics {
+  conversations: {
+    [key: string]: ConversationMetrics
+  }
+  avg_conversation_length: number
+  avg_conversation_duration: number
+  avg_conversation_tts: { total: number, ttfb: number, ttft: number }
+  avg_conversation_stt: { total: number, ttfb: number, ttft: number }
+  avg_conversation_llm: { total: number, ttfb: number, ttft: number }
+}
+```
+
+## Components
+
+### useMetrics Hook (`frontend/hooks/useMetrics.ts`)
+- Manages metrics state and persistence
+- Auto-generates conversation IDs
+- Calculates averages for interview metrics
+- Provides functions for logging and retrieving metrics
+
+### Metrics API (`frontend/app/api/metrics/route.ts`)
+- Handles reading/writing metrics.json
+- Supports GET and POST operations
+- Persists data to `frontend/hooks/metrics.json`
+
+### useOpenAIS2SAgent Integration (`frontend/hooks/useOpenAIS2SAgent.ts`)
+- Tracks timing for STT, LLM, and TTS operations
+- Measures TTFB (Time to First Byte) and TTFT (Time to First Token)
+- Logs metrics when audio playback completes
+
+## Timing Flow
+
+1. **STT Start** → Record start time
+2. **STT Request** → Record first byte time
+3. **STT Response** → Record first token time
+4. **STT End** → Calculate total STT time
+
+5. **LLM Start** → Record start time
+6. **LLM Request** → Record first byte time
+7. **LLM Response** → Record first token time
+8. **LLM End** → Calculate total LLM time
+
+9. **TTS Start** → Record start time
+10. **TTS Request** → Record first byte time
+11. **TTS Response** → Record first token time
+12. **TTS End** → Calculate total TTS time and log metrics
+
+## Usage
+
+```typescript
+import { useMetrics } from '@/hooks/useMetrics'
+
+const { logConversationMetrics, getInterviewMetrics } = useMetrics()
+
+// Metrics are automatically logged when conversations complete
+// You can retrieve metrics for analysis
+const interviewMetrics = getInterviewMetrics('interview_id')
+```
+
+## File Locations
+
+- **Metrics Hook**: `frontend/hooks/useMetrics.ts`
+- **Metrics API**: `frontend/app/api/metrics/route.ts`
+- **Metrics Storage**: `frontend/hooks/metrics.json`
+- **Agent Integration**: `frontend/hooks/useOpenAIS2SAgent.ts`
+- **Page Integration**: `frontend/app/(user)/interview-v2.1/page.tsx`
+
+## Latency Metrics Explained
+
+- **TTFB (Time to First Byte)**: Time from request start to first byte received
+- **TTFT (Time to First Token)**: Time from request start to first token/response received
+- **Total**: Complete duration of the operation
+
+These metrics help identify network latency, processing time, and overall performance bottlenecks in the interview system.

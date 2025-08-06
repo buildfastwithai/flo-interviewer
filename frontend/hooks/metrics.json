@@ -1,0 +1,136 @@
+{
+  "interviews": {
+    "a642cf9f-0414-44f3-9493-3836f410e595": {
+      "conversations": {
+        "conversation_1": {
+          "tts": {
+            "total": 3870,
+            "ttfb": 0,
+            "ttft": 3475
+          },
+          "stt": {
+            "total": 83144,
+            "ttfb": -1754487708422,
+            "ttft": -1754487708422
+          },
+          "llm": {
+            "total": 2965,
+            "ttfb": 0,
+            "ttft": 0
+          },
+          "timestamp": "2025-08-06T13:43:32.915Z"
+        },
+        "conversation_2": {
+          "tts": {
+            "total": 4206,
+            "ttfb": 0,
+            "ttft": 5469
+          },
+          "stt": {
+            "total": 33846,
+            "ttfb": -74917,
+            "ttft": -72878
+          },
+          "llm": {
+            "total": 3285,
+            "ttfb": 0,
+            "ttft": 6027
+          },
+          "timestamp": "2025-08-06T13:44:07.734Z"
+        },
+        "conversation_3": {
+          "tts": {
+            "total": 4415,
+            "ttfb": 0,
+            "ttft": 3835
+          },
+          "stt": {
+            "total": 42511,
+            "ttfb": -25102,
+            "ttft": -23347
+          },
+          "llm": {
+            "total": 4691,
+            "ttfb": 0,
+            "ttft": 2965
+          },
+          "timestamp": "2025-08-06T13:44:45.468Z"
+        },
+        "conversation_4": {
+          "tts": {
+            "total": 3287,
+            "ttfb": 0,
+            "ttft": 4181
+          },
+          "stt": {
+            "total": 38120,
+            "ttfb": -35449,
+            "ttft": -33246
+          },
+          "llm": {
+            "total": 3131,
+            "ttfb": 0,
+            "ttft": 3285
+          },
+          "timestamp": "2025-08-06T13:45:15.346Z"
+        },
+        "conversation_5": {
+          "tts": {
+            "total": 2699,
+            "ttfb": 0,
+            "ttft": 4386
+          },
+          "stt": {
+            "total": 82075,
+            "ttfb": -30576,
+            "ttft": -29318
+          },
+          "llm": {
+            "total": 3182,
+            "ttfb": 0,
+            "ttft": 4691
+          },
+          "timestamp": "2025-08-06T13:46:29.833Z"
+        },
+        "conversation_6": {
+          "tts": {
+            "total": 4028,
+            "ttfb": 0,
+            "ttft": 6777
+          },
+          "stt": {
+            "total": 46596,
+            "ttfb": -70758,
+            "ttft": -69323
+          },
+          "llm": {
+            "total": 4306,
+            "ttfb": 0,
+            "ttft": 3131
+          },
+          "timestamp": "2025-08-06T13:47:24.036Z"
+        }
+      },
+      "avg_conversation_length": 6,
+      "avg_conversation_duration": 61726.166666666664,
+      "avg_conversation_tts": {
+        "total": 3750.8333333333335,
+        "ttfb": 0,
+        "ttft": 4687.166666666667
+      },
+      "avg_conversation_stt": {
+        "total": 54382,
+        "ttfb": -292414657537.3333,
+        "ttft": -292414656089
+      },
+      "avg_conversation_llm": {
+        "total": 3593.3333333333335,
+        "ttfb": 0,
+        "ttft": 3349.8333333333335
+      }
+    }
+  },
+  "total": 3,
+  "success": 3,
+  "failed": 0
+}

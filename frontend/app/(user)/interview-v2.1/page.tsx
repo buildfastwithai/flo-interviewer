@@ -41,6 +41,7 @@ import { useAssemblyVoiceAgent } from "@/hooks/useAssemblyVoiceAgent"
 --- END STT, TTS, and LLM version of code --- */
 import { useOpenAIS2SAgent } from "@/hooks/useOpenAIS2SAgent"
 import { VoiceSelector } from "@/components/VoiceSelector"
+import { useMetrics } from "@/hooks/useMetrics"
 
 interface UserFormData {
   name: string
@@ -106,6 +107,7 @@ export default function InterviewV21Page() {
   const voiceAgent = useAssemblyVoiceAgent()
   --- END STT, TTS, and LLM version of code --- */
   const voiceAgent = useOpenAIS2SAgent()
+  const { logConversationMetrics } = useMetrics()
   const searchParams = useSearchParams()
   const startTimeRef = useRef<string>(new Date().toISOString())
 
@@ -163,6 +165,12 @@ export default function InterviewV21Page() {
       })
       setUserData(formData)
       setInterviewStage("intro")
+      
+      // Set candidate name in the voice agent
+      voiceAgent.setCandidateName(formData.name.split(' ')[0] || 'there')
+      
+      // Set interview ID for metrics tracking
+      voiceAgent.setInterviewAndConversationIds(interviewResponse.id, "conversation_1")
 
       await createInterviewData({
         interviewId: interviewResponse.id,
@@ -190,9 +198,12 @@ export default function InterviewV21Page() {
 
   // Start introduction
   const startIntroduction = async (introText: string) => {
-    await voiceAgent.speak(introText)
+    const candidateFirstName = userData?.name?.split(' ')[0] || 'there'
+    await voiceAgent.startIntroduction(introText, candidateFirstName)
     setIsQuestionReady(true)
   }
+
+
 
   // Move to next question
   const handleSaveAndNext = async () => {
@@ -211,7 +222,7 @@ export default function InterviewV21Page() {
         setInterviewStage("closing")
         const candidateFirstName = userData?.name?.split(' ')[0] || 'there'
         const warmClosing = `Hey ${candidateFirstName}, do you have any questions for me about the role or the company?`
-        await voiceAgent.speak(warmClosing)
+        await voiceAgent.startClosing(warmClosing, candidateFirstName)
         setIsQuestionReady(true)
       }
     } else if (interviewStage === "closing") {
@@ -244,7 +255,6 @@ export default function InterviewV21Page() {
       setActiveTab("question")
     }
 
-    const transcriptContext = voiceAgent.transcript.map((t) => `${t.speaker}: ${t.text}`).join("\n")
     const candidateFirstName = userData?.name?.split(' ')[0] || 'there'
 
     // Enhanced prompt for more human-like conversation
@@ -261,9 +271,6 @@ INTERVIEW PERSONALITY & COMMUNICATION STYLE:
 - Use natural transitions like "Alright, now let's move on to something else," "Great, let's explore another area"
 - Only use full name of the candidate in starting of the interview and after that use only first name
 
-Previous conversation:
-${transcriptContext}
-
 Current question to ask (Question ${questionIndex + 1}):
 ${questionText}
 
@@ -276,7 +283,6 @@ HUMAN TOUCHES TO ADD:
 - Show empathy: "I can see why you'd think that," "That's a challenging situation"
 - Sometimes use "Umm..." ,"Ahh...","Hmm..." so it sounds like a human is speaking
 
-
 The candidate's first name is ${candidateFirstName}.
 
 Remember: You're having a conversation with a real person. Be human, be warm, be professional, but most importantly, be yourself as an interviewer.
@@ -286,11 +292,11 @@ Please ask this question in a natural, conversational manner. Don't mention ques
 
     try {
       const response = await voiceAgent.generateResponse(prompt)
-      await voiceAgent.speak(response, questionIndex + 1)
+      await voiceAgent.askQuestion(response, questionIndex, candidateFirstName, template.questions.length)
       setIsQuestionReady(true)
     } catch (error) {
       console.error("Error asking question:", error)
-      await voiceAgent.speak(questionText, questionIndex + 1)
+      await voiceAgent.askQuestion(questionText, questionIndex, candidateFirstName, template.questions.length)
       setIsQuestionReady(true)
     }
   }
@@ -526,6 +532,8 @@ Please ask this question in a natural, conversational manner. Don't mention ques
       },
     ])
 
+    // Clear the code state after submission
+    voiceAgent.clearCodeState()
     toast.success("Code submitted successfully!")
   }
 
@@ -673,7 +681,7 @@ Please ask this question in a natural, conversational manner. Don't mention ques
             <motion.div
               className="text-center mb-8"
               animate={{
-                color: voiceAgent.isSpeaking ? "#f7a828" : voiceAgent.isListening ? "#2663FF" : "#94A3B8",
+                color: voiceAgent.isSpeaking ? "#f7a828" : voiceAgent.isListening ? "#2663FF" : voiceAgent.isProcessingResponse ? "#8B5CF6" : "#94A3B8",
               }}
             >
               <div className="text-lg font-medium mb-1">
@@ -681,14 +689,18 @@ Please ask this question in a natural, conversational manner. Don't mention ques
                   ? "Interviewer Speaking..." 
                   : voiceAgent.isListening 
                     ? "Listening to You..." 
-                    : "Ready to Listen"}
+                    : voiceAgent.isProcessingResponse
+                      ? "Processing Response..."
+                      : "Ready to Listen"}
               </div>
               <div className="text-sm opacity-75">
                 {voiceAgent.isSpeaking
                   ? "Please wait while the interviewer speaks"
                   : voiceAgent.isListening
                     ? "The interviewer is listening to your response"
-                    : "Tap the microphone when you're ready to speak"}
+                    : voiceAgent.isProcessingResponse
+                      ? "The interviewer is thinking about your response"
+                      : "Tap the microphone when you're ready to speak"}
               </div>
             </motion.div>
 
@@ -703,7 +715,7 @@ Please ask this question in a natural, conversational manner. Don't mention ques
                   <Button
                     onClick={handleSaveAndNext}
                     className="bg-gradient-to-r from-[#f7a828] to-[#f59e0b] hover:from-[#f59e0b] hover:to-[#f7a828] text-white px-8 py-3 rounded-xl font-medium shadow-lg"
-                    disabled={voiceAgent.isSpeaking}
+                    disabled={voiceAgent.isSpeaking || voiceAgent.isProcessingResponse}
                   >
                     {interviewStage === "intro"
                       ? "Start Questions"
@@ -717,17 +729,43 @@ Please ask this question in a natural, conversational manner. Don't mention ques
                 </motion.div>
               )}
             </AnimatePresence>
+
+            {/* Interactive Instructions */}
+            <AnimatePresence>
+              {isQuestionReady && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="text-center mt-4"
+                >
+                  <div className="text-xs text-slate-400 bg-slate-800/50 rounded-lg p-3 backdrop-blur-sm">
+                    <div className="flex items-center justify-center gap-2 mb-1">
+                      <MessageSquare className="w-3 h-3" />
+                      <span className="font-medium">Interactive Interview</span>
+                    </div>
+                    <p className="text-xs">
+                      {interviewStage === "intro"
+                        ? "Speak naturally with the interviewer. When ready, click the button above to start questions."
+                        : interviewStage === "questions"
+                          ? "The interviewer will respond to your answers and may ask follow-up questions. Click the button above when ready for the next question."
+                          : "The interviewer will answer your questions about the role or company."}
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Voice Selector */}
-          <div className="p-6 border-t border-slate-700/50 relative z-10">
+          {/* <div className="p-6 border-t border-slate-700/50 relative z-10">
             <VoiceSelector
               selectedVoice={voiceAgent.selectedVoice}
               onVoiceChange={voiceAgent.setSelectedVoice}
               onTestVoice={voiceAgent.testVoice}
               isPlaying={voiceAgent.isSpeaking}
             />
-          </div>
+          </div> */}
         </motion.div>
 
         {/* Main Content */}
@@ -774,8 +812,9 @@ Please ask this question in a natural, conversational manner. Don't mention ques
                             </CardHeader>
                             <CardContent>
                               <p className="text-blue-700 leading-relaxed">
-                                The AI interviewer will introduce the interview process. Listen carefully and respond
-                                when ready to begin.
+                                The AI interviewer will introduce the interview process and respond to your input. 
+                                You can have a natural conversation with the interviewer. When you're ready to proceed 
+                                to the questions, click the button below.
                               </p>
                             </CardContent>
                           </Card>
@@ -797,7 +836,7 @@ Please ask this question in a natural, conversational manner. Don't mention ques
 
                             <div className="flex items-center gap-2 text-slate-600 text-sm bg-slate-50 rounded-lg p-4 mb-4">
                               <Clock className="w-4 h-4" />
-                              <span>Take your time to think through your answer thoroughly</span>
+                              <span>Take your time to think through your answer thoroughly. The interviewer will respond to your answers and may ask follow-up questions.</span>
                             </div>
 
                                     <ScrollArea className="h-[20vh]">
@@ -828,8 +867,8 @@ Please ask this question in a natural, conversational manner. Don't mention ques
                             </CardHeader>
                             <CardContent>
                               <p className="text-green-700 leading-relaxed">
-                                Thank you for completing all the questions. The interviewer will now provide closing
-                                remarks.
+                                Thank you for completing all the questions. The interviewer will now ask if you have 
+                                any questions about the role or company. You can have a natural conversation about this.
                               </p>
                             </CardContent>
                           </Card>
