@@ -13,14 +13,15 @@ export async function GET() {
         },
       },
       orderBy: [
-        { interviewId: 'asc' }, // Group by interview ID first
-        { startTime: 'desc' }   // Then sort by start time (newest first)
+        // { interviewId: 'asc' }, // Group by interview ID first
+        // { startTime: 'desc' }   // Then sort by start time (newest first)
+        { createdAt: "desc" },
       ],
     });
 
-    return NextResponse.json({ 
-      success: true, 
-      data: interviews 
+    return NextResponse.json({
+      success: true,
+      data: interviews,
     });
   } catch (error) {
     console.error("Error fetching interview data:", error);
@@ -29,4 +30,4 @@ export async function GET() {
       { status: 500 }
     );
   }
-} 
+}
