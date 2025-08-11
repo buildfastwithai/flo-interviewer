@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef, Suspense } from "react";
-import { Room, RoomEvent } from "livekit-client";
+import { useState, useCallback, useEffect, useRef, Suspense, useContext } from "react";
+import { Room, RoomEvent, Track, LocalAudioTrack } from "livekit-client";
 import {
   BarVisualizer,
   DisconnectButton,
@@ -30,6 +30,7 @@ import { InteractiveHoverButton } from "@/components/magicui/interactive-hover-b
 import { AnimatedGradientText } from "@/components/magicui/animated-gradient-text";
 import { useSearchParams } from "next/navigation";
 import InterviewFeedback from "@/components/interview-feedback";
+import { InterviewVAD } from "@/lib/interview-vad";
 
 interface UserFormData {
   name: string;
@@ -56,6 +57,8 @@ export default function InterviewPage() {
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedback, setFeedback] = useState<any>(null);
   const [isFeedbackLoading, setIsFeedbackLoading] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const vadRef = useRef<InterviewVAD | null>(null);
 
   const onJoinInterview = useCallback(
     async (formData: UserFormData) => {
@@ -110,6 +113,23 @@ export default function InterviewPage() {
         
         // Enable microphone
         await room.localParticipant.setMicrophoneEnabled(true);
+        
+        // Setup client-side VAD based on local microphone track
+        try {
+          const micPub = room.localParticipant.audioTrackPublications.values().next().value;
+          const track: LocalAudioTrack | undefined = micPub?.track as LocalAudioTrack | undefined;
+          if (track) {
+            const mediaStream = new MediaStream([track.mediaStreamTrack]);
+            const vad = new InterviewVAD();
+            await vad.initialize();
+            vad.onSpeechStart = () => setIsSpeaking(true);
+            vad.onSpeechEnd = () => setIsSpeaking(false);
+            await vad.startListening(mediaStream);
+            vadRef.current = vad;
+          }
+        } catch (e) {
+          console.warn('VAD init failed:', e);
+        }
         console.log("Microphone enabled");
         
         // Initialize interview data
@@ -162,6 +182,11 @@ export default function InterviewPage() {
     room.on(RoomEvent.MediaDevicesError, onDeviceFailure);
     return () => {
       room.off(RoomEvent.MediaDevicesError, onDeviceFailure);
+      // Cleanup VAD if initialized
+      if (vadRef.current) {
+        try { vadRef.current.stop(); } catch {}
+        vadRef.current = null;
+      }
     };
   }, [room]);
 
@@ -574,6 +599,7 @@ function UserForm({
 
 function InterviewInterface({ isDemoMode = false, interviewId, onTranscriptUpdate, candidateName, showFeedbackModal, setShowFeedbackModal, feedback, isFeedbackLoading }: { isDemoMode?: boolean, interviewId?: string, onTranscriptUpdate: (newTranscriptions: any[]) => void, candidateName: string, showFeedbackModal: boolean, setShowFeedbackModal: (show: boolean) => void, feedback: any, isFeedbackLoading: boolean }) {
   const { state: agentState, audioTrack } = useVoiceAssistant();
+  const [speaking, setSpeaking] = useState(false);
   const transcriptions = useCombinedTranscriptions();
 
   const isRecording = agentState === "listening";
@@ -669,11 +695,11 @@ function InterviewInterface({ isDemoMode = false, interviewId, onTranscriptUpdat
               <motion.span 
                 className="text-white text-sm font-medium bg-[#1D244F]/80 px-4 py-1 rounded-full border border-[#2663FF]/20"
                 animate={{ 
-                  backgroundColor: isRecording ? 'rgba(38, 99, 255, 0.3)' : 'rgba(29, 36, 79, 0.8)'
+                  backgroundColor: (isRecording || speaking) ? 'rgba(38, 99, 255, 0.3)' : 'rgba(29, 36, 79, 0.8)'
                 }}
                 transition={{ duration: 0.3 }}
               >
-                {isRecording ? "Listening..." : "Tap to speak"}
+                {(isRecording || speaking) ? "Listening..." : "Tap to speak"}
               </motion.span>
 
               {/* Voice Assistant Controls */}
