@@ -2,7 +2,8 @@
 Audio configuration helpers for the interviewer agent.
 
 Provides tuned VAD and STT instances suitable for interview scenarios
-without altering the rest of the interview format or flow.
+without altering the rest of the interview format or flow. These helpers
+are optional and enabled via environment flags in agent.py.
 """
 
 from __future__ import annotations

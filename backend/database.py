@@ -1,6 +1,13 @@
 """
 Database Client Module
-Handles Prisma database connections and operations
+Handles Prisma database connections and operations.
+
+This module exposes a minimal async API:
+- get_prisma_client(): create/reuse the Prisma client
+- close_prisma_client(): close connection on shutdown
+- fetch_interview_template_data(record_id): return a dict with
+  jobTitle, interviewLength, skills, and questions that downstream
+  code (e.g., interview_config) expects.
 """
 
 import os
@@ -62,7 +69,7 @@ async def fetch_interview_template_data(record_id: str) -> Optional[dict]:
         
         logger.info(f"Found record: {record.jobTitle} with {len(record.skills)} skills and {len(record.questions)} questions")
         
-        # Transform the data into the format expected by the interview agent
+        # Transform to the flattened shape the agent/config builder expects
         template_data = {
             'id': record.id,
             'jobTitle': record.jobTitle,

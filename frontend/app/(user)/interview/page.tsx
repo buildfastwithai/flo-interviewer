@@ -30,7 +30,7 @@ import { InteractiveHoverButton } from "@/components/magicui/interactive-hover-b
 import { AnimatedGradientText } from "@/components/magicui/animated-gradient-text";
 import { useSearchParams } from "next/navigation";
 import InterviewFeedback from "@/components/interview-feedback";
-import { InterviewVAD } from "@/lib/interview-vad";
+import { InterviewVAD } from "@/lib/interview-vad"; // Client-side VAD helper for responsive UI
 
 interface UserFormData {
   name: string;
@@ -57,6 +57,7 @@ export default function InterviewPage() {
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedback, setFeedback] = useState<any>(null);
   const [isFeedbackLoading, setIsFeedbackLoading] = useState(false);
+  // Local VAD-driven speaking indicator (does not affect agent logic)
   const [isSpeaking, setIsSpeaking] = useState(false);
   const vadRef = useRef<InterviewVAD | null>(null);
 
@@ -114,7 +115,8 @@ export default function InterviewPage() {
         // Enable microphone
         await room.localParticipant.setMicrophoneEnabled(true);
         
-        // Setup client-side VAD based on local microphone track
+        // Setup client-side VAD based on local microphone track to drive
+        // the UI "Listening..." indicator. This does not change backend flow.
         try {
           const micPub = room.localParticipant.audioTrackPublications.values().next().value;
           const track: LocalAudioTrack | undefined = micPub?.track as LocalAudioTrack | undefined;

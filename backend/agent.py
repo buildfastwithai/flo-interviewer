@@ -24,6 +24,8 @@ If you need turn detection:
 from dotenv import load_dotenv
 # from livekit.plugins.turn_detector.multilingual import MultilingualModel
 # Alternative: Basic turn detector (env-guarded; safer default)
+# Note: We only enable this via TURN_DETECTION env to avoid altering
+# existing behavior by default. If unavailable or init fails, we fall back to None.
 try:
     from livekit.plugins.turn_detector import BasicTurnDetector  # type: ignore
 except Exception:  # pragma: no cover
@@ -58,7 +60,8 @@ from metrics import MetricsCollector
 # Import our logger
 from logger import logger, log_info, log_error, log_warning, log_interview_data, setup_logger
 
-# Enhanced audio helpers (tuned VAD/STT). Safe defaults if unavailable
+# Enhanced audio helpers (tuned VAD/STT). Safe defaults if unavailable.
+# These allow swapping STT/VAD via env without changing the interview format.
 try:
     from audio import get_vad, get_enhanced_audio
 except Exception:
@@ -164,7 +167,9 @@ Remember: You're having a genuine conversation with a real person. Be authentic,
             full_instructions = f"You are an interviewer for {role}. Wait for further instructions."
         
         # Pass FULL instructions to parent class
-        # Configure turn detection via env flag with safe fallback
+        # Configure turn detection via env flag with safe fallback.
+        # TURN_DETECTION=basic enables BasicTurnDetector; any failure or other
+        # value results in turn detection being disabled (None).
         turn_detection_impl = None
         td_mode = os.getenv("TURN_DETECTION", "none").lower().strip()
         if td_mode == "basic" and BasicTurnDetector is not None:
@@ -175,6 +180,9 @@ Remember: You're having a genuine conversation with a real person. Be authentic,
         elif td_mode in ("none", "off", "disable"):
             turn_detection_impl = None
 
+        # Important: We preserve the existing STT EOU tuning and LLM/TTS
+        # configuration so the interview format does not change. Turn detection
+        # is injected from the env-driven variable above.
         super().__init__(
             instructions=full_instructions,  # Using full instructions from the start
             stt=assemblyai.STT(
@@ -232,7 +240,8 @@ Remember: You're having a genuine conversation with a real person. Be authentic,
             "metrics": self.metrics_collector.metrics_data
         }
         
-        # Set up metrics collectors
+        # Set up metrics collectors: forward component metrics into our
+        # MetricsCollector so we can compute aggregates on exit.
         def llm_metrics_wrapper(metrics: LLMMetrics):
             asyncio.create_task(self.metrics_collector.on_llm_metrics_collected(metrics))
         
@@ -303,7 +312,9 @@ Remember: You're having a genuine conversation with a real person. Be authentic,
 
 
 def prewarm(proc: JobProcess):
-    # Use tuned VAD/STT if helpers are available; fall back to defaults
+    # Prewarm audio components before sessions start to reduce first-reply
+    # latency. Uses tuned VAD/STT from audio.py when available; otherwise
+    # falls back to library defaults.
     vad_instance = None
     stt_instance = None
     try:
@@ -424,7 +435,9 @@ async def entrypoint(ctx: JobContext):
         usage_collector.collect(agent_metrics)
         
 
-    # Build session with tuned VAD and optionally STT from prewarm based on env flag
+    # Build session with tuned VAD and optionally STT from prewarm.
+    # SESSION_STT_FROM_AUDIO=true opts in to using the prewarmed STT; default
+    # keeps current behavior unchanged.
     session_kwargs = {
         "vad": ctx.proc.userdata["vad"],
         # Adjusted for interview context - longer delays for thinking time

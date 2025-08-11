@@ -7,7 +7,7 @@ from logger import logger, log_metrics
 
 class MetricsCollector:
     def __init__(self):
-        # Initialize metrics storage
+        # Initialize metrics storage; individual events are appended during run
         self.metrics_data = {
             "llm": [],
             "stt": [],
@@ -16,7 +16,7 @@ class MetricsCollector:
         }
 
     async def on_llm_metrics_collected(self, metrics: LLMMetrics) -> None:
-        """Collect and store LLM metrics"""
+        """Collect and store LLM metrics (tokens, speed, ttft)."""
         metrics_obj = {
             "prompt_tokens": metrics.prompt_tokens,
             "completion_tokens": metrics.completion_tokens,
@@ -28,7 +28,7 @@ class MetricsCollector:
         log_metrics(metrics_obj, "LLM")
 
     async def on_stt_metrics_collected(self, metrics: STTMetrics) -> None:
-        """Collect and store STT metrics"""
+        """Collect and store STT metrics (durations, streaming)."""
         metrics_obj = {
             "duration": round(metrics.duration, 4),
             "audio_duration": round(metrics.audio_duration, 4),
@@ -39,7 +39,7 @@ class MetricsCollector:
         log_metrics(metrics_obj, "STT")
 
     async def on_eou_metrics_collected(self, metrics: EOUMetrics) -> None:
-        """Collect and store EOU metrics"""
+        """Collect and store End-Of-Utterance metrics (timings)."""
         metrics_obj = {
             "end_of_utterance_delay": round(metrics.end_of_utterance_delay, 4),
             "transcription_delay": round(metrics.transcription_delay, 4),
@@ -49,7 +49,7 @@ class MetricsCollector:
         log_metrics(metrics_obj, "EOU")
 
     async def on_tts_metrics_collected(self, metrics: TTSMetrics) -> None:
-        """Collect and store TTS metrics"""
+        """Collect and store TTS metrics (latency, durations)."""
         metrics_obj = {
             "ttfb": round(metrics.ttfb, 4),
             "duration": round(metrics.duration, 4),
@@ -61,7 +61,7 @@ class MetricsCollector:
         log_metrics(metrics_obj, "TTS")
 
     def calculate_avg_metrics(self) -> Dict:
-        """Calculate average metrics for all categories"""
+        """Calculate category-wise averages for dashboarding/reporting."""
         avg_metrics = {
             "llm": self._calculate_avg_llm_metrics(),
             "stt": self._calculate_avg_stt_metrics(),

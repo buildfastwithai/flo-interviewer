@@ -1,7 +1,10 @@
 """
-    Interview Configuration Module
-    Contains role-specific question banks
-    """
+Interview Configuration Module
+Builds a DynamicInterviewTemplate from DB records for a given record_id.
+
+The resulting template carries skills and their associated questions so the
+agent can present questions in a fixed order without changing format.
+"""
 
 import os
 import logging
@@ -49,13 +52,11 @@ class DynamicInterviewTemplate:
             If they don't have questions, thank them for their time and ask them to end the interview and say goodbye and don't speak any more
             """
 
-# Dictionary to cache dynamic interview templates
+# Dictionary to cache dynamic interview templates (optional cache)
 DYNAMIC_TEMPLATES = {}
 
 async def fetch_interview_template(record_id: str, room_name: str = None) -> Optional[DynamicInterviewTemplate]:
-    """
-    Fetch interview questions and configuration directly from the database for a specific record ID
-    """
+    """Fetch questions/config from DB and map them into our template dataclasses."""
     # Check if template is already cached
     # if record_id in DYNAMIC_TEMPLATES:
     #     logger.info(f"Using cached template for record {record_id}")
@@ -81,7 +82,7 @@ async def fetch_interview_template(record_id: str, room_name: str = None) -> Opt
             closing_script=data.get('closingScript', '')
         )
         
-        # Parse skills and questions
+        # Parse skills and map associated questions by skillId
         skills = []
         for skill_data in data.get('skills', []):
             skill = Skill(
@@ -104,7 +105,7 @@ async def fetch_interview_template(record_id: str, room_name: str = None) -> Opt
         
         template.skills = skills
         
-        # Cache the template
+        # Cache the template for potential reuse in the process lifetime
         DYNAMIC_TEMPLATES[record_id] = template
         
         logger.info(f"Successfully fetched interview template for record {record_id}")

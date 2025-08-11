@@ -6,7 +6,7 @@ import os
 import sys
 import io
 
-# Ensure logs directory exists
+# Ensure logs directory exists for file-based logging
 os.makedirs('logs', exist_ok=True)
 
 # Create and configure the logger
