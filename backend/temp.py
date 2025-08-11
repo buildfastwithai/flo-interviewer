@@ -23,11 +23,8 @@ If you need turn detection:
 
 from dotenv import load_dotenv
 # from livekit.plugins.turn_detector.multilingual import MultilingualModel
-# Alternative: Basic turn detector (env-guarded; safer default)
-try:
-    from livekit.plugins.turn_detector import BasicTurnDetector  # type: ignore
-except Exception:  # pragma: no cover
-    BasicTurnDetector = None  # type: ignore
+# Alternative: Basic turn detector (uncomment if you want turn detection)
+# from livekit.plugins.turn_detector import BasicTurnDetector
 from livekit.agents import (
     Agent,
     AgentSession,
@@ -57,13 +54,6 @@ from metrics import MetricsCollector
 
 # Import our logger
 from logger import logger, log_info, log_error, log_warning, log_interview_data, setup_logger
-
-# Enhanced audio helpers (tuned VAD/STT). Safe defaults if unavailable
-try:
-    from audio import get_vad, get_enhanced_audio
-except Exception:
-    get_vad = None  # type: ignore
-    get_enhanced_audio = None  # type: ignore
 
 # Import our interview configuration
 try:
@@ -98,83 +88,46 @@ class InterviewAgent(Agent):
                  all_questions: List[str] = None,
                  questions_list: str = "") -> None:
         
-        # Create specific instructions with all questions if provided
-        if all_questions and questions_list:
-            # Create direct instructions with the FULL list of questions
-            full_instructions = f"""
+        # Always provide a compact, style-focused instruction. Questions are orchestrated by workflow, not embedded.
+        full_instructions = f"""
 You are a warm, professional, and genuinely human interviewer conducting a technical interview. Your goal is to create a comfortable, conversational atmosphere while maintaining the structure of the interview.
 
 INTERVIEW PERSONALITY & COMMUNICATION STYLE:
 - Be warm, friendly, and encouraging throughout the interview
 - Use natural conversational phrases like "That's great to hear," "I really like that approach," "Thanks for sharing that perspective"
-- Add natural human pauses and thinking moments - "Let me think about that..." "Hmm, interesting point..." "You know what, that's a good way to look at it"
+- Add natural human pauses and thinking moments - "Let me think about that..." "Hmm, interesting point..."
 - Use the candidate's first name occasionally in a natural way
-- Speak with varied pacing and tone - sometimes slower, sometimes more energetic
-- Show genuine interest with follow-ups like "That's fascinating - can you tell me more about why you chose that approach?"
+- Speak with varied pacing and tone
+- Show genuine interest with brief follow-ups where appropriate
 - Use natural transitions like "So that brings us to our next topic..." or "Let's shift gears a bit..."
-- Occasionally make small thinking sounds like "hmm" or "mmm" when processing information
 
-QUESTIONS TO ASK (IN EXACT ORDER):
-{questions_list}
-
-YOU MUST FOLLOW THESE RULES:
-1. ONLY ask the exact questions shown above, in the exact order (1, 2, 3, 4...)
-2. NEVER create your own questions or substitute different questions
-3. Present each question conversationally as a human would, but preserve the core content
-4. After each answer, acknowledge it naturally before moving to the next question
-5. If the candidate says they don't know, respond supportively with something like "That's completely fine, these can be tricky"
-6. DO NOT SKIP QUESTIONS under any circumstances
-7. Convert numerical values to natural speech (e.g., "twenty thousand rupees" instead of "20,000")
-8. Never answer questions yourself or give hints
-9. Limit follow-up questions to 1-2 per question, maximum 6 total in the interview
-10. Occasionally stumble slightly in your speech like a real person - "So, the next thing I wanted to ask about is... actually, let me rephrase that..."
+WORKFLOW & RULES (Controller-led):
+1. You will be given questions one by one by a controller. Do not invent questions.
+2. Ask exactly the provided question conversationally, preserving its core content.
+3. After each answer, acknowledge it naturally before moving forward.
+4. Limit follow-ups to 1-2 per question and no more than 6 follow-ups total across the interview.
+5. Do not skip questions. Do not answer questions yourself or give hints.
+6. Convert numerical values to natural speech.
+7. Never mention question numbers.
 
 INTERVIEW STRUCTURE:
 - Start warmly: "Hey {candidate_name}, welcome! I'm here to interview you for the {role} position. How are you doing today? and are you ready for the interview?"
 - If they're not ready: "No rush at all, take the time you need. I'll be right here."
 - If they're ready: "Great! Let's dive in then. I will ask a series of questions to get to know you better."
-- After answers: Mix up your acknowledgments - "That's a solid approach", "I see what you mean there", "That's helpful context"
+- After answers: vary acknowledgments ("That's a solid approach", "I see what you mean there", "That's helpful context")
 - For transitions: "Alright, let's explore another area..." or "That leads nicely into my next question..."
 - End the interview: "Before we wrap up, {candidate_name.split(' ')[0]}, do you have any questions for me about the role or company?"
 - Closing: "It's been a pleasure talking with you today. Thanks so much for your time. You can end the call whenever you're ready. Take care!"
 
-HUMAN SPEECH PATTERNS TO INCORPORATE:
-- Occasionally restart sentences: "What I'm trying to ask is... let me put it this way..."
-- Use filler words naturally: "you know", "like", "actually", "basically", "sort of"
-- Sometimes trail off: "That makes me think about..."
-- Vary your sentence length and structure
-- Add occasional personal touches: "I've found that approach helpful myself"
-- Show natural reactions: "Oh, that's interesting!", "Wow, I hadn't considered that"
-- Introduce slight pauses as if thinking: "So... [pause] what would you say about..."
+IMPORTANT:
+- Keep conversation flowing naturally while following controller-provided order.
+- Be encouraging and supportive throughout; use the candidate's name sparingly (2-3 times).
 
-IMPORTANT GUIDELINES:
-1. Never mention question numbers when asking questions
-2. Remove any markdown formatting symbols when speaking
-3. Keep the conversation flowing naturally while following the question order
-4. Be encouraging and supportive throughout the interview
-5. Use the candidate's name sparingly (2-3 times) to avoid sounding robotic
-
-The candidate's name is {candidate_name}.
-The role is {role}.
-
-Remember: You're having a genuine conversation with a real person. Be authentic, warm, and professional - just like a human interviewer would be.
+Candidate name: {candidate_name}.
+Role: {role}.
 """
-        else:
-            # Fallback instructions if no questions provided
-            full_instructions = f"You are an interviewer for {role}. Wait for further instructions."
         
         # Pass FULL instructions to parent class
-        # Configure turn detection via env flag with safe fallback
-        turn_detection_impl = None
-        td_mode = os.getenv("TURN_DETECTION", "none").lower().strip()
-        if td_mode == "basic" and BasicTurnDetector is not None:
-            try:
-                turn_detection_impl = BasicTurnDetector()
-            except Exception:
-                turn_detection_impl = None
-        elif td_mode in ("none", "off", "disable"):
-            turn_detection_impl = None
-
         super().__init__(
             instructions=full_instructions,  # Using full instructions from the start
             stt=assemblyai.STT(
@@ -186,19 +139,19 @@ Remember: You're having a genuine conversation with a real person. Be authentic,
         llm=openai.LLM(
             model="gpt-4.1",
             temperature=0.7,
-        ),  
-#          tts=hume.TTS(
-#       voice=hume.VoiceByName(name="Colton Rivers", provider=hume.VoiceProvider.hume),
-#       description="The voice exudes calm, serene, and peaceful qualities, like a gentle stream flowing through a quiet forest.",
-#    ),
-
-        tts=cartesia.TTS(
-      model="sonic-2",
-      voice="1259b7e3-cb8a-43df-9446-30971a46b8b0",
-      speed=0.5,  # Slower speaking speed (0.5 = 50% speed, 1.0 = normal, 2.0 = double speed)
+        ),tts=hume.TTS(
+      voice=hume.VoiceByName(name="Colton Rivers", provider=hume.VoiceProvider.hume),
+      description="The voice exudes calm, serene, and peaceful qualities, like a gentle stream flowing through a quiet forest.",
    ),
+
+#         tts=cartesia.TTS(
+#       model="sonic-2",
+#       voice="1259b7e3-cb8a-43df-9446-30971a46b8b0",
+#       speed=0.5,  # Slower speaking speed (0.5 = 50% speed, 1.0 = normal, 2.0 = double speed)
+#    ),
         vad=silero.VAD.load(),
-            turn_detection=turn_detection_impl,
+            turn_detection=None,  # Disable turn detection to prevent errors
+            # Alternative: turn_detection=BasicTurnDetector(), # More stable than MultilingualModel
         )
         
         self.role = role
@@ -215,6 +168,19 @@ Remember: You're having a genuine conversation with a real person. Be authentic,
         self.using_dynamic_template = bool(record_id)
         self.all_questions = all_questions or []
         self.questions_list = questions_list
+        
+        # --- Interview workflow state ---
+        self.phase = "introduction"  # introduction -> questions -> wrap_up
+        self.current_question_index = 0
+        self.awaiting_main_answer = False
+        self.awaiting_followup_answer = False
+        self.per_question_followups_asked = 0
+        self.total_followups_asked = 0
+        self.max_followups_per_question = 2
+        self.max_total_followups = 6
+        self.last_main_question: Optional[str] = None
+        self.last_user_answer: Optional[str] = None
+        self.started_questions: bool = False
         
         # Initialize metrics collector
         self.metrics_collector = MetricsCollector()
@@ -257,15 +223,59 @@ Remember: You're having a genuine conversation with a real person. Be authentic,
             self.tts.on("metrics_collected", tts_metrics_wrapper)
 
     async def on_enter(self):
-        # Get the first question to start with
-        first_question = self.all_questions[0] if self.all_questions else ""
-        
+        # Attach speech events to drive the workflow
+        @self.session.on("user_speech_committed")
+        async def _on_user_speech(msg):
+            try:
+                user_text = getattr(msg, "content", "") or ""
+                self.last_user_answer = user_text
+                log_info(f"User speech committed. Phase={self.phase}, Text='{user_text[:120]}'")
+
+                if self.phase == "introduction":
+                    # After initial response, proceed to questions (guard double-start)
+                    if not self.started_questions:
+                        self.phase = "questions"
+                        self.started_questions = True
+                        await self._ask_next_main_question()
+                    return
+
+                if self.phase == "questions":
+                    # If we were waiting on a follow-up answer, move on
+                    if self.awaiting_followup_answer:
+                        self.awaiting_followup_answer = False
+                        await self._maybe_ask_followup_or_advance()
+                        return
+
+                    # If we were waiting on a main answer, consider a follow-up
+                    if self.awaiting_main_answer:
+                        self.awaiting_main_answer = False
+                        await self._maybe_ask_followup_or_advance()
+                        return
+
+                # If we reach here in wrap up, do nothing
+            except Exception as e:
+                log_error("Error in user_speech_committed handler", e)
+
         # Create warm, human introduction text
         intro_text = f"Hey {self.candidate_name}, welcome! I'm here to interview you for the {self.role} position. How are you doing today? and are you ready to begin the interview?"
         log_info(f"Starting with warm introduction: {intro_text}")
-        
-        # Start with the warm introduction
         await self.session.say(intro_text, allow_interruptions=True)
+
+        # Auto-start questions shortly after intro so interviewer leads if user stays silent
+        async def _auto_start():
+            try:
+                await asyncio.sleep(2.0)
+                if self.phase == "introduction" and not self.started_questions:
+                    if not self.all_questions:
+                        log_warning("No questions loaded from DB; cannot start question flow")
+                        return
+                    self.phase = "questions"
+                    self.started_questions = True
+                    await self._ask_next_main_question()
+            except Exception as e:
+                log_error("Error in auto-start after intro", e)
+
+        asyncio.create_task(_auto_start())
 
     async def on_exit(self):
         """Store final metrics and summary when interview ends"""
@@ -301,28 +311,98 @@ Remember: You're having a genuine conversation with a real person. Be authentic,
         """Log interview progress and data for quality assurance"""
         log_interview_data(self.interview_data, stage, data)
 
+    async def _ask_next_main_question(self):
+        """Ask the next main question from the list or wrap up if finished."""
+        try:
+            if self.current_question_index >= len(self.all_questions):
+                await self._wrap_up_interview()
+                return
+
+            question_text = self.all_questions[self.current_question_index]
+            self.last_main_question = question_text
+            self.per_question_followups_asked = 0
+
+            # Transition phrase (varied but simple)
+            transition = "Alright, let's move to the next question." if self.current_question_index > 0 else "Great, let's dive in."
+            await self.session.say(f"{transition}")
+            await self.session.say(question_text, allow_interruptions=True)
+
+            self.current_question_index += 1
+            self.awaiting_main_answer = True
+            self.awaiting_followup_answer = False
+            self.log_interview_data(
+                stage="question_asked",
+                data={"question": question_text, "index": self.current_question_index}
+            )
+        except Exception as e:
+            log_error("Error asking next main question", e)
+
+    async def _maybe_ask_followup_or_advance(self):
+        """Decide whether to ask a follow-up or move to the next main question."""
+        try:
+            # If we've hit limits, advance
+            if (self.per_question_followups_asked >= self.max_followups_per_question) or (
+                self.total_followups_asked >= self.max_total_followups
+            ):
+                await self._ask_next_main_question()
+                return
+
+            # Ask a concise follow-up using the LLM to keep it natural
+            followup_instruction = (
+                "Ask exactly one concise follow-up (one sentence) based on the candidate's last answer, "
+                "focused on the same topic as the last question. Keep it friendly and professional."
+            )
+
+            # Use session to generate and speak the follow-up
+            await self.session.generate_reply(
+                instructions=(
+                    f"Last main question: '{self.last_main_question or ''}'.\n"
+                    f"Candidate answer: '{self.last_user_answer or ''}'.\n"
+                    f"{followup_instruction}"
+                )
+            )
+
+            self.per_question_followups_asked += 1
+            self.total_followups_asked += 1
+            self.awaiting_followup_answer = True
+            self.log_interview_data(
+                stage="followup_asked",
+                data={
+                    "for_question": self.last_main_question,
+                    "per_question_followups": self.per_question_followups_asked,
+                    "total_followups": self.total_followups_asked,
+                },
+            )
+        except Exception as e:
+            log_error("Error asking follow-up; advancing to next question", e)
+            await self._ask_next_main_question()
+
+    async def _wrap_up_interview(self):
+        """Politely wrap up the interview with a closing."""
+        try:
+            if self.phase == "wrap_up":
+                return
+            self.phase = "wrap_up"
+
+            first_name = (self.candidate_name or "").split(" ")[0] or self.candidate_name
+            await self.session.say(
+                f"Before we wrap up, {first_name}, do you have any questions for me about the role or company?",
+                allow_interruptions=True,
+            )
+            # Leave a short pause and then close gracefully
+            await asyncio.sleep(2.0)
+            await self.session.say(
+                "It's been a pleasure talking with you today. Thanks so much for your time. "
+                "You can end the call whenever you're ready. Take care!",
+                allow_interruptions=True,
+            )
+            self.log_interview_data(stage="wrap_up", data={})
+        except Exception as e:
+            log_error("Error during wrap up", e)
+
 
 def prewarm(proc: JobProcess):
-    # Use tuned VAD/STT if helpers are available; fall back to defaults
-    vad_instance = None
-    stt_instance = None
-    try:
-        if get_vad is not None:
-            vad_instance = get_vad()
-        else:
-            vad_instance = silero.VAD.load()
-    except Exception:
-        vad_instance = silero.VAD.load()
-
-    try:
-        if get_enhanced_audio is not None:
-            stt_instance, _vad_unused = get_enhanced_audio()
-    except Exception:
-        stt_instance = None
-
-    proc.userdata["vad"] = vad_instance
-    if stt_instance is not None:
-        proc.userdata["stt"] = stt_instance
+    proc.userdata["vad"] = silero.VAD.load()
 
 
 async def extract_questions_from_template(record_id: str, room_name: str) -> tuple:
@@ -424,19 +504,12 @@ async def entrypoint(ctx: JobContext):
         usage_collector.collect(agent_metrics)
         
 
-    # Build session with tuned VAD and optionally STT from prewarm based on env flag
-    session_kwargs = {
-        "vad": ctx.proc.userdata["vad"],
+    session = AgentSession(
+        vad=ctx.proc.userdata["vad"],
         # Adjusted for interview context - longer delays for thinking time
-        "min_endpointing_delay": 1.0,
-        "max_endpointing_delay": 8.0,
-    }
-    if os.getenv("SESSION_STT_FROM_AUDIO", "false").lower() in ("1", "true", "yes"):  # opt-in to avoid changing current format
-        prewarmed_stt = ctx.proc.userdata.get("stt")
-        if prewarmed_stt is not None:
-            session_kwargs["stt"] = prewarmed_stt
-
-    session = AgentSession(**session_kwargs)
+        min_endpointing_delay=1.0,
+        max_endpointing_delay=8.0,
+    )
     print("The session is", session)
     log_info(f"The session is {session}")
 
