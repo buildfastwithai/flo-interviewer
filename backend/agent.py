@@ -101,6 +101,11 @@ class InterviewAgent(Agent):
                  all_questions: List[str] = None,
                  questions_list: str = "") -> None:
         
+        # Capture interview start time for time-aware responses
+        start_time_dt = datetime.now()
+        start_time_iso = start_time_dt.isoformat()
+        start_time_human = start_time_dt.strftime("%B %d, %Y at %I:%M %p")
+
         # Create specific instructions with all questions if provided
         if all_questions and questions_list:
             # Create direct instructions with the FULL list of questions
@@ -116,6 +121,10 @@ INTERVIEW PERSONALITY & COMMUNICATION STYLE:
 - Show genuine interest with follow-ups like "That's fascinating - can you tell me more about why you chose that approach?"
 - Use natural transitions like "So that brings us to our next topic..." or "Let's shift gears a bit..."
 - Occasionally make small thinking sounds like "hmm" or "mmm" when processing information
+
+TIME AWARENESS:
+- Today's date and interview start: {start_time_human} (local time)
+- If the candidate asks how much time has passed since we started, calculate the elapsed time from the current local time to the start time and answer briefly (e.g., "It's been about 12 minutes"). Share the exact start time if they ask for it.
 
 QUESTIONS TO ASK (IN EXACT ORDER):
 {questions_list}
@@ -164,7 +173,12 @@ Remember: You're having a genuine conversation with a real person. Be authentic,
 """
         else:
             # Fallback instructions if no questions provided
-            full_instructions = f"You are an interviewer for {role}. Wait for further instructions."
+            full_instructions = (
+                f"You are an interviewer for {role}. "
+                f"The interview started at {start_time_human} (local time). "
+                f"If the candidate asks how much time has passed since the interview began, calculate it from the current time and answer succinctly (e.g., 'about 12 minutes'). "
+                f"Wait for further instructions."
+            )
         
         # Pass FULL instructions to parent class
         # Configure turn detection via env flag with safe fallback.
@@ -230,7 +244,7 @@ Remember: You're having a genuine conversation with a real person. Be authentic,
         # NOTE: Interview data storage is handled by the frontend
         # This is kept only for local logging/tracking, not for database storage
         self.interview_data = {
-            "start_time": datetime.now().isoformat(),
+            "start_time": start_time_iso,
             "role": role,
             "candidate_name": candidate_name,
             "record_id": record_id,
