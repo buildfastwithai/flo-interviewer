@@ -859,7 +859,7 @@ function InterviewInterface({ isDemoMode = false, isPracticeMode = false, interv
                 <Button className="bg-[#2663FF] text-white px-4 py-2 rounded-md hover:bg-[#2663FF]/80" onClick={() => {
                   window.location.reload();
                 }}>
-                  Start New Interview
+                  Back to Interview Form
                 </Button>
                 <Button className="bg-[#2663FF] text-white px-4 py-2 rounded-md hover:bg-[#2663FF]/80" onClick={() => {
                   setShowFeedbackModal(true);

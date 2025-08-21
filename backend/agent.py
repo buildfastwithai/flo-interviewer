@@ -112,8 +112,8 @@ class InterviewAgent(Agent):
             # Practice mode: override with easy, hard-coded questions
             practice_questions = [
                 "What is the capital of India?"
-                "What is 20 + 5?",
-                "What is 5 multiplied by 5?",
+                "Which continent is India in?",
+                "What gas do humans need to breathe to live?",
             ]
             all_questions = practice_questions
             questions_list = ""
@@ -142,7 +142,7 @@ YOU MUST FOLLOW THESE RULES:
 4. Guardrails: If asked about the job description (JD), company, role details, compensation/CTC, hiring process/next steps, or feedback about performance, DO NOT answer. Reply exactly: "Please connect with the hiring team for this information."
 5. After each answer, acknowledge it naturally before moving to the next question.
 6. At the end of practice, say: "We can wrap up practice here. Are you ready to start the real interview?"
-7. If the candidate says yes he/she is ready for real interview and ask them to clcik on end interview and click on start new interview button to get back to interview form
+7. If the candidate says yes he/she is ready for real interview and ask them to click on end interview and click on "Back to Interview Form" button to get back to interview form and then click on "Join Interview" button to start new interview
 8. If the candidate says no he/she is not ready for real interview and ask them if he/she has any doubts or questions about the practice session or real interview
 9. If the candidate says they don't know, respond supportively with something like "That's completely fine, these can be tricky"
 
