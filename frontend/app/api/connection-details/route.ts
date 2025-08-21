@@ -19,6 +19,7 @@ export interface ConnectionDetails {
   roomName: string;
   participantName: string;
   demoMode?: boolean;
+  practiceMode?: boolean;
   interviewId?: string;
   roomId?: string;
 }
@@ -65,6 +66,7 @@ export async function GET(request: NextRequest) {
     let roomName = searchParams.get("room");
     let metadata: Record<string, any> = {};
     let isDemoMode = false;
+    const practiceMode = (searchParams.get("practice") === "true") || (searchParams.get("practiceMode") === "true");
 
     // If access code is provided, look up the interview
     if (accessCode) {
@@ -97,6 +99,7 @@ export async function GET(request: NextRequest) {
           skill: skillLevel || "mid",
           interviewId: interview.id,
           roomId: interview.roomId,
+          practiceMode,
         };
         console.log(`Metadata: ${JSON.stringify(metadata)}`);
       } catch (dbError) {
@@ -118,6 +121,7 @@ export async function GET(request: NextRequest) {
       metadata = {
         role: role || "Software Engineer",
         skill: skillLevel || "mid",
+        practiceMode,
       };
     }
 
@@ -145,6 +149,7 @@ export async function GET(request: NextRequest) {
         participantToken,
         participantName: name,
         demoMode: isDemoMode,
+        practiceMode,
         interviewId: metadata.interviewId,
         roomId: metadata.roomId,
       };

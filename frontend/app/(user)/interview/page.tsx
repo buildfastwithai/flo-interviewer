@@ -35,6 +35,7 @@ import { InterviewVAD } from "@/lib/interview-vad"; // Client-side VAD helper fo
 interface UserFormData {
   name: string;
   accessCode: string;
+  practice?: boolean;
 }
 
 interface InterviewData {
@@ -50,6 +51,7 @@ export default function InterviewPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const [isPracticeMode, setIsPracticeMode] = useState(false);
   const [interviewData, setInterviewData] = useState<InterviewData | null>(null);
   const [transcriptions, setTranscriptions] = useState<any[]>([]);
   const startTimeRef = useRef<string>(new Date().toISOString());
@@ -77,6 +79,9 @@ export default function InterviewPage() {
         // Add user info as query parameters
         url.searchParams.set("name", formData.name);
         url.searchParams.set("accessCode", formData.accessCode);
+        if (formData.practice) {
+          url.searchParams.set("practice", "true");
+        }
 
         console.log("Fetching connection details from:", url.toString());
         const response = await fetch(url.toString());
@@ -94,11 +99,16 @@ export default function InterviewPage() {
           throw new Error("Invalid connection details received from server");
         }
         
-        // Check if we're in demo mode
+        // Check if we're in demo or practice mode
         if (connectionDetails.demoMode) {
           console.log("Using demo mode with LiveKit cloud");
           setIsDemoMode(true);
           toast.info("Connected in demo mode. This is for testing purposes only.");
+        }
+        if (connectionDetails.practiceMode) {
+          console.log("Using practice mode");
+          setIsPracticeMode(true);
+          toast.info("Practice mode: Try a few easy questions before the real interview.");
         }
 
         console.log("Connecting to LiveKit server:", connectionDetails.serverUrl);
@@ -431,7 +441,8 @@ export default function InterviewPage() {
       ) : (
         <RoomContext.Provider value={room}>
           <InterviewInterface 
-            isDemoMode={isDemoMode} 
+            isDemoMode={isDemoMode}
+            isPracticeMode={isPracticeMode}
             interviewId={interviewData?.interviewId}
             onTranscriptUpdate={handleTranscriptUpdate}
             candidateName={userData.name}
@@ -573,6 +584,18 @@ function UserForm({
                     <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                   </span>
                 </InteractiveHoverButton>
+
+                <div className="mt-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full border-[#2663FF]/30 text-[#2663FF] hover:bg-[#2663FF]/10"
+                    disabled={isSubmitting || !name}
+                    onClick={() => onSubmit({ name, accessCode, practice: true })}
+                  >
+                    Try Practice Mode
+                  </Button>
+                </div>
               </motion.div>
 
               {/* Features Highlights */}
@@ -599,7 +622,7 @@ function UserForm({
   );
 }
 
-function InterviewInterface({ isDemoMode = false, interviewId, onTranscriptUpdate, candidateName, showFeedbackModal, setShowFeedbackModal, feedback, isFeedbackLoading }: { isDemoMode?: boolean, interviewId?: string, onTranscriptUpdate: (newTranscriptions: any[]) => void, candidateName: string, showFeedbackModal: boolean, setShowFeedbackModal: (show: boolean) => void, feedback: any, isFeedbackLoading: boolean }) {
+function InterviewInterface({ isDemoMode = false, isPracticeMode = false, interviewId, onTranscriptUpdate, candidateName, showFeedbackModal, setShowFeedbackModal, feedback, isFeedbackLoading }: { isDemoMode?: boolean, isPracticeMode?: boolean, interviewId?: string, onTranscriptUpdate: (newTranscriptions: any[]) => void, candidateName: string, showFeedbackModal: boolean, setShowFeedbackModal: (show: boolean) => void, feedback: any, isFeedbackLoading: boolean }) {
   const { state: agentState, audioTrack } = useVoiceAssistant();
   const [speaking, setSpeaking] = useState(false);
   const transcriptions = useCombinedTranscriptions();
@@ -619,10 +642,15 @@ function InterviewInterface({ isDemoMode = false, interviewId, onTranscriptUpdat
         <div className="absolute top-20 left-10 w-2 h-2 bg-[#2663FF]/60 rounded-full animate-pulse"></div>
         <div className="absolute bottom-40 right-10 w-1 h-1 bg-[#2663FF]/60 rounded-full animate-ping"></div>
 
-        {/* Demo Mode Banner */}
+        {/* Demo/Practice Mode Banners */}
         {isDemoMode && (
           <div className="bg-[#f7a828] text-white text-xs text-center p-1 font-medium z-10">
             DEMO MODE - Using LiveKit Cloud
+          </div>
+        )}
+        {isPracticeMode && (
+          <div className="bg-[#2663FF] text-white text-xs text-center p-1 font-medium z-10">
+            PRACTICE MODE - Trial questions
           </div>
         )}
         
@@ -773,6 +801,16 @@ function InterviewInterface({ isDemoMode = false, interviewId, onTranscriptUpdat
                     className="text-xs bg-[#f7a828]/10 text-[#f7a828] px-2 py-0.5 rounded-full font-medium border border-[#f7a828]/20"
                   >
                     Demo
+                  </motion.span>
+                )}
+                {isPracticeMode && (
+                  <motion.span 
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.3 }}
+                    className="text-xs bg-[#2663FF]/10 text-[#2663FF] px-2 py-0.5 rounded-full font-medium border border-[#2663FF]/20"
+                  >
+                    Practice
                   </motion.span>
                 )}
               </motion.div>

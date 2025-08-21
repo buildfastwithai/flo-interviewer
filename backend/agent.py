@@ -99,7 +99,8 @@ class InterviewAgent(Agent):
                  room_id: str = None,
                  interview_id: str = None,
                  all_questions: List[str] = None,
-                 questions_list: str = "") -> None:
+                 questions_list: str = "",
+                 practice_mode: bool = False) -> None:
         
         # Capture interview start time for time-aware responses
         start_time_dt = datetime.now()
@@ -107,7 +108,53 @@ class InterviewAgent(Agent):
         start_time_human = start_time_dt.strftime("%B %d, %Y at %I:%M %p")
 
         # Create specific instructions with all questions if provided
-        if all_questions and questions_list:
+        if practice_mode:
+            # Practice mode: override with easy, hard-coded questions
+            practice_questions = [
+                "What is the capital of India?"
+                "What is 20 + 5?",
+                "What is 5 multiplied by 5?",
+            ]
+            all_questions = practice_questions
+            questions_list = ""
+            for i, q in enumerate(practice_questions):
+                questions_list += f"{i+1}. {q}\n\n"
+
+            full_instructions = f"""
+You are a warm, friendly interviewer running a short practice session before the real interview. Your goal is to help the candidate get comfortable with the interface and the flow.
+
+INTERVIEW PERSONALITY & COMMUNICATION STYLE:
+- Be warm, friendly, and encouraging throughout the practice
+- Use natural, conversational phrases and a supportive tone
+
+PRACTICE SESSION:
+- This is a brief practice round with 2-3 very easy questions
+- Ask the following questions in order, and keep the conversation light
+- After practice, ask if they're ready to start the real interview
+
+QUESTIONS TO ASK (IN EXACT ORDER):
+{questions_list}
+
+YOU MUST FOLLOW THESE RULES:
+1. ONLY ask the practice questions shown above, in the exact order (1, 2, 3)
+2. You MAY answer questions about the interview structure, what the candidate needs to do, expectations, and basic rules. Keep answers brief and friendly.
+3. DO NOT reveal correct answers or provide hints for technical questions.
+4. Guardrails: If asked about the job description (JD), company, role details, compensation/CTC, hiring process/next steps, or feedback about performance, DO NOT answer. Reply exactly: "Please connect with the hiring team for this information."
+5. After each answer, acknowledge it naturally before moving to the next question.
+6. At the end of practice, say: "We can wrap up practice here. Are you ready to start the real interview?"
+7. If the candidate says yes he/she is ready for real interview and ask them to clcik on end interview and click on start new interview button to get back to interview form
+8. If the candidate says no he/she is not ready for real interview and ask them if he/she has any doubts or questions about the practice session or real interview
+9. If the candidate says they don't know, respond supportively with something like "That's completely fine, these can be tricky"
+
+IMPORTANT:
+- Use the candidate's name sparingly (2-3 times)
+- Remove any markdown formatting symbols when speaking
+- Speak naturally with human-like variations and small pauses
+
+The candidate's name is {candidate_name}.
+The role is {role}.
+"""
+        elif all_questions and questions_list:
             # Create direct instructions with the FULL list of questions
             full_instructions = f"""
 You are a warm, professional, and genuinely human interviewer conducting a technical interview. Your goal is to create a comfortable, conversational atmosphere while maintaining the structure of the interview.
@@ -233,6 +280,7 @@ Remember: You're having a genuine conversation with a real person. Be authentic,
         self.role = role
         self.candidate_name = candidate_name
         self.skill_level = skill_level
+        self.practice_mode = practice_mode
         self.record_id = record_id
         self.room_name = room_name
         self.room_id = room_id
@@ -291,7 +339,10 @@ Remember: You're having a genuine conversation with a real person. Be authentic,
         first_question = self.all_questions[0] if self.all_questions else ""
         
         # Create warm, human introduction text
-        intro_text = f"Hey {self.candidate_name}, welcome! I'm here to interview you for the {self.role} position. How are you doing today? and are you ready to begin the interview?"
+        if getattr(self, "practice_mode", False):
+            intro_text = f"Hey {self.candidate_name}, welcome! This is a quick practice round to help you get comfortable. How are you doing today? and are you ready to try a couple of easy questions?"
+        else:
+            intro_text = f"Hey {self.candidate_name}, welcome! I'm here to interview you for the {self.role} position. How are you doing today? and are you ready to begin the interview?"
         log_info(f"Starting with warm introduction: {intro_text}")
         
         # Start with the warm introduction
@@ -419,6 +470,7 @@ async def entrypoint(ctx: JobContext):
     record_id = None
     room_id = None
     interview_id = None
+    practice_mode = False
     
     if participant.metadata:
         try:
@@ -429,6 +481,11 @@ async def entrypoint(ctx: JobContext):
             candidate_name = metadata.get('candidateName', candidate_name)
             room_id = metadata.get('roomId', room_id)
             interview_id = metadata.get('interviewId', interview_id)
+            pm = metadata.get('practiceMode')
+            if isinstance(pm, bool):
+                practice_mode = pm
+            elif isinstance(pm, str):
+                practice_mode = pm.lower() in ("1", "true", "yes", "y")
             log_info(f"Using metadata - Role: {role}, Skill: {skill_level}, Record ID: {record_id}, Room ID: {room_id}, Interview ID: {interview_id}")
         except json.JSONDecodeError:
             log_warning("Failed to parse participant metadata")
@@ -487,7 +544,8 @@ async def entrypoint(ctx: JobContext):
         room_id=room_id,
         interview_id=interview_id,
         all_questions=all_questions,
-        questions_list=questions_list
+        questions_list=questions_list,
+        practice_mode=practice_mode
     )
 
     try:
