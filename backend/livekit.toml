@@ -1,0 +1,8 @@
+[project]
+  subdomain = "ai-interviewer-9dp0fjqi"
+
+[agent]
+  id = "CA_cH5Jc2jeuFpF"
+  cpu = "1"
+  replicas = 1
+  max_replicas = 10

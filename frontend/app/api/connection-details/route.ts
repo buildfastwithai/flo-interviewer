@@ -90,6 +90,7 @@ export async function GET(request: NextRequest) {
 
         console.log(`Found interview room: ${interview.roomId}`);
         roomName = interview.roomId;
+        roomName += "-" + Math.random().toString(36).substring(2, 15);
         
         // Include record ID in metadata for the agent to use
         metadata = {
@@ -98,7 +99,7 @@ export async function GET(request: NextRequest) {
           recordId: interview.recordId,
           skill: skillLevel || "mid",
           interviewId: interview.id,
-          roomId: interview.roomId,
+          roomId: roomName,
           practiceMode,
         };
         console.log(`Metadata: ${JSON.stringify(metadata)}`);
