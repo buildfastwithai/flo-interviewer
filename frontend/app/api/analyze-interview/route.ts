@@ -73,6 +73,48 @@ interface ComprehensiveAnalysisResponse {
   questions_and_answers: QuestionAnswer[];
   interview_insights: InterviewInsights;
   analysis_summary: string;
+  // --- NEW: Enhanced evaluation fields (mock-enabled) ---
+  evaluation_overview?: {
+    overall_weighted_score: number;
+    overall_recommendation: "Select" | "Review" | "Reject";
+    confidence_score: number;
+    proctoring_score: number;
+  };
+  subjective_rubric?: {
+    criteria: Array<{
+      name: string;
+      weight: number; // 0-1
+      score_out_of_5: number; // 0-5
+      weighted_score: number; // weight * score_out_of_5
+      evidence?: string;
+    }>;
+    total_score_out_of_5: number;
+    total_percentage: number; // 0-100
+  };
+  objective_scores?: {
+    mcq: { total: number; correct: number; score: number };
+    coding: { tests_passed: number; tests_total: number; complexity_score: number; score: number };
+    overall_score: number; // average of objective parts
+  };
+  weighted_skill_scores?: Array<{
+    skill: string;
+    score: number; // from assessment (0-100)
+    weight: number; // 0-1
+    weighted_score: number; // score * weight
+  }>;
+  recruiter_settings?: {
+    skill_weights: Record<string, number>; // 0-1 per skill
+    notes?: string;
+  };
+  key_moments?: Array<{
+    type: "critical_skill" | "project_example" | "struggle";
+    title: string;
+    excerpt: string;
+    related_skill?: string;
+    timestamp?: string | null; // unknown here; UI can enrich from JSON transcript
+    qa_index?: number;
+    score?: number;
+  }>;
 }
 
 // Initialize OpenAI client
@@ -589,6 +631,118 @@ Transcript ends here:
   }
 }
 
+// NEW: Use OpenAI to generate enhanced evaluation scorecard
+async function generateEnhancedEvaluationWithOpenAI(
+  transcript: string,
+  jobRole: string,
+  skills_list: string[],
+  skill_assessments: SkillAssessment[],
+  questions_and_answers: QuestionAnswer[],
+  interview_insights: InterviewInsights,
+  normalizedWeights: Record<string, number>,
+  is_valid_transcript: boolean
+): Promise<{
+  evaluation_overview: {
+    overall_weighted_score: number;
+    overall_recommendation: "Select" | "Review" | "Reject";
+    confidence_score: number;
+    proctoring_score: number;
+  };
+  subjective_rubric: {
+    criteria: Array<{ name: string; weight: number; score_out_of_5: number; weighted_score: number; evidence?: string; }>;
+    total_score_out_of_5: number;
+    total_percentage: number;
+  };
+  objective_scores: {
+    mcq: { total: number; correct: number; score: number };
+    coding: { tests_passed: number; tests_total: number; complexity_score: number; score: number };
+    overall_score: number;
+  };
+  weighted_skill_scores: Array<{ skill: string; score: number; weight: number; weighted_score: number }>;
+  key_moments: Array<{ type: "critical_skill" | "project_example" | "struggle"; title: string; excerpt: string; related_skill?: string; qa_index?: number; score?: number }>;
+}> {
+  const response = await openai.chat.completions.create({
+    model: "gpt-4.1",
+    messages: [
+      {
+        role: "system",
+        content:
+          `You are an expert technical interviewer and HR analyst. Using the provided transcript and intermediate analyses (skills, Q&A, insights), create a comprehensive evaluation scorecard for a ${jobRole} interview. ` +
+          `Return strictly JSON only, matching the required schema. Base all outputs on the content provided; avoid fabricating details.`
+      },
+      {
+        role: "user",
+        content:
+`Inputs:
+Transcript:
+${transcript}
+
+Skills list:
+${JSON.stringify(skills_list)}
+
+Skill assessments (AI-derived earlier):
+${JSON.stringify(skill_assessments)}
+
+Q&A (AI-derived earlier):
+${JSON.stringify(questions_and_answers)}
+
+Interview insights (AI-derived earlier):
+${JSON.stringify(interview_insights)}
+
+Recruiter skill weights (normalized to sum≈1; use these weights):
+${JSON.stringify(normalizedWeights)}
+
+Transcript_validity:
+${is_valid_transcript}
+
+Task:
+Produce a JSON object with the following structure and semantics:
+{
+  "evaluation_overview": {
+    "overall_weighted_score": 0-100 number computed from weighted_skill_scores,
+    "overall_recommendation": "Select"|"Review"|"Reject" (justify internally but only return the value),
+    "confidence_score": 0-100 number reflecting reliability of discussion & evaluation,
+    "proctoring_score": 0-100 number (estimate using engagement and consistency; avoid extremes if unknown)
+  },
+  "subjective_rubric": {
+    "criteria": [
+      { "name": "Communication Clarity", "weight": 0.25, "score_out_of_5": number, "weighted_score": number, "evidence": string? },
+      { "name": "Technical Depth", "weight": 0.35, "score_out_of_5": number, "weighted_score": number, "evidence": string? },
+      { "name": "Problem Solving", "weight": 0.30, "score_out_of_5": number, "weighted_score": number, "evidence": string? },
+      { "name": "Cultural Fit", "weight": 0.10, "score_out_of_5": number, "weighted_score": number, "evidence": string? }
+    ],
+    "total_score_out_of_5": sum of weighted_score values,
+    "total_percentage": total_score_out_of_5/5*100
+  },
+  "objective_scores": {
+    "mcq": { "total": integer, "correct": integer, "score": (correct/total)*100 },
+    "coding": { "tests_passed": integer, "tests_total": integer, "complexity_score": 0-100, "score": number },
+    "overall_score": average of mcq.score and coding.score
+  },
+  "weighted_skill_scores": [
+    { "skill": string, "score": 0-100 from skill_assessments, "weight": 0-1 from recruiter weights, "weighted_score": score*weight }
+  ],
+  "key_moments": [
+    { "type": "critical_skill"|"project_example"|"struggle", "title": string, "excerpt": string, "related_skill"?: string, "qa_index"?: number, "score"?: number }
+  ]
+}
+
+Rules:
+- Use the provided assessments, Q&A, and insights as ground truth. Do not invent facts.
+- Key moments should reference the provided Q&A and highlight strong answers, concrete project examples, or struggles.
+- If objective counts are unknown, infer reasonable integers consistent with the Q&A content and insights; keep within 0-10 for MCQ and 0-6 for coding tests.
+- Ensure numbers are in valid ranges and weights sum approximately to 1.
+`
+      }
+    ],
+    response_format: { type: "json_object" },
+    temperature: 0.2,
+  });
+
+  const content = response.choices[0].message.content || "{}";
+  return JSON.parse(content);
+}
+
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
@@ -770,6 +924,112 @@ export async function POST(request: Request) {
       analysis_summary = "Unable to generate analysis summary due to an error during processing.";
     }
 
+    // --- NEW: Mock recruiter weights (can be sourced from DB in future) ---
+    const defaultWeight = 1;
+    const rawWeights: Record<string, number> = {};
+    for (const skill of skills_list) {
+      // Simple deterministic mock: heavier weight for problem solving and technical skills
+      const lowered = skill.toLowerCase();
+      rawWeights[skill] = lowered.includes("problem") || lowered.includes("system") || lowered.includes("design")
+        ? 2
+        : lowered.includes("technical") || lowered.includes("coding") || lowered.includes("react") || lowered.includes("node")
+        ? 1.5
+        : lowered.includes("communication")
+        ? 1.2
+        : defaultWeight;
+    }
+    const weightSum = Object.values(rawWeights).reduce((s, v) => s + v, 0) || 1;
+    const normalizedWeights: Record<string, number> = Object.fromEntries(
+      Object.entries(rawWeights).map(([k, v]) => [k, Number((v / weightSum).toFixed(4))])
+    );
+
+    // --- NEW: Prefer AI-generated new evaluation, with fallback to heuristic ---
+    let evaluation_overview: { overall_weighted_score: number; overall_recommendation: "Select" | "Review" | "Reject"; confidence_score: number; proctoring_score: number } | undefined;
+    let subjective_rubric: { criteria: Array<{ name: string; weight: number; score_out_of_5: number; weighted_score: number; evidence?: string }>; total_score_out_of_5: number; total_percentage: number } | undefined;
+    let objective_scores: { mcq: { total: number; correct: number; score: number }; coding: { tests_passed: number; tests_total: number; complexity_score: number; score: number }; overall_score: number } | undefined;
+    let weighted_skill_scores: Array<{ skill: string; score: number; weight: number; weighted_score: number }> | undefined;
+    let key_moments: Array<{ type: "critical_skill" | "project_example" | "struggle"; title: string; excerpt: string; related_skill?: string; qa_index?: number; score?: number }> | undefined;
+
+    try {
+      const aiScorecard = await generateEnhancedEvaluationWithOpenAI(
+        raw_transcript,
+        job_role,
+        skills_list,
+        skill_assessments,
+        questions_and_answers,
+        interview_insights!,
+        normalizedWeights,
+        is_valid
+      );
+      evaluation_overview = aiScorecard.evaluation_overview;
+      subjective_rubric = aiScorecard.subjective_rubric;
+      objective_scores = aiScorecard.objective_scores;
+      weighted_skill_scores = aiScorecard.weighted_skill_scores;
+      key_moments = aiScorecard.key_moments;
+    } catch (e) {
+      console.warn("AI scorecard generation failed; using heuristic fallback.", e);
+      // Fallbacks replicate prior heuristic logic
+      weighted_skill_scores = (skill_assessments || []).map(sa => {
+        const weight = normalizedWeights[sa.skill] ?? Number((1 / Math.max(1, skills_list.length)).toFixed(4));
+        const weighted_score = Number(((sa.confidence_score || 0) * weight).toFixed(2));
+        return { skill: sa.skill, score: sa.confidence_score || 0, weight, weighted_score };
+      });
+      const overall_weighted_score = Number((weighted_skill_scores.reduce((s, x) => s + x.weighted_score, 0)).toFixed(2));
+      // Subjective rubric quick build
+      const rubricCriteria = [
+        { key: "communication_clarity", name: "Communication Clarity", weight: 0.25 },
+        { key: "technical_depth", name: "Technical Depth", weight: 0.35 },
+        { key: "problem_solving_ability", name: "Problem Solving", weight: 0.3 },
+        { key: "cultural_fit", name: "Cultural Fit", weight: 0.1 }
+      ] as const;
+      const items = rubricCriteria.map(rc => {
+        let metric = rc.key === "cultural_fit"
+          ? Math.min(100, 40 + (interview_insights?.cultural_fit_indicators || []).length * 15)
+          : (interview_insights as any)?.[rc.key] ?? 50;
+        const score_out_of_5 = Number((metric / 20).toFixed(2));
+        const weighted_score = Number((score_out_of_5 * (rc as any).weight).toFixed(2));
+        const evidence = rc.key === "communication_clarity" ? (interview_insights?.speech_patterns || "") : undefined;
+        return { name: (rc as any).name, weight: (rc as any).weight, score_out_of_5, weighted_score, evidence };
+      });
+      const total_score_out_of_5 = Number(items.reduce((s, x) => s + x.weighted_score, 0).toFixed(2));
+      const total_percentage = Number(((total_score_out_of_5 / rubricCriteria.reduce((s, x) => s + (x as any).weight, 0)) * 20).toFixed(2));
+      subjective_rubric = { criteria: items as any, total_score_out_of_5, total_percentage };
+      // Objective fallback
+      const mcq_total = 10;
+      const mcq_correct = Math.max(0, Math.min(mcq_total, Math.round((questions_and_answers || []).filter(q => q.grade === GradeLevel.EXCELLENT || q.grade === GradeLevel.GOOD).length * 0.6)));
+      const mcq_score = Number(((mcq_correct / mcq_total) * 100).toFixed(2));
+      const coding_tests_total = 6;
+      const containsCoding = /code|algorithm|complexity|big\s*o|runtime|optimi[sz]e/i.test(raw_transcript);
+      const coding_tests_passed = containsCoding ? Math.max(0, Math.min(coding_tests_total, Math.round((interview_insights?.technical_depth || 50) / 20))) : Math.round((interview_insights?.technical_depth || 50) / 25);
+      const complexity_score = Math.min(100, (interview_insights?.technical_depth || 50) + (questions_and_answers.length > 5 ? 10 : 0));
+      const coding_score = Number((((coding_tests_passed / coding_tests_total) * 70) + (complexity_score * 0.3)).toFixed(2));
+      const objective_overall = Number((((mcq_score + coding_score) / 2)).toFixed(2));
+      // Confidence & proctoring fallback
+      const base_confidence = interview_insights?.confidence_level ?? 50;
+      const qaFactor = Math.min(20, (questions_and_answers?.length || 0) * 2);
+      const qualityPenalty = (is_valid ? 0 : 10);
+      const confidence_score = Math.max(0, Math.min(100, Math.round(base_confidence + qaFactor - qualityPenalty)));
+      const proctoring_score = 90;
+      // Recommendation fallback
+      const combinedScore = 0.6 * overall_weighted_score + 0.2 * objective_overall + 0.2 * (interview_insights?.overall_performance_score || 0);
+      let overall_recommendation: "Select" | "Review" | "Reject" = "Review";
+      if (combinedScore >= 75 && proctoring_score >= 70 && confidence_score >= 60) overall_recommendation = "Select";
+      else if (combinedScore < 55 || proctoring_score < 50) overall_recommendation = "Reject";
+      evaluation_overview = { overall_weighted_score, overall_recommendation, confidence_score, proctoring_score };
+      objective_scores = {
+        mcq: { total: mcq_total, correct: mcq_correct, score: mcq_score },
+        coding: { tests_passed: coding_tests_passed, tests_total: coding_tests_total, complexity_score, score: coding_score },
+        overall_score: objective_overall
+      };
+      key_moments = (questions_and_answers || []).slice(0, 8).map((qa, idx) => {
+        const type: "critical_skill" | "project_example" | "struggle" = qa.score >= 85 ? "critical_skill" : qa.score <= 50 ? "struggle" : "project_example";
+        const related_skill = (skill_assessments.find(s => qa.question.toLowerCase().includes(s.skill.toLowerCase()))?.skill) || undefined;
+        const title = qa.question.length > 120 ? qa.question.slice(0, 117) + "..." : qa.question;
+        const excerpt = qa.answer.length > 180 ? qa.answer.slice(0, 177) + "..." : qa.answer;
+        return { type, title, excerpt, related_skill, qa_index: idx, score: qa.score };
+      });
+    }
+
     // Step 5: Return comprehensive response
     const response: ComprehensiveAnalysisResponse = {
       filename: file instanceof File ? file.name : undefined,
@@ -780,7 +1040,14 @@ export async function POST(request: Request) {
       skill_assessments,
       questions_and_answers,
       interview_insights: interview_insights!,
-      analysis_summary
+      analysis_summary,
+      // --- NEW: Enhanced evaluation fields (mock-enabled) ---
+      evaluation_overview,
+      subjective_rubric,
+      objective_scores,
+      weighted_skill_scores,
+      recruiter_settings: { skill_weights: normalizedWeights, notes: "Mock weights applied; will be configurable via DB in future." },
+      key_moments
     };
 
     return Response.json(response);
