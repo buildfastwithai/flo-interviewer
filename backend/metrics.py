@@ -22,7 +22,7 @@ class MetricsCollector:
             "completion_tokens": metrics.completion_tokens,
             "tokens_per_second": round(metrics.tokens_per_second, 4),
             "ttft": round(metrics.ttft, 4),
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat()            
         }
         self.metrics_data["llm"].append(metrics_obj)
         log_metrics(metrics_obj, "LLM")
