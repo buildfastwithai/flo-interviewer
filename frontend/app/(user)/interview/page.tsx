@@ -625,10 +625,33 @@ function UserForm({
 function InterviewInterface({ isDemoMode = false, isPracticeMode = false, interviewId, onTranscriptUpdate, candidateName, showFeedbackModal, setShowFeedbackModal, feedback, isFeedbackLoading }: { isDemoMode?: boolean, isPracticeMode?: boolean, interviewId?: string, onTranscriptUpdate: (newTranscriptions: any[]) => void, candidateName: string, showFeedbackModal: boolean, setShowFeedbackModal: (show: boolean) => void, feedback: any, isFeedbackLoading: boolean }) {
   const { state: agentState, audioTrack } = useVoiceAssistant();
   const [speaking, setSpeaking] = useState(false);
+  const [questionCount, setQuestionCount] = useState<number>(0);
   const transcriptions = useCombinedTranscriptions();
 
   const isRecording = agentState === "listening";
   const isConnected = agentState !== "disconnected";
+
+  // Poll question count every 3s while connected
+  useEffect(() => {
+    let interval: any;
+    async function fetchCount() {
+      if (!interviewId) return;
+      try {
+        const res = await fetch(`/api/interview/${interviewId}/question-count`, { cache: "no-store" });
+        const data = await res.json();
+        if (data?.success && typeof data?.data?.count === "number") {
+          setQuestionCount(data.data.count);
+        }
+      } catch (e) {
+        // silent
+      }
+    }
+    if (isConnected) {
+      fetchCount();
+      interval = setInterval(fetchCount, 3000);
+    }
+    return () => interval && clearInterval(interval);
+  }, [interviewId, isConnected]);
 
   return (
     <>
@@ -834,6 +857,11 @@ function InterviewInterface({ isDemoMode = false, isPracticeMode = false, interv
         {/* Chat Messages */}
         <ScrollArea className="flex-1 p-6 relative z-10">
           <div className="space-y-6 max-w-4xl mx-auto">
+            {isConnected && (
+              <div className="flex items-center justify-end text-sm text-[#5B5F79]">
+                <span className="px-3 py-1 rounded-full bg-[#F7F7FA] border border-[#F0F0F5]">Questions asked: {questionCount}</span>
+              </div>
+            )}
             {isConnected ? (
               <TranscriptionView 
                 interviewId={interviewId}
