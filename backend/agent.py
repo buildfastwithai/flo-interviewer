@@ -271,7 +271,8 @@ Remember: You're having a genuine conversation with a real person. Be authentic,
         tts=cartesia.TTS(
       model="sonic-2",
     #   voice="1259b7e3-cb8a-43df-9446-30971a46b8b0",
-    voice="00967b2f-88a6-4a31-8153-110a92134b9f",
+    # voice="00967b2f-88a6-4a31-8153-110a92134b9f",
+      voice="da69d796-4603-4419-8a95-293bfc5679eb",
       speed=0.5,  # Slower speaking speed (0.5 = 50% speed, 1.0 = normal, 2.0 = double speed)
    ),
         vad=silero.VAD.load(),
