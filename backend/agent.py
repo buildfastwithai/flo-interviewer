@@ -40,6 +40,8 @@ from livekit.agents import (
     cli,
     metrics,
     RoomInputOptions,
+    function_tool,
+    RunContext
 )
 from livekit.agents.metrics import LLMMetrics, STTMetrics, TTSMetrics, EOUMetrics
 from livekit.plugins import (
@@ -100,7 +102,8 @@ class InterviewAgent(Agent):
                  interview_id: str = None,
                  all_questions: List[str] = None,
                  questions_list: str = "",
-                 practice_mode: bool = False) -> None:
+                 practice_mode: bool = False,
+                 questions_count:int =0) -> None:
         
         # Capture interview start time for time-aware responses
         start_time_dt = datetime.now()
@@ -111,9 +114,9 @@ class InterviewAgent(Agent):
         if practice_mode:
             # Practice mode: override with easy, hard-coded questions
             practice_questions = [
-                "What is the capital of India?",
-                "Which continent is India in?",
-                "What gas do humans need to breathe to live?",
+                "What is the capital of India?"
+                "What is 20 + 5?",
+                "What is 5 multiplied by 5?",
             ]
             all_questions = practice_questions
             questions_list = ""
@@ -142,7 +145,7 @@ YOU MUST FOLLOW THESE RULES:
 4. Guardrails: If asked about the job description (JD), company, role details, compensation/CTC, hiring process/next steps, or feedback about performance, DO NOT answer. Reply exactly: "Please connect with the hiring team for this information."
 5. After each answer, acknowledge it naturally before moving to the next question.
 6. At the end of practice, say: "We can wrap up practice here. Are you ready to start the real interview?"
-7. If the candidate says yes he/she is ready for real interview and ask them to click on end interview and click on "Back to Interview Form" button to get back to interview form and then click on "Join Interview" button to start new interview
+7. If the candidate says yes he/she is ready for real interview and ask them to clcik on end interview and click on start new interview button to get back to interview form
 8. If the candidate says no he/she is not ready for real interview and ask them if he/she has any doubts or questions about the practice session or real interview
 9. If the candidate says they don't know, respond supportively with something like "That's completely fine, these can be tricky"
 
@@ -251,6 +254,12 @@ Remember: You're having a genuine conversation with a real person. Be authentic,
         # Important: We preserve the existing STT EOU tuning and LLM/TTS
         # configuration so the interview format does not change. Turn detection
         # is injected from the env-driven variable above.
+        self.question_count = questions_count
+        
+                
+                
+            
+        
         super().__init__(
             instructions=full_instructions,  # Using full instructions from the start
             stt=assemblyai.STT(
@@ -258,6 +267,7 @@ Remember: You're having a genuine conversation with a real person. Be authentic,
             end_of_turn_confidence_threshold=0.7,  # Higher confidence
             min_end_of_turn_silence_when_confident=300,  # Longer silence
             max_turn_silence=5000,  # Allow longer pauses
+        
         ),
         llm=openai.LLM(
             model="gpt-4.1",
@@ -271,12 +281,12 @@ Remember: You're having a genuine conversation with a real person. Be authentic,
         tts=cartesia.TTS(
       model="sonic-2",
     #   voice="1259b7e3-cb8a-43df-9446-30971a46b8b0",
-    # voice="00967b2f-88a6-4a31-8153-110a92134b9f",
-      voice="da69d796-4603-4419-8a95-293bfc5679eb",
+    voice="da69d796-4603-4419-8a95-293bfc5679eb",
       speed=0.5,  # Slower speaking speed (0.5 = 50% speed, 1.0 = normal, 2.0 = double speed)
    ),
         vad=silero.VAD.load(),
             turn_detection=turn_detection_impl,
+        
         )
         
         self.role = role
@@ -335,6 +345,35 @@ Remember: You're having a genuine conversation with a real person. Be authentic,
         
         if hasattr(self, 'tts'):
             self.tts.on("metrics_collected", tts_metrics_wrapper)
+            
+       
+    @function_tool()
+    async def update_question_count(self, context: RunContext) -> None:
+        """Increment the question counter after each interview question complete from the given question list . Does'nt matter if the candidate answered or not but if the question is completed and we move to the next then counter should be incremented"""
+        self.question_count += 1
+        # Send updated count to frontend API for live display
+        try:
+            if getattr(self, "interview_id", None):
+                base_url = os.getenv("FRONTEND_BASE_URL", "http://localhost:3000")
+                url = f"{base_url}/api/interview/{self.interview_id}/question-count"
+                async with aiohttp.ClientSession() as session:
+                    await session.post(url, json={"count": self.question_count}, timeout=5)
+        except Exception as e:
+            log_warning(f"Failed to POST question count: {e}")
+        # return None to silence; or return a message if you want the LLM to respond
+        return None
+    
+    # @function_tool()
+    # async def update_unanaswered_question_coun(self, context: RunContext) -> None:
+    #     """Function should be called if the user said he dont know the answer of the question"""
+
+        
+    #     with open("question_count2.txt", "w") as f:
+    #         f.write("user dont know the answer of the question")
+    #     # return None to silence; or return a message if you want the LLM to respond
+    #     return None
+
+   
 
     async def on_enter(self):
         # Get the first question to start with

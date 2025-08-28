@@ -73,7 +73,7 @@ export function QuestionGenerationDialog({
   return (
     <Dialog open={open}>
       <DialogContent
-        className="sm:max-w-lg border border-border/50 bg-[#f5f5f5]"
+        className="sm:max-w-lg border border-border/50 bg-white"
         onPointerDownOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
       >

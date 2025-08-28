@@ -73,7 +73,7 @@ export function SkillFeedbackDialog({
           Add Feedback
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md bg-white">
         <DialogHeader>
           <DialogTitle>Feedback for {skillName}</DialogTitle>
         </DialogHeader>

@@ -85,7 +85,7 @@ export function SkillFeedbackViewDialog({
           View ({feedbackCount})
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-auto">
+      <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-auto bg-white">
         <DialogHeader>
           <DialogTitle>Feedback for {skillName}</DialogTitle>
         </DialogHeader>

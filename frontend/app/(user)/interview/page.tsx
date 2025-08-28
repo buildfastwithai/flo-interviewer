@@ -23,7 +23,6 @@ import TranscriptionView from "@/components/TranscriptionView";
 import useCombinedTranscriptions from "@/hooks/useCombinedTranscriptions";
 import type { ConnectionDetails } from "@/app/api/connection-details/route";
 import { toast } from "sonner";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Meteors } from "@/components/magicui/meteors";
 import { BoxReveal } from "@/components/magicui/box-reveal";
 import { MagicCard } from "@/components/magicui/magic-card";
@@ -46,30 +45,6 @@ interface InterviewData {
   transcript: any[];
 }
 
-// Pre-interview briefing content (centralized for easy updates)
-const PRE_INTERVIEW_BRIEFING = {
-  title: "Pre-Interview Briefing",
-  time: [
-    "Your session is time‑aware; the interviewer can tell you how much time has passed if you ask.",
-    "Brief pauses are okay; take a moment to think before answering."
-  ],
-  structure: [
-    "Warm introduction and readiness check.",
-    "A sequence of structured questions with brief acknowledgments and smooth transitions.",
-    "Closing with an opportunity for your questions."
-  ],
-  policies: [
-    // Sourced from agent guidance: no hints during evaluation
-    "No hints will be provided during evaluation.",
-    "Asking for hints leads to penalty.",
-    "The interviewer will not reveal correct answers or provide hints.",
-    "For JD, company, role details, compensation/CTC, hiring process/next steps, or performance feedback: Please connect with the hiring team for this information."
-  ],
-  recommendations: [
-    "Try Practice Mode first to get a feel for the interviewer and the interview process."
-  ]
-} as const;
-
 export default function InterviewPage() {
   const [room] = useState(new Room());
   const [userData, setUserData] = useState<UserFormData | null>(null);
@@ -87,7 +62,6 @@ export default function InterviewPage() {
   // Local VAD-driven speaking indicator (does not affect agent logic)
   const [isSpeaking, setIsSpeaking] = useState(false);
   const vadRef = useRef<InterviewVAD | null>(null);
-  const skipSaveOnDisconnectRef = useRef<boolean>(false);
 
   const onJoinInterview = useCallback(
     async (formData: UserFormData) => {
@@ -182,23 +156,21 @@ export default function InterviewPage() {
             transcript: []
           });
           
-          // Create initial interview data in the database (skip in practice mode)
-          if (!connectionDetails.practiceMode) {
-            try {
-              await createInterviewData({
-                interviewId: connectionDetails.interviewId,
-                transcript: "[]",
-                startTime: startTimeRef.current,
-                endTime: null,
-                duration: 0,
-                analysis: {},
-                questionAnswers: [],
-                candidateName: formData.name
-              });
-              console.log("Created initial interview data");
-            } catch (error) {
-              console.error("Failed to create initial interview data:", error);
-            }
+          // Create initial interview data in the database
+          try {
+            await createInterviewData({
+              interviewId: connectionDetails.interviewId,
+              transcript: "[]",
+              startTime: startTimeRef.current,
+              endTime: null,
+              duration: 0,
+              analysis: {},
+              questionAnswers: [],
+              candidateName: formData.name
+            });
+            console.log("Created initial interview data");
+          } catch (error) {
+            console.error("Failed to create initial interview data:", error);
           }
         }
         
@@ -322,7 +294,7 @@ export default function InterviewPage() {
   
   // Save transcripts periodically or when disconnecting
   useEffect(() => {
-    if (interviewData && transcriptions.length > 0 && !isPracticeMode) {
+    if (interviewData && transcriptions.length > 0) {
       const saveTranscriptInterval = setInterval(() => {
         updateInterviewData({
           interviewId: interviewData.interviewId,
@@ -340,7 +312,7 @@ export default function InterviewPage() {
       
       return () => clearInterval(saveTranscriptInterval);
     }
-  }, [interviewData, transcriptions, userData, isPracticeMode]);
+  }, [interviewData, transcriptions, userData]);
   
   // Calculate duration in minutes
   const calculateDuration = (startTime: string): number => {
@@ -388,10 +360,6 @@ export default function InterviewPage() {
   
   // Handle room disconnect and save final data
   const handleDisconnect = useCallback(async () => {
-    // If we are instructed to skip saving (e.g., leaving practice), exit early
-    if (skipSaveOnDisconnectRef.current || isPracticeMode) {
-      return;
-    }
     if (interviewData) {
       const endTime = new Date().toISOString();
       try {
@@ -440,7 +408,7 @@ export default function InterviewPage() {
         console.error('Failed to save interview data on disconnect:', error);
       }
     }
-  }, [interviewData, transcriptions, userData, isPracticeMode]);
+  }, [interviewData, transcriptions, userData]);
   
   // Set up disconnect handler
   useEffect(() => {
@@ -478,21 +446,6 @@ export default function InterviewPage() {
             interviewId={interviewData?.interviewId}
             onTranscriptUpdate={handleTranscriptUpdate}
             candidateName={userData.name}
-            onStartRealInterview={async () => {
-              if (!userData) return;
-              try {
-                // prevent saving practice data on disconnect
-                skipSaveOnDisconnectRef.current = true;
-                await room.disconnect(true);
-              } catch {}
-              finally {
-                skipSaveOnDisconnectRef.current = false;
-              }
-              // Start real interview with existing credentials
-              await onJoinInterview({ name: userData.name, accessCode: userData.accessCode });
-              setIsPracticeMode(false);
-              toast.success('Starting real interview');
-            }}
             showFeedbackModal={showFeedbackModal}
             setShowFeedbackModal={setShowFeedbackModal}
             feedback={feedback}
@@ -609,53 +562,6 @@ function UserForm({
                   />
                 </div>
               </motion.div>
-
-              {/* Pre-Interview Briefing */}
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4, duration: 0.5 }}
-              >
-                <ScrollArea className="h-[300px]">
-                <Card className="border-[#F7F7FA] bg-white rounded-2xl p-5">
-                  <h3 className="text-lg font-semibold text-[#1D244F] mb-2 text-center">{PRE_INTERVIEW_BRIEFING.title}</h3>
-                  <div className="space-y-3 text-sm text-[#5B5F79]">
-                    <div>
-                      <div className="font-medium text-[#1D244F]">Time</div>
-                      <ul className="list-disc pl-5 mt-1">
-                        {PRE_INTERVIEW_BRIEFING.time.map((item, idx) => (
-                          <li key={`brief-time-${idx}`}>{item}</li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div>
-                      <div className="font-medium text-[#1D244F]">Structure</div>
-                      <ul className="list-disc pl-5 mt-1">
-                        {PRE_INTERVIEW_BRIEFING.structure.map((item, idx) => (
-                          <li key={`brief-structure-${idx}`}>{item}</li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div>
-                      <div className="font-medium text-[#1D244F]">Policies</div>
-                      <ul className="list-disc pl-5 mt-1">
-                        {PRE_INTERVIEW_BRIEFING.policies.map((item, idx) => (
-                          <li key={`brief-policy-${idx}`}>{item}</li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div>
-                      <div className="font-medium text-[#1D244F]">Recommendations</div>
-                      <ul className="list-disc pl-5 mt-1">
-                        {PRE_INTERVIEW_BRIEFING.recommendations.map((item, idx) => (
-                          <li key={`brief-recommendation-${idx}`}>{item}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                  </Card>
-                </ScrollArea>
-              </motion.div>
               
               {error && (
                 <motion.div 
@@ -716,14 +622,36 @@ function UserForm({
   );
 }
 
-function InterviewInterface({ isDemoMode = false, isPracticeMode = false, interviewId, onTranscriptUpdate, candidateName, onStartRealInterview, showFeedbackModal, setShowFeedbackModal, feedback, isFeedbackLoading }: { isDemoMode?: boolean, isPracticeMode?: boolean, interviewId?: string, onTranscriptUpdate: (newTranscriptions: any[]) => void, candidateName: string, onStartRealInterview: () => void | Promise<void>, showFeedbackModal: boolean, setShowFeedbackModal: (show: boolean) => void, feedback: any, isFeedbackLoading: boolean }) {
+function InterviewInterface({ isDemoMode = false, isPracticeMode = false, interviewId, onTranscriptUpdate, candidateName, showFeedbackModal, setShowFeedbackModal, feedback, isFeedbackLoading }: { isDemoMode?: boolean, isPracticeMode?: boolean, interviewId?: string, onTranscriptUpdate: (newTranscriptions: any[]) => void, candidateName: string, showFeedbackModal: boolean, setShowFeedbackModal: (show: boolean) => void, feedback: any, isFeedbackLoading: boolean }) {
   const { state: agentState, audioTrack } = useVoiceAssistant();
   const [speaking, setSpeaking] = useState(false);
+  const [questionCount, setQuestionCount] = useState<number>(0);
   const transcriptions = useCombinedTranscriptions();
-  const [confirmStartOpen, setConfirmStartOpen] = useState(false);
 
   const isRecording = agentState === "listening";
   const isConnected = agentState !== "disconnected";
+
+  // Poll question count every 3s while connected
+  useEffect(() => {
+    let interval: any;
+    async function fetchCount() {
+      if (!interviewId) return;
+      try {
+        const res = await fetch(`/api/interview/${interviewId}/question-count`, { cache: "no-store" });
+        const data = await res.json();
+        if (data?.success && typeof data?.data?.count === "number") {
+          setQuestionCount(data.data.count);
+        }
+      } catch (e) {
+        // silent
+      }
+    }
+    if (isConnected) {
+      fetchCount();
+      interval = setInterval(fetchCount, 3000);
+    }
+    return () => interval && clearInterval(interval);
+  }, [interviewId, isConnected]);
 
   return (
     <>
@@ -843,13 +771,6 @@ function InterviewInterface({ isDemoMode = false, isPracticeMode = false, interv
                     <span className="text-white">End Interview</span>
                   </Button>
                 </DisconnectButton>
-                {isPracticeMode && (
-                  <div>
-                    <Button className="inline-flex h-10 items-center justify-center rounded-md bg-[#2663FF] px-4 py-2 text-sm font-medium text-white ring-offset-background transition-colors hover:bg-[#2663FF] hover:text-white border border-[#2663FF]/30" onClick={() => { setConfirmStartOpen(true); }}>
-                      <span className="text-white">Start Real Interview</span>
-                    </Button>
-                  </div>
-                )}
               </motion.div>
             </motion.div>
           </AnimatePresence>
@@ -936,6 +857,11 @@ function InterviewInterface({ isDemoMode = false, isPracticeMode = false, interv
         {/* Chat Messages */}
         <ScrollArea className="flex-1 p-6 relative z-10">
           <div className="space-y-6 max-w-4xl mx-auto">
+            {isConnected && (
+              <div className="flex items-center justify-end text-sm text-[#5B5F79]">
+                <span className="px-3 py-1 rounded-full bg-[#F7F7FA] border border-[#F0F0F5]">Questions asked: {questionCount}</span>
+              </div>
+            )}
             {isConnected ? (
               <TranscriptionView 
                 interviewId={interviewId}
@@ -961,7 +887,7 @@ function InterviewInterface({ isDemoMode = false, isPracticeMode = false, interv
                 <Button className="bg-[#2663FF] text-white px-4 py-2 rounded-md hover:bg-[#2663FF]/80" onClick={() => {
                   window.location.reload();
                 }}>
-                  Back to Interview Form
+                  Start New Interview
                 </Button>
                 <Button className="bg-[#2663FF] text-white px-4 py-2 rounded-md hover:bg-[#2663FF]/80" onClick={() => {
                   setShowFeedbackModal(true);
@@ -976,36 +902,6 @@ function InterviewInterface({ isDemoMode = false, isPracticeMode = false, interv
       </div>
 
       <NoAgentNotification state={agentState} />
-
-      {/* Confirm Start Real Interview Dialog */}
-      <Dialog open={confirmStartOpen} onOpenChange={setConfirmStartOpen}>
-        <DialogContent className="bg-white border-[#F7F7FA]">
-          <DialogHeader>
-            <DialogTitle className="text-[#1D244F]">Start Real Interview?</DialogTitle>
-            <DialogDescription className="text-[#5B5F79]">
-              This will end practice mode and begin the real interview for {candidateName}. Your responses will be recorded and evaluated.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              className="border-[#2663FF]/30 text-[#2663FF] hover:bg-[#2663FF]/10"
-              onClick={() => setConfirmStartOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              className="bg-[#f7a828] hover:bg-[#f7a828]/90 text-white"
-              onClick={async () => {
-                setConfirmStartOpen(false);
-                await onStartRealInterview?.();
-              }}
-            >
-              Start Interview
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {showFeedbackModal && (
         <InterviewFeedback

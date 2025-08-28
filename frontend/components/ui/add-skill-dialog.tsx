@@ -125,7 +125,7 @@ export function AddSkillDialog({
           Add New Skill
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md bg-white">
         <DialogHeader>
           <DialogTitle>Add New Skill</DialogTitle>
         </DialogHeader>
