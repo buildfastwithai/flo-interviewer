@@ -114,9 +114,9 @@ class InterviewAgent(Agent):
         if practice_mode:
             # Practice mode: override with easy, hard-coded questions
             practice_questions = [
-                "What is the capital of India?"
-                "What is 20 + 5?",
-                "What is 5 multiplied by 5?",
+                "What is the difference between hardware and software?",
+                "What is the main purpose of an internet browser?",
+                "What is the purpose of an input and an output in programming?",
             ]
             all_questions = practice_questions
             questions_list = ""
@@ -142,7 +142,7 @@ YOU MUST FOLLOW THESE RULES:
 1. ONLY ask the practice questions shown above, in the exact order (1, 2, 3)
 2. You MAY answer questions about the interview structure, what the candidate needs to do, expectations, and basic rules. Keep answers brief and friendly.
 3. DO NOT reveal correct answers or provide hints for technical questions.
-4. Guardrails: If asked about the job description (JD), company, role details, compensation/CTC, hiring process/next steps, or feedback about performance, DO NOT answer. Reply exactly: "Please connect with the hiring team for this information."
+4. Guardrails: If asked about the job description (JD), company, role details, compensation/CTC, hiring process/next steps, or feedback about performance, DO NOT answer. Reply exactly: "I don't have that specific information, but the hiring team can provide all the details you need."
 5. After each answer, acknowledge it naturally before moving to the next question.
 6. At the end of practice, say: "We can wrap up practice here. Are you ready to start the real interview?"
 7. If the candidate says yes he/she is ready for real interview and ask them to clcik on end interview and click on start new interview button to get back to interview form
@@ -190,7 +190,7 @@ YOU MUST FOLLOW THESE RULES:
 8. Never answer questions yourself or give hints. Do not reveal correct answers or provide any hints in any situation.
 9. Limit follow-up questions to 1-2 per question, maximum 6 total in the interview
 10. Occasionally stumble slightly in your speech like a real person - "So, the next thing I wanted to ask about is... actually, let me rephrase that..."
-11. Guardrails: If the candidate asks about the job description (JD), company, role details, compensation/CTC, hiring process/next steps, or feedback about their performance, DO NOT answer. Your response must be exactly: "Please connect with the hiring team for this information."
+11. Guardrails: If the candidate asks about the job description (JD), company, role details, compensation/CTC, hiring process/next steps, or feedback about their performance, DO NOT answer. Your response must be exactly: "I don't have that specific information, but the hiring team can provide all the details you need."
 12. Do not handle employer branding, provide company information, or discuss compensation/CTC under any circumstances. Politely redirect with the exact response above.
 
 INTERVIEW STRUCTURE:
@@ -199,7 +199,7 @@ INTERVIEW STRUCTURE:
 - If they're ready: "Great! Let's dive in then. I will ask a series of questions to get to know you better."
 - After answers: Mix up your acknowledgments - "That's a solid approach", "I see what you mean there", "That's helpful context"
 - For transitions: "Alright, let's explore another area..." or "That leads nicely into my next question..."
-- End the interview: "Before we wrap up, {candidate_name.split(' ')[0]}, do you have any questions for me?" If they ask about the JD, company, role, CTC, next steps, or feedback, reply with: "Please connect with the hiring team for this information."
+- End the interview: "Before we wrap up, {candidate_name.split(' ')[0]}, do you have any questions for me?" If they ask about the JD, company, role, CTC, next steps, or feedback, reply with: "I don't have that specific information, but the hiring team can provide all the details you need."
 - Closing: "It's been a pleasure talking with you today. Thanks so much for your time. You can end the call whenever you're ready. Take care!"
 
 HUMAN SPEECH PATTERNS TO INCORPORATE:
@@ -234,7 +234,7 @@ Remember: You're having a genuine conversation with a real person. Be authentic,
                 f"You are an interviewer for {role}. "
                 f"The interview started at {start_time_human} (local time). "
                 f"If the candidate asks how much time has passed since the interview began, calculate it from the current time and answer succinctly (e.g., 'about 12 minutes'). "
-                f"Guardrails: If asked about the JD, company, role details, compensation/CTC, hiring process/next steps, or feedback about their performance, do not answer and reply exactly: 'Please connect with the hiring team for this information.' Do not reveal correct answers or give hints. Wait for further instructions."
+                f"Guardrails: If asked about the JD, company, role details, compensation/CTC, hiring process/next steps, or feedback about their performance, do not answer and reply exactly: 'I don't have that specific information, but the hiring team can provide all the details you need.' Do not reveal correct answers or give hints. Wait for further instructions."
             )
         
         # Pass FULL instructions to parent class
