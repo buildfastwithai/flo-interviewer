@@ -1,0 +1,20 @@
+{
+  "interviewId": "88d0115f-f4bd-4dfc-9e86-e710aaf981da",
+  "interviewDataId": "c5738f8c-6b92-41b3-90c7-89b8f0ed3867",
+  "candidateName": "Kanishaka Pranjal",
+  "startedAt": "2025-08-29T12:17:54.914Z",
+  "endedAt": "2025-08-29T12:19:45.229Z",
+  "events": [
+    {
+      "type": "webcam_started",
+      "ts": "2025-08-29T12:17:58.867Z",
+      "description": "Webcam stream started via react-webcam"
+    },
+    {
+      "type": "network_disconnected",
+      "ts": "2025-08-29T12:19:45.228Z",
+      "description": "LiveKit disconnected"
+    }
+  ],
+  "receivedAt": "2025-08-29T12:20:01.194Z"
+}

@@ -46,11 +46,13 @@ import { AnimatedGradientText } from "@/components/magicui/animated-gradient-tex
 import { useSearchParams } from "next/navigation";
 import InterviewFeedback from "@/components/interview-feedback";
 import { InterviewVAD } from "@/lib/interview-vad"; // Client-side VAD helper for responsive UI
+import Webcam from "react-webcam";
 
 interface UserFormData {
   name: string;
   accessCode: string;
   practice?: boolean;
+  webcamProctoring?: boolean;
 }
 
 interface InterviewData {
@@ -104,12 +106,33 @@ export default function InterviewPage() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const vadRef = useRef<InterviewVAD | null>(null);
   const skipSaveOnDisconnectRef = useRef<boolean>(false);
+  const [webcamProctoringEnabled, setWebcamProctoringEnabled] = useState(false);
+  const proctoringRef = useRef<{
+    events: Array<{ type: string; ts: string; description?: string; meta?: any }>;
+    stream: MediaStream | null;
+    lastHiddenTs?: number | null;
+    lastDisconnectTs?: number | null;
+    focusBlurTimestamps: number[];
+  }>({ events: [], stream: null, lastHiddenTs: null, lastDisconnectTs: null, focusBlurTimestamps: [] });
+
+  const recordProctorEvent = useCallback((type: string, description?: string, meta?: any) => {
+    try {
+      proctoringRef.current.events.push({ type, ts: new Date().toISOString(), description, meta });
+    } catch {}
+  }, []);
+
+  const startWebcamProctoring = useCallback(async () => {
+    if (!webcamProctoringEnabled) return;
+    // React WebCam will handle getUserMedia; only record intent
+    recordProctorEvent("webcam_preview_enabled", "Webcam preview enabled via react-webcam");
+  }, [webcamProctoringEnabled, recordProctorEvent]);
 
   const onJoinInterview = useCallback(
     async (formData: UserFormData) => {
       setIsSubmitting(true);
       setError(null);
       try {
+        setWebcamProctoringEnabled(!!formData.webcamProctoring);
         console.log(
           "Connecting to interview with access code:",
           formData.accessCode
@@ -241,6 +264,11 @@ export default function InterviewPage() {
 
         // Save user data to state
         setUserData(formData);
+
+        // Start lightweight webcam proctoring if enabled
+        if (formData.webcamProctoring) {
+          startWebcamProctoring();
+        }
       } catch (error) {
         console.error("Error joining interview:", error);
         let errorMessage = "Failed to join interview. Please try again.";
@@ -252,13 +280,35 @@ export default function InterviewPage() {
         setIsSubmitting(false);
       }
     },
-    [room]
+    [room, startWebcamProctoring]
   );
 
   useEffect(() => {
     room.on(RoomEvent.MediaDevicesError, onDeviceFailure);
+    const onReconnecting = () => recordProctorEvent("network_reconnecting", "LiveKit is reconnecting");
+    const onReconnected = () => {
+      recordProctorEvent("network_reconnected", "LiveKit reconnected");
+      if (proctoringRef.current.lastDisconnectTs) {
+        const durMs = Date.now() - proctoringRef.current.lastDisconnectTs;
+        recordProctorEvent("network_disconnect_duration", "Computed disconnect duration", { ms: durMs });
+        proctoringRef.current.lastDisconnectTs = null;
+      }
+    };
+    const onDisconnected = () => {
+      recordProctorEvent("network_disconnected", "LiveKit disconnected");
+      proctoringRef.current.lastDisconnectTs = Date.now();
+    };
+    const onMediaDevicesChanged = () => recordProctorEvent("media_devices_changed", "Media devices changed");
+    room.on(RoomEvent.Reconnecting, onReconnecting as any);
+    room.on(RoomEvent.Reconnected, onReconnected as any);
+    room.on(RoomEvent.Disconnected, onDisconnected as any);
+    room.on(RoomEvent.MediaDevicesChanged, onMediaDevicesChanged as any);
     return () => {
       room.off(RoomEvent.MediaDevicesError, onDeviceFailure);
+      room.off(RoomEvent.Reconnecting, onReconnecting as any);
+      room.off(RoomEvent.Reconnected, onReconnected as any);
+      room.off(RoomEvent.Disconnected, onDisconnected as any);
+      room.off(RoomEvent.MediaDevicesChanged, onMediaDevicesChanged as any);
       // Cleanup VAD if initialized
       if (vadRef.current) {
         try {
@@ -266,8 +316,79 @@ export default function InterviewPage() {
         } catch {}
         vadRef.current = null;
       }
+      // Stop webcam proctoring stream if active
+      try {
+        if (proctoringRef.current.stream) {
+          proctoringRef.current.stream.getTracks().forEach((t) => t.stop());
+          proctoringRef.current.stream = null;
+        }
+      } catch {}
     };
   }, [room]);
+
+  // Basic page visibility/focus events for proctoring (no DB, just JSON via API)
+  useEffect(() => {
+    if (!webcamProctoringEnabled) return;
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        proctoringRef.current.lastHiddenTs = Date.now();
+        recordProctorEvent("page_hidden", "Page became hidden");
+      } else {
+        recordProctorEvent("page_visible", "Page became visible");
+        if (proctoringRef.current.lastHiddenTs) {
+          const durMs = Date.now() - proctoringRef.current.lastHiddenTs;
+          recordProctorEvent("page_hidden_duration", "Computed hidden duration", { ms: durMs });
+          proctoringRef.current.lastHiddenTs = null;
+        }
+      }
+    };
+    const onBlur = () => {
+      proctoringRef.current.focusBlurTimestamps.push(Date.now());
+      recordProctorEvent("window_blur", "Window lost focus");
+    };
+    const onFocus = () => {
+      proctoringRef.current.focusBlurTimestamps.push(Date.now());
+      recordProctorEvent("window_focus", "Window gained focus");
+    };
+    const onCopy = (e: ClipboardEvent) => {
+      let text = "";
+      try { text = (window.getSelection()?.toString() || "").slice(0, 500); } catch {}
+      recordProctorEvent("clipboard_copy", "User copied selection", { text });
+    };
+    const onCut = (e: ClipboardEvent) => {
+      let text = "";
+      try { text = (window.getSelection()?.toString() || "").slice(0, 500); } catch {}
+      recordProctorEvent("clipboard_cut", "User cut selection", { text });
+    };
+    const onPaste = (e: ClipboardEvent) => {
+      let text = "";
+      try { text = (e.clipboardData?.getData("text") || "").slice(0, 500); } catch {}
+      recordProctorEvent("clipboard_paste", "User pasted content", { text });
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      const isMac = navigator.platform.toUpperCase().includes("MAC");
+      const mod = isMac ? e.metaKey : e.ctrlKey;
+      if (mod && (e.key.toLowerCase() === "c" || e.key.toLowerCase() === "v")) {
+        recordProctorEvent("hotkey", `Hotkey ${mod ? (isMac ? 'Cmd' : 'Ctrl') : ''}+${e.key.toUpperCase()}`);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("blur", onBlur);
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("copy", onCopy as any);
+    window.addEventListener("cut", onCut as any);
+    window.addEventListener("paste", onPaste as any);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("blur", onBlur);
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("copy", onCopy as any);
+      window.removeEventListener("cut", onCut as any);
+      window.removeEventListener("paste", onPaste as any);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [webcamProctoringEnabled, recordProctorEvent]);
 
   // Function to create interview data in the database
   const createInterviewData = async (data: any) => {
@@ -476,6 +597,117 @@ export default function InterviewPage() {
             setIsFeedbackLoading(false);
           }
         }
+
+        // Persist proctoring events to JSON via API (no DB changes now)
+        try {
+          if (webcamProctoringEnabled) {
+            // Compute simple scores per category
+            const events = proctoringRef.current.events;
+            const scores = {
+              face_presence: { supported: false, deductions: 0, notes: "Face detection not enabled" },
+              attention: { deductions: 0, hiddenMs: 0 },
+              device_integrity: { deductions: 0, issues: 0 },
+              speaking_anomalies: { deductions: 0, count: 0 },
+              clipboard: { deductions: 0, copies: 0, pastes: 0 },
+              network: { deductions: 0, disconnects: 0, totalDisconnectMs: 0 },
+              automation_hints: { deductions: 0, hotkeys: 0, focusBlurEvents: 0 },
+            } as any;
+
+            let totalScore = 100;
+            // derive from duration events
+            for (const ev of events) {
+              switch (ev.type) {
+                case "page_hidden_duration":
+                  scores.attention.hiddenMs += ev.meta?.ms || 0;
+                  break;
+                case "network_disconnect_duration":
+                  scores.network.totalDisconnectMs += ev.meta?.ms || 0;
+                  break;
+                case "network_disconnected":
+                  scores.network.disconnects += 1;
+                  break;
+                case "media_devices_changed":
+                case "webcam_error":
+                case "webcam_track_ended":
+                  scores.device_integrity.issues += 1;
+                  break;
+                case "hotkey":
+                  scores.automation_hints.hotkeys += 1;
+                  break;
+                case "window_blur":
+                case "window_focus":
+                  scores.automation_hints.focusBlurEvents += 1;
+                  break;
+                case "clipboard_copy":
+                  scores.clipboard.copies += 1;
+                  break;
+                case "clipboard_paste":
+                case "clipboard_cut":
+                  scores.clipboard.pastes += 1;
+                  break;
+                // case "speaking_while_not_listening":
+                //   scores.speaking_anomalies.count += 1;
+                //   break;
+              }
+            }
+            // Deductions (conservative)
+            scores.attention.deductions = Math.min(20, Math.floor(scores.attention.hiddenMs / 30000) * 3);
+            scores.network.deductions = Math.min(10, scores.network.disconnects * 2 + Math.floor(scores.network.totalDisconnectMs / 60000));
+            scores.device_integrity.deductions = Math.min(10, scores.device_integrity.issues * 2);
+            scores.clipboard.deductions = Math.min(10, scores.clipboard.pastes * 2 + Math.max(0, scores.clipboard.copies - 3));
+            scores.automation_hints.deductions = Math.min(10, Math.floor(scores.automation_hints.hotkeys / 5) + Math.floor(scores.automation_hints.focusBlurEvents / 20));
+            // scores.speaking_anomalies.deductions = Math.min(10, scores.speaking_anomalies.count);
+            const deductionSum =
+              (scores.face_presence.deductions || 0) +
+              scores.attention.deductions +
+              scores.device_integrity.deductions +
+              scores.speaking_anomalies.deductions +
+              scores.clipboard.deductions +
+              scores.network.deductions +
+              scores.automation_hints.deductions;
+            totalScore = Math.max(0, totalScore - deductionSum);
+
+            const typeDescriptions: Record<string, string> = {
+              webcam_started: "Webcam stream started for local preview only",
+              webcam_track_ended: "Webcam track ended by system or user",
+              webcam_error: "Failure to start or maintain webcam stream",
+              page_hidden: "Page moved to background or tab hidden",
+              page_visible: "Page returned to foreground",
+              page_hidden_duration: "Computed duration while page was hidden",
+              window_blur: "Window lost focus",
+              window_focus: "Window gained focus",
+              clipboard_copy: "User copied selected text",
+              clipboard_cut: "User cut selected text",
+              clipboard_paste: "User pasted text",
+              hotkey: "Detected copy/paste hotkey usage",
+              media_devices_changed: "System media devices changed",
+              network_disconnected: "LiveKit disconnected",
+              network_reconnecting: "LiveKit attempting to reconnect",
+              network_reconnected: "LiveKit connection restored",
+              network_disconnect_duration: "Computed disconnect duration",
+              speaking_while_not_listening: "User spoke while interviewer was not listening",
+            };
+
+            await fetch("/api/proctoring", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                interviewId: interviewData.interviewId,
+                interviewDataId: interviewDataId,
+                candidateName: userData?.name || undefined,
+                startedAt: startTimeRef.current,
+                endedAt: endTime,
+                events,
+                typeDescriptions,
+                scores: { ...scores, totalScore },
+                // classification: totalScore >= 80 ? 'Healthy' : totalScore >= 60 ? 'Review' : 'Flagged',
+                // NOTE: In future, move to DB: see schema.prisma comment (proctoring Json?)
+              }),
+            });
+          }
+        } catch (e) {
+          console.warn("Failed to persist proctoring JSON:", e);
+        }
       } catch (error) {
         console.error("Failed to save interview data on disconnect:", error);
       }
@@ -524,6 +756,9 @@ export default function InterviewPage() {
             interviewId={interviewData?.interviewId}
             onTranscriptUpdate={handleTranscriptUpdate}
             candidateName={userData.name}
+            webcamProctoringEnabled={webcamProctoringEnabled}
+            onProctorEvent={recordProctorEvent}
+            isSpeakingUI={isSpeaking}
             onStartRealInterview={async () => {
               if (!userData) return;
               try {
@@ -565,6 +800,7 @@ function UserForm({
 }) {
   const [name, setName] = useState("");
   const [accessCode, setAccessCode] = useState("");
+  const [webcamProctoring, setWebcamProctoring] = useState(false);
   const searchParams = useSearchParams();
 
   useEffect(() => {
@@ -577,7 +813,7 @@ function UserForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({ name, accessCode });
+    onSubmit({ name, accessCode, webcamProctoring });
   };
 
   return (
@@ -663,6 +899,22 @@ function UserForm({
                     onChange={(e) => setAccessCode(e.target.value)}
                     required
                     className="border-[#F7F7FA] focus:border-[#2663FF] focus:ring-[#2663FF]/30 rounded-lg h-12"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between py-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="webcamProctoring" className="text-[#1D244F] font-medium">
+                      Webcam Proctoring
+                    </Label>
+                    <p className="text-xs text-[#5B5F79]">Optional, privacy-friendly. No images stored.</p>
+                  </div>
+                  <input
+                    id="webcamProctoring"
+                    type="checkbox"
+                    className="h-5 w-5 accent-[#2663FF]"
+                    checked={webcamProctoring}
+                    onChange={(e) => setWebcamProctoring(e.target.checked)}
                   />
                 </div>
               </motion.div>
@@ -758,7 +1010,7 @@ function UserForm({
                     className="w-full border-[#2663FF]/30 text-[#2663FF] hover:bg-[#2663FF]/10"
                     disabled={isSubmitting || !name}
                     onClick={() =>
-                      onSubmit({ name, accessCode, practice: true })
+                      onSubmit({ name, accessCode, practice: true, webcamProctoring })
                     }
                   >
                     Try Practice Mode
@@ -796,6 +1048,9 @@ function InterviewInterface({
   interviewId,
   onTranscriptUpdate,
   candidateName,
+  webcamProctoringEnabled,
+  onProctorEvent,
+  isSpeakingUI,
   onStartRealInterview,
   showFeedbackModal,
   setShowFeedbackModal,
@@ -807,6 +1062,9 @@ function InterviewInterface({
   interviewId?: string;
   onTranscriptUpdate: (newTranscriptions: any[]) => void;
   candidateName: string;
+  webcamProctoringEnabled?: boolean;
+  onProctorEvent?: (type: string, description?: string, meta?: any) => void;
+  isSpeakingUI?: boolean;
   onStartRealInterview: () => void | Promise<void>;
   showFeedbackModal: boolean;
   setShowFeedbackModal: (show: boolean) => void;
@@ -818,9 +1076,26 @@ function InterviewInterface({
   const [questionCount, setQuestionCount] = useState<number>(0);
   const [confirmStartOpen, setConfirmStartOpen] = useState(false);
   const transcriptions = useCombinedTranscriptions();
+  const lastAnomalyTsRef = useRef<number>(0);
 
   const isRecording = agentState === "listening";
   const isConnected = agentState !== "disconnected";
+  // React WebCam handles its own media binding
+
+  // Speaking anomaly: candidate speaks while agent not listening
+  // NOTE: Temporarily commented out per request
+  /*
+  useEffect(() => {
+    if (!onProctorEvent) return;
+    if (isSpeakingUI && agentState !== "listening") {
+      const now = Date.now();
+      if (now - lastAnomalyTsRef.current > 1000) {
+        onProctorEvent("speaking_while_not_listening", "User speech detected while interviewer not listening");
+        lastAnomalyTsRef.current = now;
+      }
+    }
+  }, [isSpeakingUI, agentState, onProctorEvent]);
+  */
 
   // Poll question count every 3s while connected
   useEffect(() => {
@@ -873,6 +1148,25 @@ function InterviewInterface({
 
         {/* Audio Visualizer */}
         <div className="p-6 relative z-10">
+          {webcamProctoringEnabled && (
+            <motion.div
+              className="mb-4 overflow-hidden rounded-xl border border-[#2663FF]/20 bg-[#1D244F]/60 backdrop-blur-sm z-50"
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+            >
+              <Webcam
+                audio={false}
+                mirrored
+                videoConstraints={{ width: 320, height: 200, frameRate: { ideal: 5, max: 10 } }}
+                className="w-full h-full object-cover"
+                onUserMedia={() => onProctorEvent?.("webcam_started", "Webcam stream started via react-webcam")}
+                onUserMediaError={(e) => onProctorEvent?.("webcam_error", "Error starting webcam preview", { message: (e as any)?.message || String(e) })}
+              />
+              <div className="px-2 py-1 text-[10px] text-[#F7F7FA] bg-[#1D244F]/70 border-t border-[#2663FF]/10 text-center">
+                Webcam preview (not recorded)
+              </div>
+            </motion.div>
+          )}
           {/* <div className="flex items-center gap-2 mb-4"> */}
           <motion.div
             className="flex items-center justify-center gap-2 px-3 py-1 bg-gradient-to-r from-[#2663FF]/20 to-[#1D244F]/20 rounded-full border border-[#2663FF]/30 backdrop-blur-sm text-center"

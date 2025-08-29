@@ -160,6 +160,18 @@ model InterviewData {
   @@index([interviewId])
 }
 
+// FUTURE CHANGE (Proctoring):
+// For storing proctoring signals in DB instead of JSON files, consider:
+// 1) Add a dedicated field on InterviewData to keep the structured payload:
+//    proctoring Json?   // { score, events: [...], stats: {...}, config: {...} }
+//    - Alternatively, store inside analysis as analysis.proctoring to avoid schema change.
+// 2) If querying by status/score is required, add optional denormalized columns:
+//    proctorScore Int?  // overall score (0-100)
+//    proctorFlags Json? // summarized flags for quick filtering
+// 3) Create an index if frequently filtered by score:
+//    @@index([interviewId, proctorScore])
+// NOTE: Current implementation writes to JSON via /api/proctoring route; migrate later.
+
 enum SkillLevel {
   BEGINNER
   INTERMEDIATE

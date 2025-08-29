@@ -1,0 +1,139 @@
+{
+  "interviewId": "88d0115f-f4bd-4dfc-9e86-e710aaf981da",
+  "interviewDataId": "73054767-1dd6-43f2-bc4b-1d6baf9d92f7",
+  "candidateName": "Kanishaka Pranjal",
+  "startedAt": "2025-08-29T12:11:07.274Z",
+  "endedAt": "2025-08-29T12:14:46.680Z",
+  "events": [
+    {
+      "type": "window_blur",
+      "ts": "2025-08-29T12:11:09.918Z",
+      "description": "Window lost focus"
+    },
+    {
+      "type": "window_focus",
+      "ts": "2025-08-29T12:11:12.586Z",
+      "description": "Window gained focus"
+    },
+    {
+      "type": "webcam_started",
+      "ts": "2025-08-29T12:11:14.167Z",
+      "description": "Webcam stream started via react-webcam"
+    },
+    {
+      "type": "window_blur",
+      "ts": "2025-08-29T12:11:23.412Z",
+      "description": "Window lost focus"
+    },
+    {
+      "type": "webcam_started",
+      "ts": "2025-08-29T12:12:04.450Z",
+      "description": "Webcam stream started via react-webcam"
+    },
+    {
+      "type": "webcam_started",
+      "ts": "2025-08-29T12:12:15.579Z",
+      "description": "Webcam stream started via react-webcam"
+    },
+    {
+      "type": "webcam_started",
+      "ts": "2025-08-29T12:12:43.958Z",
+      "description": "Webcam stream started via react-webcam"
+    },
+    {
+      "type": "webcam_started",
+      "ts": "2025-08-29T12:12:52.825Z",
+      "description": "Webcam stream started via react-webcam"
+    },
+    {
+      "type": "webcam_started",
+      "ts": "2025-08-29T12:13:01.424Z",
+      "description": "Webcam stream started via react-webcam"
+    },
+    {
+      "type": "webcam_started",
+      "ts": "2025-08-29T12:13:13.575Z",
+      "description": "Webcam stream started via react-webcam"
+    },
+    {
+      "type": "webcam_started",
+      "ts": "2025-08-29T12:13:17.296Z",
+      "description": "Webcam stream started via react-webcam"
+    },
+    {
+      "type": "webcam_started",
+      "ts": "2025-08-29T12:13:32.277Z",
+      "description": "Webcam stream started via react-webcam"
+    },
+    {
+      "type": "webcam_started",
+      "ts": "2025-08-29T12:13:43.171Z",
+      "description": "Webcam stream started via react-webcam"
+    },
+    {
+      "type": "window_focus",
+      "ts": "2025-08-29T12:13:55.263Z",
+      "description": "Window gained focus"
+    },
+    {
+      "type": "hotkey",
+      "ts": "2025-08-29T12:13:57.293Z",
+      "description": "Hotkey Ctrl+C"
+    },
+    {
+      "type": "clipboard_copy",
+      "ts": "2025-08-29T12:13:57.294Z",
+      "description": "User copied selection",
+      "meta": {
+        "text": "Great! Let's dive in then. I will ask a series of questions to get to know you better. So, to start off—can you describe a challenging React project you worked on? What were the key technical hurdles, and how did you overcome them"
+      }
+    },
+    {
+      "type": "window_blur",
+      "ts": "2025-08-29T12:14:00.702Z",
+      "description": "Window lost focus"
+    },
+    {
+      "type": "page_hidden",
+      "ts": "2025-08-29T12:14:00.706Z",
+      "description": "Page became hidden"
+    },
+    {
+      "type": "page_visible",
+      "ts": "2025-08-29T12:14:01.392Z",
+      "description": "Page became visible"
+    },
+    {
+      "type": "page_hidden_duration",
+      "ts": "2025-08-29T12:14:01.392Z",
+      "description": "Computed hidden duration",
+      "meta": {
+        "ms": 686
+      }
+    },
+    {
+      "type": "window_focus",
+      "ts": "2025-08-29T12:14:01.412Z",
+      "description": "Window gained focus"
+    },
+    {
+      "type": "hotkey",
+      "ts": "2025-08-29T12:14:06.491Z",
+      "description": "Hotkey Ctrl+V"
+    },
+    {
+      "type": "clipboard_paste",
+      "ts": "2025-08-29T12:14:06.498Z",
+      "description": "User pasted content",
+      "meta": {
+        "text": "npm i react-webcam --save"
+      }
+    },
+    {
+      "type": "network_disconnected",
+      "ts": "2025-08-29T12:14:46.680Z",
+      "description": "LiveKit disconnected"
+    }
+  ],
+  "receivedAt": "2025-08-29T12:14:53.163Z"
+}
