@@ -30,8 +30,6 @@ import TranscriptionView from "@/components/TranscriptionView";
 import useCombinedTranscriptions from "@/hooks/useCombinedTranscriptions";
 import type { ConnectionDetails } from "@/app/api/connection-details/route";
 import { toast } from "sonner";
-<<<<<<< HEAD
-=======
 import {
   Dialog,
   DialogContent,
@@ -40,7 +38,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
->>>>>>> ccf502e (Update practice questions and refine interview guidelines in InterviewAgent and frontend)
 import { Meteors } from "@/components/magicui/meteors";
 import { BoxReveal } from "@/components/magicui/box-reveal";
 import { MagicCard } from "@/components/magicui/magic-card";
@@ -63,8 +60,6 @@ interface InterviewData {
   transcript: any[];
 }
 
-<<<<<<< HEAD
-=======
 // Pre-interview briefing content (centralized for easy updates)
 const PRE_INTERVIEW_BRIEFING = {
   title: "Pre-Interview Briefing",
@@ -89,7 +84,6 @@ const PRE_INTERVIEW_BRIEFING = {
   ],
 } as const;
 
->>>>>>> ccf502e (Update practice questions and refine interview guidelines in InterviewAgent and frontend)
 export default function InterviewPage() {
   const [room] = useState(new Room());
   const [userData, setUserData] = useState<UserFormData | null>(null);
@@ -109,6 +103,7 @@ export default function InterviewPage() {
   // Local VAD-driven speaking indicator (does not affect agent logic)
   const [isSpeaking, setIsSpeaking] = useState(false);
   const vadRef = useRef<InterviewVAD | null>(null);
+  const skipSaveOnDisconnectRef = useRef<boolean>(false);
 
   const onJoinInterview = useCallback(
     async (formData: UserFormData) => {
@@ -223,24 +218,6 @@ export default function InterviewPage() {
             startTime: startTimeRef.current,
             transcript: [],
           });
-<<<<<<< HEAD
-          
-          // Create initial interview data in the database
-          try {
-            await createInterviewData({
-              interviewId: connectionDetails.interviewId,
-              transcript: "[]",
-              startTime: startTimeRef.current,
-              endTime: null,
-              duration: 0,
-              analysis: {},
-              questionAnswers: [],
-              candidateName: formData.name
-            });
-            console.log("Created initial interview data");
-          } catch (error) {
-            console.error("Failed to create initial interview data:", error);
-=======
 
           // Create initial interview data in the database (skip in practice mode)
           if (!connectionDetails.practiceMode) {
@@ -259,7 +236,6 @@ export default function InterviewPage() {
             } catch (error) {
               console.error("Failed to create initial interview data:", error);
             }
->>>>>>> ccf502e (Update practice questions and refine interview guidelines in InterviewAgent and frontend)
           }
         }
 
@@ -405,13 +381,8 @@ export default function InterviewPage() {
 
       return () => clearInterval(saveTranscriptInterval);
     }
-<<<<<<< HEAD
-  }, [interviewData, transcriptions, userData]);
-  
-=======
   }, [interviewData, transcriptions, userData, isPracticeMode]);
 
->>>>>>> ccf502e (Update practice questions and refine interview guidelines in InterviewAgent and frontend)
   // Calculate duration in minutes
   const calculateDuration = (startTime: string): number => {
     const start = new Date(startTime).getTime();
@@ -458,6 +429,9 @@ export default function InterviewPage() {
 
   // Handle room disconnect and save final data
   const handleDisconnect = useCallback(async () => {
+    if (skipSaveOnDisconnectRef.current) {
+      return;
+    }
     if (interviewData) {
       const endTime = new Date().toISOString();
       try {
@@ -506,13 +480,8 @@ export default function InterviewPage() {
         console.error("Failed to save interview data on disconnect:", error);
       }
     }
-<<<<<<< HEAD
-  }, [interviewData, transcriptions, userData]);
-  
-=======
   }, [interviewData, transcriptions, userData, isPracticeMode]);
 
->>>>>>> ccf502e (Update practice questions and refine interview guidelines in InterviewAgent and frontend)
   // Set up disconnect handler
   useEffect(() => {
     if (room) {
@@ -555,8 +524,6 @@ export default function InterviewPage() {
             interviewId={interviewData?.interviewId}
             onTranscriptUpdate={handleTranscriptUpdate}
             candidateName={userData.name}
-<<<<<<< HEAD
-=======
             onStartRealInterview={async () => {
               if (!userData) return;
               try {
@@ -575,7 +542,6 @@ export default function InterviewPage() {
               setIsPracticeMode(false);
               toast.success("Starting real interview");
             }}
->>>>>>> ccf502e (Update practice questions and refine interview guidelines in InterviewAgent and frontend)
             showFeedbackModal={showFeedbackModal}
             setShowFeedbackModal={setShowFeedbackModal}
             feedback={feedback}
@@ -700,9 +666,6 @@ function UserForm({
                   />
                 </div>
               </motion.div>
-<<<<<<< HEAD
-              
-=======
 
               {/* Pre-Interview Briefing */}
               <motion.div
@@ -763,7 +726,6 @@ function UserForm({
                 </ScrollArea>
               </motion.div>
 
->>>>>>> ccf502e (Update practice questions and refine interview guidelines in InterviewAgent and frontend)
               {error && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
@@ -828,9 +790,6 @@ function UserForm({
   );
 }
 
-<<<<<<< HEAD
-function InterviewInterface({ isDemoMode = false, isPracticeMode = false, interviewId, onTranscriptUpdate, candidateName, showFeedbackModal, setShowFeedbackModal, feedback, isFeedbackLoading }: { isDemoMode?: boolean, isPracticeMode?: boolean, interviewId?: string, onTranscriptUpdate: (newTranscriptions: any[]) => void, candidateName: string, showFeedbackModal: boolean, setShowFeedbackModal: (show: boolean) => void, feedback: any, isFeedbackLoading: boolean }) {
-=======
 function InterviewInterface({
   isDemoMode = false,
   isPracticeMode = false,
@@ -854,10 +813,10 @@ function InterviewInterface({
   feedback: any;
   isFeedbackLoading: boolean;
 }) {
->>>>>>> ccf502e (Update practice questions and refine interview guidelines in InterviewAgent and frontend)
   const { state: agentState, audioTrack } = useVoiceAssistant();
   const [speaking, setSpeaking] = useState(false);
   const [questionCount, setQuestionCount] = useState<number>(0);
+  const [confirmStartOpen, setConfirmStartOpen] = useState(false);
   const transcriptions = useCombinedTranscriptions();
 
   const isRecording = agentState === "listening";
@@ -869,7 +828,10 @@ function InterviewInterface({
     async function fetchCount() {
       if (!interviewId) return;
       try {
-        const res = await fetch(`/api/interview/${interviewId}/question-count`, { cache: "no-store" });
+        const res = await fetch(
+          `/api/interview/${interviewId}/question-count`,
+          { cache: "no-store" }
+        );
         const data = await res.json();
         if (data?.success && typeof data?.data?.count === "number") {
           setQuestionCount(data.data.count);
@@ -1011,8 +973,6 @@ function InterviewInterface({
                     <span className="text-white">End Interview</span>
                   </Button>
                 </DisconnectButton>
-<<<<<<< HEAD
-=======
                 {isPracticeMode && (
                   <div>
                     <Button
@@ -1025,7 +985,6 @@ function InterviewInterface({
                     </Button>
                   </div>
                 )}
->>>>>>> ccf502e (Update practice questions and refine interview guidelines in InterviewAgent and frontend)
               </motion.div>
             </motion.div>
           </AnimatePresence>
@@ -1116,11 +1075,13 @@ function InterviewInterface({
         {/* Chat Messages */}
         <ScrollArea className="flex-1 p-6 relative z-10">
           <div className="space-y-6 max-w-4xl mx-auto">
-            {isConnected && (
+            {/* {isConnected && (
               <div className="flex items-center justify-end text-sm text-[#5B5F79]">
-                <span className="px-3 py-1 rounded-full bg-[#F7F7FA] border border-[#F0F0F5]">Questions asked: {questionCount}</span>
+                <span className="px-3 py-1 rounded-full bg-[#F7F7FA] border border-[#F0F0F5]">
+                  Questions asked: {questionCount}
+                </span>
               </div>
-            )}
+            )} */}
             {isConnected ? (
               <TranscriptionView
                 interviewId={interviewId}
@@ -1144,20 +1105,6 @@ function InterviewInterface({
                   reload the page to start a new interview or view the feedback.
                 </p>
 
-<<<<<<< HEAD
-                <div className="flex items-center gap-2 mt-4"> 
-
-                <Button className="bg-[#2663FF] text-white px-4 py-2 rounded-md hover:bg-[#2663FF]/80" onClick={() => {
-                  window.location.reload();
-                }}>
-                  Start New Interview
-                </Button>
-                <Button className="bg-[#2663FF] text-white px-4 py-2 rounded-md hover:bg-[#2663FF]/80" onClick={() => {
-                  setShowFeedbackModal(true);
-                }}>
-                  View Feedback
-                </Button>
-=======
                 <div className="flex items-center gap-2 mt-4">
                   <Button
                     className="bg-[#2663FF] text-white px-4 py-2 rounded-md hover:bg-[#2663FF]/80"
@@ -1175,7 +1122,6 @@ function InterviewInterface({
                   >
                     View Feedback
                   </Button>
->>>>>>> ccf502e (Update practice questions and refine interview guidelines in InterviewAgent and frontend)
                 </div>
               </motion.div>
             )}
@@ -1185,8 +1131,6 @@ function InterviewInterface({
 
       <NoAgentNotification state={agentState} />
 
-<<<<<<< HEAD
-=======
       {/* Confirm Start Real Interview Dialog */}
       <Dialog open={confirmStartOpen} onOpenChange={setConfirmStartOpen}>
         <DialogContent className="bg-white border-[#F7F7FA]">
@@ -1220,7 +1164,6 @@ function InterviewInterface({
         </DialogContent>
       </Dialog>
 
->>>>>>> ccf502e (Update practice questions and refine interview guidelines in InterviewAgent and frontend)
       {showFeedbackModal && (
         <InterviewFeedback
           candidateName={candidateName}

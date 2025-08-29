@@ -347,21 +347,21 @@ Remember: You're having a genuine conversation with a real person. Be authentic,
             self.tts.on("metrics_collected", tts_metrics_wrapper)
             
        
-    @function_tool()
-    async def update_question_count(self, context: RunContext) -> None:
-        """Increment the question counter after each interview question complete from the given question list . Does'nt matter if the candidate answered or not but if the question is completed and we move to the next then counter should be incremented"""
-        self.question_count += 1
-        # Send updated count to frontend API for live display
-        try:
-            if getattr(self, "interview_id", None):
-                base_url = os.getenv("FRONTEND_BASE_URL", "http://localhost:3000")
-                url = f"{base_url}/api/interview/{self.interview_id}/question-count"
-                async with aiohttp.ClientSession() as session:
-                    await session.post(url, json={"count": self.question_count}, timeout=5)
-        except Exception as e:
-            log_warning(f"Failed to POST question count: {e}")
-        # return None to silence; or return a message if you want the LLM to respond
-        return None
+    # @function_tool()
+    # async def update_question_count(self, context: RunContext) -> None:
+    #     """Increment the question counter after each interview question complete from the given question list . Does'nt matter if the candidate answered or not but if the question is completed and we move to the next then counter should be incremented"""
+    #     self.question_count += 1
+    #     # Send updated count to frontend API for live display
+    #     try:
+    #         if getattr(self, "interview_id", None):
+    #             base_url = os.getenv("FRONTEND_BASE_URL", "http://localhost:3000")
+    #             url = f"{base_url}/api/interview/{self.interview_id}/question-count"
+    #             async with aiohttp.ClientSession() as session:
+    #                 await session.post(url, json={"count": self.question_count}, timeout=5)
+    #     except Exception as e:
+    #         log_warning(f"Failed to POST question count: {e}")
+    #     # return None to silence; or return a message if you want the LLM to respond
+    #     return None
     
     # @function_tool()
     # async def update_unanaswered_question_coun(self, context: RunContext) -> None:
