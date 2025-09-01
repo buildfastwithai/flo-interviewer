@@ -1,0 +1,165 @@
+{
+  "interviewId": "88d0115f-f4bd-4dfc-9e86-e710aaf981da",
+  "interviewDataId": "07cad0c6-2687-49d9-aca5-6792f3fe48ac",
+  "candidateName": "Prathmesh Sadake",
+  "startedAt": "2025-09-01T05:28:30.628Z",
+  "endedAt": "2025-09-01T05:29:40.180Z",
+  "events": [
+    {
+      "type": "window_blur",
+      "ts": "2025-09-01T05:28:29.327Z",
+      "description": "Window lost focus"
+    },
+    {
+      "type": "page_hidden",
+      "ts": "2025-09-01T05:28:30.107Z",
+      "description": "Page became hidden"
+    },
+    {
+      "type": "page_visible",
+      "ts": "2025-09-01T05:28:30.559Z",
+      "description": "Page became visible"
+    },
+    {
+      "type": "page_hidden_duration",
+      "ts": "2025-09-01T05:28:30.559Z",
+      "description": "Computed hidden duration",
+      "meta": {
+        "ms": 452
+      }
+    },
+    {
+      "type": "window_focus",
+      "ts": "2025-09-01T05:28:31.140Z",
+      "description": "Window gained focus"
+    },
+    {
+      "type": "window_blur",
+      "ts": "2025-09-01T05:28:31.904Z",
+      "description": "Window lost focus"
+    },
+    {
+      "type": "window_focus",
+      "ts": "2025-09-01T05:28:34.893Z",
+      "description": "Window gained focus"
+    },
+    {
+      "type": "webcam_started",
+      "ts": "2025-09-01T05:28:35.105Z",
+      "description": "Webcam stream started via react-webcam"
+    },
+    {
+      "type": "hotkey",
+      "ts": "2025-09-01T05:29:02.995Z",
+      "description": "Hotkey Cmd+C"
+    },
+    {
+      "type": "clipboard_copy",
+      "ts": "2025-09-01T05:29:02.999Z",
+      "description": "User copied selection",
+      "meta": {
+        "text": "can you describe a challenging React project you worked on? What were the key technical hurdles, and how did you overcome them?"
+      }
+    },
+    {
+      "type": "window_blur",
+      "ts": "2025-09-01T05:29:03.745Z",
+      "description": "Window lost focus"
+    },
+    {
+      "type": "page_hidden",
+      "ts": "2025-09-01T05:29:03.745Z",
+      "description": "Page became hidden"
+    },
+    {
+      "type": "page_visible",
+      "ts": "2025-09-01T05:29:06.069Z",
+      "description": "Page became visible"
+    },
+    {
+      "type": "page_hidden_duration",
+      "ts": "2025-09-01T05:29:06.069Z",
+      "description": "Computed hidden duration",
+      "meta": {
+        "ms": 2324
+      }
+    },
+    {
+      "type": "window_focus",
+      "ts": "2025-09-01T05:29:06.069Z",
+      "description": "Window gained focus"
+    },
+    {
+      "type": "window_blur",
+      "ts": "2025-09-01T05:29:07.985Z",
+      "description": "Window lost focus"
+    },
+    {
+      "type": "page_hidden",
+      "ts": "2025-09-01T05:29:08.773Z",
+      "description": "Page became hidden"
+    },
+    {
+      "type": "page_visible",
+      "ts": "2025-09-01T05:29:13.693Z",
+      "description": "Page became visible"
+    },
+    {
+      "type": "page_hidden_duration",
+      "ts": "2025-09-01T05:29:13.693Z",
+      "description": "Computed hidden duration",
+      "meta": {
+        "ms": 4920
+      }
+    },
+    {
+      "type": "window_focus",
+      "ts": "2025-09-01T05:29:14.251Z",
+      "description": "Window gained focus"
+    },
+    {
+      "type": "window_blur",
+      "ts": "2025-09-01T05:29:35.198Z",
+      "description": "Window lost focus"
+    },
+    {
+      "type": "page_hidden",
+      "ts": "2025-09-01T05:29:35.988Z",
+      "description": "Page became hidden"
+    },
+    {
+      "type": "page_visible",
+      "ts": "2025-09-01T05:29:38.244Z",
+      "description": "Page became visible"
+    },
+    {
+      "type": "page_hidden_duration",
+      "ts": "2025-09-01T05:29:38.244Z",
+      "description": "Computed hidden duration",
+      "meta": {
+        "ms": 2256
+      }
+    },
+    {
+      "type": "window_focus",
+      "ts": "2025-09-01T05:29:38.807Z",
+      "description": "Window gained focus"
+    },
+    {
+      "type": "network_disconnected",
+      "ts": "2025-09-01T05:29:40.179Z",
+      "description": "LiveKit disconnected"
+    },
+    {
+      "type": "window_blur",
+      "ts": "2025-09-01T05:29:42.477Z",
+      "description": "Window lost focus"
+    },
+    {
+      "type": "page_hidden",
+      "ts": "2025-09-01T05:29:43.257Z",
+      "description": "Page became hidden"
+    }
+  ],
+  "receivedAt": "2025-09-01T05:29:46.379Z"
+}

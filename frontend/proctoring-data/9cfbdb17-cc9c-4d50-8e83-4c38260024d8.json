@@ -1,0 +1,109 @@
+{
+  "interviewId": "88d0115f-f4bd-4dfc-9e86-e710aaf981da",
+  "interviewDataId": "9cfbdb17-cc9c-4d50-8e83-4c38260024d8",
+  "candidateName": "Prathmesh Sadake",
+  "startedAt": "2025-09-01T05:35:35.820Z",
+  "endedAt": "2025-09-01T05:36:19.415Z",
+  "events": [
+    {
+      "type": "window_blur",
+      "ts": "2025-09-01T05:35:33.754Z",
+      "description": "Window lost focus"
+    },
+    {
+      "type": "window_focus",
+      "ts": "2025-09-01T05:35:35.616Z",
+      "description": "Window gained focus"
+    },
+    {
+      "type": "window_blur",
+      "ts": "2025-09-01T05:35:37.784Z",
+      "description": "Window lost focus"
+    },
+    {
+      "type": "window_focus",
+      "ts": "2025-09-01T05:35:39.564Z",
+      "description": "Window gained focus"
+    },
+    {
+      "type": "webcam_started",
+      "ts": "2025-09-01T05:35:39.700Z",
+      "description": "Webcam stream started via react-webcam"
+    },
+    {
+      "type": "hotkey",
+      "ts": "2025-09-01T05:36:11.283Z",
+      "description": "Hotkey Cmd+C"
+    },
+    {
+      "type": "clipboard_copy",
+      "ts": "2025-09-01T05:36:11.286Z",
+      "description": "User copied selection",
+      "meta": {
+        "text": "to start off—can you describe a challenging React project you worked on? What were the key technical hurdles, and how did you overcome them?"
+      }
+    },
+    {
+      "type": "window_blur",
+      "ts": "2025-09-01T05:36:12.722Z",
+      "description": "Window lost focus"
+    },
+    {
+      "type": "page_hidden",
+      "ts": "2025-09-01T05:36:12.722Z",
+      "description": "Page became hidden"
+    },
+    {
+      "type": "page_visible",
+      "ts": "2025-09-01T05:36:14.697Z",
+      "description": "Page became visible"
+    },
+    {
+      "type": "page_hidden_duration",
+      "ts": "2025-09-01T05:36:14.697Z",
+      "description": "Computed hidden duration",
+      "meta": {
+        "ms": 1975
+      }
+    },
+    {
+      "type": "window_focus",
+      "ts": "2025-09-01T05:36:14.697Z",
+      "description": "Window gained focus"
+    },
+    {
+      "type": "window_blur",
+      "ts": "2025-09-01T05:36:16.767Z",
+      "description": "Window lost focus"
+    },
+    {
+      "type": "page_hidden",
+      "ts": "2025-09-01T05:36:16.768Z",
+      "description": "Page became hidden"
+    },
+    {
+      "type": "page_visible",
+      "ts": "2025-09-01T05:36:17.818Z",
+      "description": "Page became visible"
+    },
+    {
+      "type": "page_hidden_duration",
+      "ts": "2025-09-01T05:36:17.818Z",
+      "description": "Computed hidden duration",
+      "meta": {
+        "ms": 1050
+      }
+    },
+    {
+      "type": "window_focus",
+      "ts": "2025-09-01T05:36:17.818Z",
+      "description": "Window gained focus"
+    },
+    {
+      "type": "network_disconnected",
+      "ts": "2025-09-01T05:36:19.415Z",
+      "description": "LiveKit disconnected"
+    }
+  ],
+  "receivedAt": "2025-09-01T05:36:25.587Z"
+}

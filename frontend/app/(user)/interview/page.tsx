@@ -907,7 +907,7 @@ function UserForm({
                     <Label htmlFor="webcamProctoring" className="text-[#1D244F] font-medium">
                       Webcam Proctoring
                     </Label>
-                    <p className="text-xs text-[#5B5F79]">Optional, privacy-friendly. No images stored.</p>
+                    {/* <p className="text-xs text-[#5B5F79]">Optional, privacy-friendly. No images stored.</p> */}
                   </div>
                   <input
                     id="webcamProctoring"
@@ -1162,9 +1162,9 @@ function InterviewInterface({
                 onUserMedia={() => onProctorEvent?.("webcam_started", "Webcam stream started via react-webcam")}
                 onUserMediaError={(e) => onProctorEvent?.("webcam_error", "Error starting webcam preview", { message: (e as any)?.message || String(e) })}
               />
-              <div className="px-2 py-1 text-[10px] text-[#F7F7FA] bg-[#1D244F]/70 border-t border-[#2663FF]/10 text-center">
+              {/* <div className="px-2 py-1 text-[10px] text-[#F7F7FA] bg-[#1D244F]/70 border-t border-[#2663FF]/10 text-center">
                 Webcam preview (not recorded)
-              </div>
+              </div> */}
             </motion.div>
           )}
           {/* <div className="flex items-center gap-2 mb-4"> */}
