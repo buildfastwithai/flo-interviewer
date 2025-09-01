@@ -623,6 +623,7 @@ export default function InterviewPage() {
               },
               body: JSON.stringify({
                 interviewDataId: updateResponse.data.id,
+                practiceMode: isPracticeMode === true,
               }),
             });
 

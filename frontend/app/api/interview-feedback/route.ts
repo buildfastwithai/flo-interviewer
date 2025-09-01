@@ -10,7 +10,7 @@ const openai = new OpenAI({
 export async function POST(req: NextRequest) {
   try {
     const data = await req.json();
-    const { interviewId, interviewDataId } = data;
+    const { interviewId, interviewDataId, practiceMode } = data;
     
     if (!interviewId && !interviewDataId) {
       return NextResponse.json(
@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Generate feedback using AI
-    const feedback = await generateFeedbackWithOpenAI(formattedTranscript, jobTitle);
+    const feedback = await generateFeedbackWithOpenAI(formattedTranscript, jobTitle, !!practiceMode);
     
     // Save feedback to database
     const updatedInterviewData = await prisma.interviewData.update({
@@ -109,40 +109,74 @@ export async function POST(req: NextRequest) {
   }
 }
 
-async function generateFeedbackWithOpenAI(transcript: string, jobRole: string = "Software Developer"): Promise<any> {
+async function generateFeedbackWithOpenAI(transcript: string, jobRole: string = "Software Developer", practiceMode: boolean = false): Promise<any> {
   try {
     console.log("Generating feedback with OpenAI...");
     
-    const response = await openai.chat.completions.create({
-      model: "gpt-4.1",
-      messages: [
-        {
-          role: "system",
-          content: `You are an expert technical interviewer providing feedback for a ${jobRole} candidate.
-                   Your feedback should be constructive, actionable, and highlight both strengths and areas for improvement.
-                   Be specific and back your feedback with evidence from the transcript.
-                   
-                   You MUST return a JSON response with the following structure:
+    const systemPromptPractice = `You are an encouraging ${jobRole} interview coach for PRACTICE MODE.
+                   Provide ultra-concise, non-redundant coaching based on overall patterns.
+                   Do NOT narrate per question or repeat candidate words.
+                   Prefer short, actionable bullets (each ≤ 10 words) and plain language.
+                   Friendly, motivating tone. Keep it brief and high-signal.
+                   The "specific_feedback" must be a single paragraph of 40-70 words.
+                   Return ONLY a JSON object with this structure:
                    {
                      "overall_score": 85,
                      "strengths": ["Strength 1", "Strength 2", "Strength 3"],
                      "areas_for_improvement": ["Area 1", "Area 2", "Area 3"],
-                     "specific_feedback": "Detailed paragraph of feedback addressing key points",
+                     "specific_feedback": "Short paragraph (40-70 words), motivating, no repetition",
                      "next_steps": ["Step 1", "Step 2", "Step 3"]
-                   }`
-        },
-        {
-          role: "user",
-          content: `Please provide constructive interview feedback for a candidate based on this interview transcript:
+                   }`;
 
-For the feedback, include:
-1. Overall score (0-100)
-2. 3-5 key strengths demonstrated
-3. 2-4 areas for improvement
-4. A paragraph of specific feedback addressing key points
-5. 2-4 recommended next steps for preparation
+    const userPromptPractice = `Provide PRACTICE MODE interview coaching for a ${jobRole} candidate using the transcript below.
 
-IMPORTANT: Your response MUST be a valid JSON object with all the required fields.
+Requirements:
+1) overall_score: integer 0-100.
+2) strengths: 3 bullets, each ≤ 10 words.
+3) areas_for_improvement: 2-3 bullets, each ≤ 10 words.
+4) specific_feedback: single paragraph, 40-70 words, friendly, no quotes.
+5) next_steps: 2-3 bullets, each ≤ 10 words.
+
+Style rules:
+- No per-question commentary.
+- No repeating or paraphrasing answers.
+- Focus on simple, actionable guidance.
+- The 'specific_feedback' must clearly state this is practice mode, not a real interview, to help understand the voice interview process.
+
+Return only JSON.
+
+Transcript starts here:
+${transcript}
+Transcript ends here.`;
+
+    const systemPromptStandard = `You are an expert ${jobRole} interviewer.
+                   Produce concise, non-redundant, synthesis-based feedback about overall performance.
+                   Do NOT narrate answer-by-answer, repeat, paraphrase, or quote the candidate.
+                   Avoid restating content from the transcript; focus on patterns and signal.
+                   Use short, punchy bullets (each ≤ 12 words) and neutral, professional tone.
+                   The "specific_feedback" must be a single paragraph of 60-90 words.
+                   Return ONLY a JSON object with this structure:
+                   {
+                     "overall_score": 85,
+                     "strengths": ["Strength 1", "Strength 2", "Strength 3"],
+                     "areas_for_improvement": ["Area 1", "Area 2", "Area 3"],
+                     "specific_feedback": "Short paragraph (60-90 words), no repetition",
+                     "next_steps": ["Step 1", "Step 2", "Step 3"]
+                   }`;
+
+    const userPromptStandard = `Provide interview feedback for a ${jobRole} candidate using the transcript below.
+
+Requirements:
+1) overall_score: integer 0-100.
+2) strengths: 3-5 bullets, each ≤ 12 words.
+3) areas_for_improvement: 2-4 bullets, each ≤ 12 words.
+4) specific_feedback: single paragraph, 60-90 words, no quotes, no repetition.
+5) next_steps: 2-3 bullets, each ≤ 12 words.
+
+Important style rules:
+- Do NOT give per-question feedback.
+- Do NOT repeat or paraphrase candidate answers.
+- Synthesize themes and be crisp.
 
 Example response format:
 {
@@ -166,11 +200,23 @@ Example response format:
 
 Transcript starts here:
 ${transcript}
-Transcript ends here.`
+Transcript ends here.`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4.1",
+      messages: [
+        {
+          role: "system",
+          content: practiceMode ? systemPromptPractice : systemPromptStandard
+        },
+        {
+          role: "user",
+          content: practiceMode ? userPromptPractice : userPromptStandard
         }
       ],
       response_format: { type: "json_object" },
-      temperature: 0.4,
+      temperature: 0.2,
+      max_tokens: 700,
     });
     
     console.log("Feedback generation completed");
