@@ -108,23 +108,45 @@ export default function InterviewPage() {
   const skipSaveOnDisconnectRef = useRef<boolean>(false);
   const [webcamProctoringEnabled, setWebcamProctoringEnabled] = useState(false);
   const proctoringRef = useRef<{
-    events: Array<{ type: string; ts: string; description?: string; meta?: any }>;
+    events: Array<{
+      type: string;
+      ts: string;
+      description?: string;
+      meta?: any;
+    }>;
     stream: MediaStream | null;
     lastHiddenTs?: number | null;
     lastDisconnectTs?: number | null;
     focusBlurTimestamps: number[];
-  }>({ events: [], stream: null, lastHiddenTs: null, lastDisconnectTs: null, focusBlurTimestamps: [] });
+  }>({
+    events: [],
+    stream: null,
+    lastHiddenTs: null,
+    lastDisconnectTs: null,
+    focusBlurTimestamps: [],
+  });
 
-  const recordProctorEvent = useCallback((type: string, description?: string, meta?: any) => {
-    try {
-      proctoringRef.current.events.push({ type, ts: new Date().toISOString(), description, meta });
-    } catch {}
-  }, []);
+  const recordProctorEvent = useCallback(
+    (type: string, description?: string, meta?: any) => {
+      try {
+        proctoringRef.current.events.push({
+          type,
+          ts: new Date().toISOString(),
+          description,
+          meta,
+        });
+      } catch {}
+    },
+    []
+  );
 
   const startWebcamProctoring = useCallback(async () => {
     if (!webcamProctoringEnabled) return;
     // React WebCam will handle getUserMedia; only record intent
-    recordProctorEvent("webcam_preview_enabled", "Webcam preview enabled via react-webcam");
+    recordProctorEvent(
+      "webcam_preview_enabled",
+      "Webcam preview enabled via react-webcam"
+    );
   }, [webcamProctoringEnabled, recordProctorEvent]);
 
   const onJoinInterview = useCallback(
@@ -285,12 +307,17 @@ export default function InterviewPage() {
 
   useEffect(() => {
     room.on(RoomEvent.MediaDevicesError, onDeviceFailure);
-    const onReconnecting = () => recordProctorEvent("network_reconnecting", "LiveKit is reconnecting");
+    const onReconnecting = () =>
+      recordProctorEvent("network_reconnecting", "LiveKit is reconnecting");
     const onReconnected = () => {
       recordProctorEvent("network_reconnected", "LiveKit reconnected");
       if (proctoringRef.current.lastDisconnectTs) {
         const durMs = Date.now() - proctoringRef.current.lastDisconnectTs;
-        recordProctorEvent("network_disconnect_duration", "Computed disconnect duration", { ms: durMs });
+        recordProctorEvent(
+          "network_disconnect_duration",
+          "Computed disconnect duration",
+          { ms: durMs }
+        );
         proctoringRef.current.lastDisconnectTs = null;
       }
     };
@@ -298,7 +325,8 @@ export default function InterviewPage() {
       recordProctorEvent("network_disconnected", "LiveKit disconnected");
       proctoringRef.current.lastDisconnectTs = Date.now();
     };
-    const onMediaDevicesChanged = () => recordProctorEvent("media_devices_changed", "Media devices changed");
+    const onMediaDevicesChanged = () =>
+      recordProctorEvent("media_devices_changed", "Media devices changed");
     room.on(RoomEvent.Reconnecting, onReconnecting as any);
     room.on(RoomEvent.Reconnected, onReconnected as any);
     room.on(RoomEvent.Disconnected, onDisconnected as any);
@@ -337,7 +365,11 @@ export default function InterviewPage() {
         recordProctorEvent("page_visible", "Page became visible");
         if (proctoringRef.current.lastHiddenTs) {
           const durMs = Date.now() - proctoringRef.current.lastHiddenTs;
-          recordProctorEvent("page_hidden_duration", "Computed hidden duration", { ms: durMs });
+          recordProctorEvent(
+            "page_hidden_duration",
+            "Computed hidden duration",
+            { ms: durMs }
+          );
           proctoringRef.current.lastHiddenTs = null;
         }
       }
@@ -352,24 +384,33 @@ export default function InterviewPage() {
     };
     const onCopy = (e: ClipboardEvent) => {
       let text = "";
-      try { text = (window.getSelection()?.toString() || "").slice(0, 500); } catch {}
+      try {
+        text = (window.getSelection()?.toString() || "").slice(0, 500);
+      } catch {}
       recordProctorEvent("clipboard_copy", "User copied selection", { text });
     };
     const onCut = (e: ClipboardEvent) => {
       let text = "";
-      try { text = (window.getSelection()?.toString() || "").slice(0, 500); } catch {}
+      try {
+        text = (window.getSelection()?.toString() || "").slice(0, 500);
+      } catch {}
       recordProctorEvent("clipboard_cut", "User cut selection", { text });
     };
     const onPaste = (e: ClipboardEvent) => {
       let text = "";
-      try { text = (e.clipboardData?.getData("text") || "").slice(0, 500); } catch {}
+      try {
+        text = (e.clipboardData?.getData("text") || "").slice(0, 500);
+      } catch {}
       recordProctorEvent("clipboard_paste", "User pasted content", { text });
     };
     const onKeyDown = (e: KeyboardEvent) => {
       const isMac = navigator.platform.toUpperCase().includes("MAC");
       const mod = isMac ? e.metaKey : e.ctrlKey;
       if (mod && (e.key.toLowerCase() === "c" || e.key.toLowerCase() === "v")) {
-        recordProctorEvent("hotkey", `Hotkey ${mod ? (isMac ? 'Cmd' : 'Ctrl') : ''}+${e.key.toUpperCase()}`);
+        recordProctorEvent(
+          "hotkey",
+          `Hotkey ${mod ? (isMac ? "Cmd" : "Ctrl") : ""}+${e.key.toUpperCase()}`
+        );
       }
     };
     document.addEventListener("visibilitychange", onVisibility);
@@ -604,13 +645,21 @@ export default function InterviewPage() {
             // Compute simple scores per category
             const events = proctoringRef.current.events;
             const scores = {
-              face_presence: { supported: false, deductions: 0, notes: "Face detection not enabled" },
+              face_presence: {
+                supported: false,
+                deductions: 0,
+                notes: "Face detection not enabled",
+              },
               attention: { deductions: 0, hiddenMs: 0 },
               device_integrity: { deductions: 0, issues: 0 },
               speaking_anomalies: { deductions: 0, count: 0 },
               clipboard: { deductions: 0, copies: 0, pastes: 0 },
               network: { deductions: 0, disconnects: 0, totalDisconnectMs: 0 },
-              automation_hints: { deductions: 0, hotkeys: 0, focusBlurEvents: 0 },
+              automation_hints: {
+                deductions: 0,
+                hotkeys: 0,
+                focusBlurEvents: 0,
+              },
             } as any;
 
             let totalScore = 100;
@@ -651,11 +700,29 @@ export default function InterviewPage() {
               }
             }
             // Deductions (conservative)
-            scores.attention.deductions = Math.min(20, Math.floor(scores.attention.hiddenMs / 30000) * 3);
-            scores.network.deductions = Math.min(10, scores.network.disconnects * 2 + Math.floor(scores.network.totalDisconnectMs / 60000));
-            scores.device_integrity.deductions = Math.min(10, scores.device_integrity.issues * 2);
-            scores.clipboard.deductions = Math.min(10, scores.clipboard.pastes * 2 + Math.max(0, scores.clipboard.copies - 3));
-            scores.automation_hints.deductions = Math.min(10, Math.floor(scores.automation_hints.hotkeys / 5) + Math.floor(scores.automation_hints.focusBlurEvents / 20));
+            scores.attention.deductions = Math.min(
+              20,
+              Math.floor(scores.attention.hiddenMs / 30000) * 3
+            );
+            scores.network.deductions = Math.min(
+              10,
+              scores.network.disconnects * 2 +
+                Math.floor(scores.network.totalDisconnectMs / 60000)
+            );
+            scores.device_integrity.deductions = Math.min(
+              10,
+              scores.device_integrity.issues * 2
+            );
+            scores.clipboard.deductions = Math.min(
+              10,
+              scores.clipboard.pastes * 2 +
+                Math.max(0, scores.clipboard.copies - 3)
+            );
+            scores.automation_hints.deductions = Math.min(
+              10,
+              Math.floor(scores.automation_hints.hotkeys / 5) +
+                Math.floor(scores.automation_hints.focusBlurEvents / 20)
+            );
             // scores.speaking_anomalies.deductions = Math.min(10, scores.speaking_anomalies.count);
             const deductionSum =
               (scores.face_presence.deductions || 0) +
@@ -685,7 +752,8 @@ export default function InterviewPage() {
               network_reconnecting: "LiveKit attempting to reconnect",
               network_reconnected: "LiveKit connection restored",
               network_disconnect_duration: "Computed disconnect duration",
-              speaking_while_not_listening: "User spoke while interviewer was not listening",
+              speaking_while_not_listening:
+                "User spoke while interviewer was not listening",
             };
 
             await fetch("/api/proctoring", {
@@ -834,7 +902,7 @@ function UserForm({
         transition={{ duration: 0.6 }}
         className="z-10"
       >
-        <Card className="w-full max-w-lg p-8 border border-[#F7F7FA] shadow-xl bg-gray-50 backdrop-blur-sm rounded-3xl">
+        <Card className="w-full overflow-y-auto max-w-lg p-8 border border-[#F7F7FA] shadow-xl bg-gray-50 backdrop-blur-sm rounded-3xl">
           <motion.div
             className="space-y-8"
             initial={{ opacity: 0 }}
@@ -904,7 +972,10 @@ function UserForm({
 
                 <div className="flex items-center justify-between py-2">
                   <div className="space-y-1">
-                    <Label htmlFor="webcamProctoring" className="text-[#1D244F] font-medium">
+                    <Label
+                      htmlFor="webcamProctoring"
+                      className="text-[#1D244F] font-medium"
+                    >
                       Webcam Proctoring
                     </Label>
                     {/* <p className="text-xs text-[#5B5F79]">Optional, privacy-friendly. No images stored.</p> */}
@@ -920,7 +991,7 @@ function UserForm({
               </motion.div>
 
               {/* Pre-Interview Briefing */}
-              <motion.div
+              {/* <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4, duration: 0.5 }}
@@ -976,7 +1047,7 @@ function UserForm({
                     </div>
                   </Card>
                 </ScrollArea>
-              </motion.div>
+              </motion.div> */}
 
               {error && (
                 <motion.div
@@ -1010,7 +1081,12 @@ function UserForm({
                     className="w-full border-[#2663FF]/30 text-[#2663FF] hover:bg-[#2663FF]/10"
                     disabled={isSubmitting || !name}
                     onClick={() =>
-                      onSubmit({ name, accessCode, practice: true, webcamProctoring })
+                      onSubmit({
+                        name,
+                        accessCode,
+                        practice: true,
+                        webcamProctoring,
+                      })
                     }
                   >
                     Try Practice Mode
@@ -1157,10 +1233,25 @@ function InterviewInterface({
               <Webcam
                 audio={false}
                 mirrored
-                videoConstraints={{ width: 320, height: 200, frameRate: { ideal: 5, max: 10 } }}
+                videoConstraints={{
+                  width: 320,
+                  height: 200,
+                  frameRate: { ideal: 5, max: 10 },
+                }}
                 className="w-full h-full object-cover"
-                onUserMedia={() => onProctorEvent?.("webcam_started", "Webcam stream started via react-webcam")}
-                onUserMediaError={(e) => onProctorEvent?.("webcam_error", "Error starting webcam preview", { message: (e as any)?.message || String(e) })}
+                onUserMedia={() =>
+                  onProctorEvent?.(
+                    "webcam_started",
+                    "Webcam stream started via react-webcam"
+                  )
+                }
+                onUserMediaError={(e) =>
+                  onProctorEvent?.(
+                    "webcam_error",
+                    "Error starting webcam preview",
+                    { message: (e as any)?.message || String(e) }
+                  )
+                }
               />
               {/* <div className="px-2 py-1 text-[10px] text-[#F7F7FA] bg-[#1D244F]/70 border-t border-[#2663FF]/10 text-center">
                 Webcam preview (not recorded)
