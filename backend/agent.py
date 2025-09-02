@@ -2,7 +2,7 @@ import json
 import os
 import aiohttp
 import asyncio
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import Dict, List, Optional
 from enum import Enum
 
@@ -23,9 +23,15 @@ If you need turn detection:
 
 from dotenv import load_dotenv
 # from livekit.plugins.turn_detector.multilingual import MultilingualModel
-# Alternative: Basic turn detector (env-guarded; safer default)
-# Note: We only enable this via TURN_DETECTION env to avoid altering
-# existing behavior by default. If unavailable or init fails, we fall back to None.
+# Try to import a multimodal turn detector if available. We will default to this
+# when present and fall back safely otherwise.
+try:
+    from livekit.plugins.turn_detector.multimodal import MultimodalTurnDetector  # type: ignore
+except Exception:  # pragma: no cover
+    MultimodalTurnDetector = None  # type: ignore
+
+# Alternative: Basic turn detector (env-guarded; safer fallback)
+# Note: We control enabling via TURN_DETECTION env and runtime availability.
 try:
     from livekit.plugins.turn_detector import BasicTurnDetector  # type: ignore
 except Exception:  # pragma: no cover
@@ -103,12 +109,35 @@ class InterviewAgent(Agent):
                  all_questions: List[str] = None,
                  questions_list: str = "",
                  practice_mode: bool = False,
-                 questions_count:int =0) -> None:
+                 questions_count:int =0,
+                 template_skills_info: Optional[List[Dict]] = None,
+                 total_duration_minutes: Optional[int] = None) -> None:
         
         # Capture interview start time for time-aware responses
         start_time_dt = datetime.now()
         start_time_iso = start_time_dt.isoformat()
         start_time_human = start_time_dt.strftime("%B %d, %Y at %I:%M %p")
+
+        # Build timing plan summary if template information is available
+        self.template_skills_info = template_skills_info or []
+        self.total_duration_minutes = int(total_duration_minutes) if total_duration_minutes else 30
+        timing_plan_summary = ""
+        if self.template_skills_info:
+            skills_total = len(self.template_skills_info)
+            try:
+                per_skill_time = max(1, round(self.total_duration_minutes / max(1, skills_total)))
+            except Exception:
+                per_skill_time = 5
+            lines = [
+                f"- Overall duration: ~{self.total_duration_minutes} minutes",
+                f"- Skills: {skills_total} (approx {per_skill_time} min/skill)",
+                "- Follow-ups: at most 1-2 per question, 6 total",
+            ]
+            for skill in self.template_skills_info:
+                nq = max(1, int(skill.get("num_questions", 1)))
+                per_q_time = max(1, round(per_skill_time / nq))
+                lines.append(f"  • {skill.get('name', 'Skill')}: {nq} questions (~{per_q_time} min/question)")
+            timing_plan_summary = "\n".join(lines)
 
         # Create specific instructions with all questions if provided
         if practice_mode:
@@ -153,6 +182,10 @@ IMPORTANT:
 - Use the candidate's name sparingly (2-3 times)
 - Remove any markdown formatting symbols when speaking
 - Speak naturally with human-like variations and small pauses
+
+SILENCE HANDLING:
+- If the candidate is silent for about 8–10 seconds after you ask something, give a short, gentle nudge like: "Take your time — whenever you're ready, you can start." or "Would you like me to repeat the question?"
+- If silence continues for another ~10–15 seconds, repeat the question once, then wait again without adding hints.
 
 The candidate's name is {candidate_name}.
 The role is {role}.
@@ -205,6 +238,9 @@ RELATED SKILL FLEXIBILITY:
 - If the requested skill is unrelated to the topic or outside these families, politely decline and continue with the original plan.
 - Limit switching to at most once unless the candidate insists; always maintain interview flow and timing.
 
+TIMING PLAN:
+{timing_plan_summary if timing_plan_summary else '- Keep an efficient pace across topics.'}
+
 INTERVIEW STRUCTURE:
 - Start warmly: "Hey {candidate_name}, welcome! I'm here to interview you for the {role} position. How are you doing today? and are you ready for the interview?"
 - If they're not ready: "No rush at all, take the time you need. I'll be right here."
@@ -229,6 +265,11 @@ IMPORTANT GUIDELINES:
 3. Keep the conversation flowing naturally while following the question order
 4. Be encouraging and supportive throughout the interview
 5. Use the candidate's name sparingly (2-3 times) to avoid sounding robotic
+6. Ask follow up questions to the candidate's answer if they are not clear or if they want to know more about the answer
+
+SILENCE HANDLING:
+- If the candidate is silent for ~8–10 seconds after you ask something, provide a brief, natural prompt such as: "No rush — when you're ready, you can go ahead." or "Would you like me to repeat the question?"
+- If silence persists for another ~10–15 seconds, repeat the question once and then wait.
 
 ADAPTIVE INTERVIEW FLOW:
 - Be time-aware. In approximately the first 5 minutes from the start time, if the candidate is clearly under-qualified (roughly below 30% proficiency across the first two core topics you cover) or clearly over-qualified, you may propose shortening the interview. Say: "Based on what we've covered so far, would you like to continue with the full interview, or would you prefer we wrap up early?"
@@ -246,20 +287,34 @@ Remember: You're having a genuine conversation with a real person. Be authentic,
                 f"You are an interviewer for {role}. "
                 f"The interview started at {start_time_human} (local time). "
                 f"If the candidate asks how much time has passed since the interview began, calculate it from the current time and answer succinctly (e.g., 'about 12 minutes'). "
-                f"Guardrails: If asked about the JD, company, role details, compensation/CTC, hiring process/next steps, or feedback about their performance, do not answer and reply exactly: 'I don't have that specific information, but the hiring team can provide all the details you need.' Do not reveal correct answers or give hints. Wait for further instructions."
+                f"Guardrails: If asked about the JD, company, role details, compensation/CTC, hiring process/next steps, or feedback about their performance, do not answer and reply exactly: 'I don't have that specific information, but the hiring team can provide all the details you need.' Do not reveal correct answers or give hints. Wait for further instructions. "
+                f"If the candidate is silent for ~8–10 seconds after you ask something, gently prompt them to continue or offer to repeat the question; if silence continues, briefly repeat the question once and wait again."
             )
         
         # Pass FULL instructions to parent class
         # Configure turn detection via env flag with safe fallback.
-        # TURN_DETECTION=basic enables BasicTurnDetector; any failure or other
-        # value results in turn detection being disabled (None).
+        # Default is multimodal (if available), then basic, else none.
         turn_detection_impl = None
-        td_mode = os.getenv("TURN_DETECTION", "none").lower().strip()
-        if td_mode == "basic" and BasicTurnDetector is not None:
-            try:
-                turn_detection_impl = BasicTurnDetector()
-            except Exception:
-                turn_detection_impl = None
+        td_mode = os.getenv("TURN_DETECTION", "multimodal").lower().strip()
+
+        if td_mode in ("multimodal", "multi"):
+            if MultimodalTurnDetector is not None:
+                try:
+                    turn_detection_impl = MultimodalTurnDetector()
+                except Exception:
+                    turn_detection_impl = None
+            # If multimodal is requested but unavailable, try basic as a fallback
+            if turn_detection_impl is None and BasicTurnDetector is not None:
+                try:
+                    turn_detection_impl = BasicTurnDetector()
+                except Exception:
+                    turn_detection_impl = None
+        elif td_mode == "basic":
+            if BasicTurnDetector is not None:
+                try:
+                    turn_detection_impl = BasicTurnDetector()
+                except Exception:
+                    turn_detection_impl = None
         elif td_mode in ("none", "off", "disable"):
             turn_detection_impl = None
 
@@ -275,11 +330,9 @@ Remember: You're having a genuine conversation with a real person. Be authentic,
         super().__init__(
             instructions=full_instructions,  # Using full instructions from the start
             stt=assemblyai.STT(
-            # More conservative settings to prevent EOU issues
-            end_of_turn_confidence_threshold=0.7,  # Higher confidence
-            min_end_of_turn_silence_when_confident=300,  # Longer silence
-            max_turn_silence=5000,  # Allow longer pauses
-        
+             end_of_turn_confidence_threshold=0.7,
+      min_end_of_turn_silence_when_confident=160,
+      max_turn_silence=2400,
         ),
         llm=openai.LLM(
             model="gpt-4.1",
@@ -297,7 +350,7 @@ Remember: You're having a genuine conversation with a real person. Be authentic,
       speed=0.3,  # Slower speaking speed (0.5 = 50% speed, 1.0 = normal, 2.0 = double speed)
    ),
         vad=silero.VAD.load(),
-            turn_detection=turn_detection_impl,
+            turn_detection="stt",
         
         )
         
@@ -316,6 +369,59 @@ Remember: You're having a genuine conversation with a real person. Be authentic,
         self.using_dynamic_template = bool(record_id)
         self.all_questions = all_questions or []
         self.questions_list = questions_list
+        
+        # Precompute a machine-readable timing plan with planned timestamps
+        self.timing_plan = None
+        try:
+            if self.template_skills_info:
+                plan = {
+                    "skills_total": len(self.template_skills_info),
+                    "questions_total": len(all_questions or []),
+                    "follow_up_policy": {"per_question_max": 2, "total_max": 6},
+                    "total_duration_minutes": self.total_duration_minutes,
+                    "start_time": start_time_iso,
+                    "skills": [],
+                }
+                remaining_minutes = self.total_duration_minutes
+                skills_count = max(1, len(self.template_skills_info))
+                # Allocate roughly equal minutes to each skill, last skill gets remainder
+                base_per_skill = max(1, self.total_duration_minutes // skills_count)
+                allocated = 0
+                for idx, skill in enumerate(self.template_skills_info):
+                    if idx < skills_count - 1:
+                        skill_minutes = base_per_skill
+                    else:
+                        skill_minutes = max(1, self.total_duration_minutes - allocated)
+                    allocated += skill_minutes
+                    num_questions = max(1, int(skill.get("num_questions", 1)))
+                    base_per_q = max(1, skill_minutes // num_questions)
+                    # Build questions with planned timestamps
+                    skill_block = {
+                        "name": skill.get("name", f"Skill {idx+1}"),
+                        "planned_minutes": skill_minutes,
+                        "questions": [],
+                    }
+                    # Compute absolute planned timestamps
+                    cumulative_min = sum(s.get("planned_minutes", 0) for s in plan["skills"]) if plan["skills"] else 0
+                    current_dt = datetime.fromisoformat(start_time_iso)
+                    current_dt = current_dt.replace(microsecond=0)
+                    # Advance to start of this skill
+                    current_dt = current_dt + timedelta(minutes=cumulative_min)
+                    for q_idx in range(num_questions):
+                        q_minutes = base_per_q if q_idx < num_questions - 1 else max(1, skill_minutes - base_per_q * (num_questions - 1))
+                        q_start = current_dt
+                        q_end = q_start + timedelta(minutes=q_minutes)
+                        skill_block["questions"].append({
+                            "index": q_idx + 1,
+                            "planned_minutes": q_minutes,
+                            "planned_start": q_start.isoformat(),
+                            "planned_end": q_end.isoformat(),
+                        })
+                        current_dt = q_end
+                    plan["skills"].append(skill_block)
+                self.timing_plan = plan
+        except Exception as e:
+            log_warning(f"Failed to build timing plan: {e}")
         
         # Initialize metrics collector
         self.metrics_collector = MetricsCollector()
@@ -417,6 +523,28 @@ Remember: You're having a genuine conversation with a real person. Be authentic,
         # Log final metrics
         log_info(f"Interview ended. Final metrics: {json.dumps(avg_metrics, indent=2)}")
         
+        # Print structured JSON summary of timing plan and counts
+        try:
+            summary = {
+                "role": self.role,
+                "candidate_name": self.candidate_name,
+                "interview_id": self.interview_id,
+                "room_id": self.room_id,
+                "start_time": self.interview_data.get("start_time"),
+                "end_time": self.interview_data.get("end_time"),
+                "duration_minutes": round(self.interview_data.get("duration_minutes", 0), 2),
+                "skills_total": len(self.template_skills_info) if getattr(self, "template_skills_info", None) else None,
+                "questions_total_planned": len(self.all_questions or []),
+                "follow_up_policy": {"per_question_max": 2, "total_max": 6},
+                "timing_plan": self.timing_plan,
+                "metrics_summary": self.interview_data.get("metrics", {}).get("averages", {}),
+            }
+            pretty = json.dumps(summary, indent=2)
+            print(pretty)
+            log_info(f"Interview timing summary JSON: {pretty}")
+        except Exception as e:
+            log_warning(f"Failed to print interview timing summary: {e}")
+        
         # You can add code here to send metrics to an API endpoint if needed
 
     def update_instructions(self, new_instructions: str):
@@ -466,12 +594,18 @@ async def extract_questions_from_template(record_id: str, room_name: str) -> tup
     all_questions = []
     questions_list = ""
     role_title = "Technical Role"  # Default
+    skills_info = []
+    total_duration_minutes = 30
     
     try:
         # Fetch the template
         dynamic_template = await fetch_interview_template(record_id, room_name)
         if dynamic_template:
             role_title = dynamic_template.jobTitle
+            try:
+                total_duration_minutes = int(dynamic_template.duration_minutes)
+            except Exception:
+                total_duration_minutes = 30
             
             # Extract ALL questions from the template
             for skill in dynamic_template.skills:
@@ -488,6 +622,17 @@ async def extract_questions_from_template(record_id: str, room_name: str) -> tup
                                 pass
                         all_questions.append(question_text)
             
+            # Build skills info (name and question count)
+            try:
+                for skill in dynamic_template.skills:
+                    skills_info.append({
+                        "id": getattr(skill, "id", ""),
+                        "name": getattr(skill, "name", "Unknown Skill"),
+                        "num_questions": len(skill.questions or []),
+                    })
+            except Exception:
+                pass
+
             # Log all questions for debugging
             log_info(f"Extracted {len(all_questions)} questions from template")
             for i, q in enumerate(all_questions):
@@ -505,12 +650,13 @@ async def extract_questions_from_template(record_id: str, room_name: str) -> tup
     except Exception as e:
         log_error(f"Error extracting questions from template", e)
         
-    return all_questions, questions_list, role_title
+    return all_questions, questions_list, role_title, skills_info, total_duration_minutes
 
 
 async def entrypoint(ctx: JobContext):
     log_info(f"connecting to room {ctx.room.name}")
-    await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
+    # Subscribe to both audio and video to support multimodal turn detection by default
+    await ctx.connect(auto_subscribe=AutoSubscribe.SUBSCRIBE_ALL)
 
     # Wait for the first participant to connect
     participant = await ctx.wait_for_participant()
@@ -554,7 +700,7 @@ async def entrypoint(ctx: JobContext):
     
     if record_id:
         log_info(f"Fetching dynamic template for record ID: {record_id}")
-        all_questions, questions_list, fetched_role = await extract_questions_from_template(record_id, ctx.room.name)
+        all_questions, questions_list, fetched_role, skills_info, total_duration_minutes = await extract_questions_from_template(record_id, ctx.room.name)
         if fetched_role:
             role = fetched_role
     
@@ -573,7 +719,7 @@ async def entrypoint(ctx: JobContext):
         "vad": ctx.proc.userdata["vad"],
         # Adjusted for interview context - longer delays for thinking time
         "min_endpointing_delay": 1.0,
-        "max_endpointing_delay": 8.0,
+        "max_endpointing_delay": 6.0,
     }
     if os.getenv("SESSION_STT_FROM_AUDIO", "false").lower() in ("1", "true", "yes"):  # opt-in to avoid changing current format
         prewarmed_stt = ctx.proc.userdata.get("stt")
@@ -598,7 +744,9 @@ async def entrypoint(ctx: JobContext):
         interview_id=interview_id,
         all_questions=all_questions,
         questions_list=questions_list,
-        practice_mode=practice_mode
+        practice_mode=practice_mode,
+        template_skills_info=(skills_info if record_id else None),
+        total_duration_minutes=(total_duration_minutes if record_id else None)
     )
 
     try:

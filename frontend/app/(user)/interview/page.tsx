@@ -45,7 +45,7 @@ import { InteractiveHoverButton } from "@/components/magicui/interactive-hover-b
 import { AnimatedGradientText } from "@/components/magicui/animated-gradient-text";
 import { useSearchParams } from "next/navigation";
 import InterviewFeedback from "@/components/interview-feedback";
-import { InterviewVAD } from "@/lib/interview-vad"; // Client-side VAD helper for responsive UI
+// import { InterviewVAD } from "@/lib/interview-vad"; // Client-side VAD helper for responsive UI
 import Webcam from "react-webcam";
 
 interface UserFormData {
@@ -104,7 +104,7 @@ export default function InterviewPage() {
   const [isFeedbackLoading, setIsFeedbackLoading] = useState(false);
   // Local VAD-driven speaking indicator (does not affect agent logic)
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const vadRef = useRef<InterviewVAD | null>(null);
+  // const vadRef = useRef<InterviewVAD | null>(null);
   const skipSaveOnDisconnectRef = useRef<boolean>(false);
   const [webcamProctoringEnabled, setWebcamProctoringEnabled] = useState(false);
   const proctoringRef = useRef<{
@@ -240,12 +240,12 @@ export default function InterviewPage() {
             | undefined;
           if (track) {
             const mediaStream = new MediaStream([track.mediaStreamTrack]);
-            const vad = new InterviewVAD();
-            await vad.initialize();
-            vad.onSpeechStart = () => setIsSpeaking(true);
-            vad.onSpeechEnd = () => setIsSpeaking(false);
-            await vad.startListening(mediaStream);
-            vadRef.current = vad;
+            // const vad = new InterviewVAD();
+            // await vad.initialize();
+            // vad.onSpeechStart = () => setIsSpeaking(true);
+            // vad.onSpeechEnd = () => setIsSpeaking(false);
+            // await vad.startListening(mediaStream);
+            // vadRef.current = vad;
           }
         } catch (e) {
           console.warn("VAD init failed:", e);
@@ -338,12 +338,12 @@ export default function InterviewPage() {
       room.off(RoomEvent.Disconnected, onDisconnected as any);
       room.off(RoomEvent.MediaDevicesChanged, onMediaDevicesChanged as any);
       // Cleanup VAD if initialized
-      if (vadRef.current) {
-        try {
-          vadRef.current.stop();
-        } catch {}
-        vadRef.current = null;
-      }
+      // if (vadRef.current) {
+      //   try {
+      //     vadRef.current.stop();
+      //   } catch {}
+      //   vadRef.current = null;
+      // }
       // Stop webcam proctoring stream if active
       try {
         if (proctoringRef.current.stream) {
@@ -1150,6 +1150,8 @@ function InterviewInterface({
 }) {
   const { state: agentState, audioTrack } = useVoiceAssistant();
   const [speaking, setSpeaking] = useState(false);
+  const [silentSeconds, setSilentSeconds] = useState<number>(0);
+  const [showSilencePrompt, setShowSilencePrompt] = useState<boolean>(false);
   const [questionCount, setQuestionCount] = useState<number>(0);
   const [confirmStartOpen, setConfirmStartOpen] = useState(false);
   const transcriptions = useCombinedTranscriptions();
@@ -1158,6 +1160,26 @@ function InterviewInterface({
   const isRecording = agentState === "listening";
   const isConnected = agentState !== "disconnected";
   // React WebCam handles its own media binding
+
+  // Simple silence timer while agent is listening
+  useEffect(() => {
+    let interval: any;
+    if (agentState === "listening") {
+      setSilentSeconds(0);
+      setShowSilencePrompt(false);
+      interval = setInterval(() => {
+        setSilentSeconds((s) => {
+          const next = s + 1;
+          if (next >= 7) setShowSilencePrompt(true);
+          return next;
+        });
+      }, 1000);
+    } else {
+      setSilentSeconds(0);
+      setShowSilencePrompt(false);
+    }
+    return () => interval && clearInterval(interval);
+  }, [agentState]);
 
   // Speaking anomaly: candidate speaks while agent not listening
   // NOTE: Temporarily commented out per request
@@ -1339,6 +1361,17 @@ function InterviewInterface({
               >
                 {isRecording || speaking ? "Listening..." : "Tap to speak"}
               </motion.span>
+
+              {isRecording && showSilencePrompt && (
+                <motion.div
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-xs text-[#F7F7FA] bg-[#1D244F]/70 mt-2 px-3 py-1 rounded-full border border-[#2663FF]/20"
+                  aria-live="polite"
+                >
+                  Waiting for your response…
+                </motion.div>
+              )}
 
               {/* Voice Assistant Controls */}
               <motion.div
