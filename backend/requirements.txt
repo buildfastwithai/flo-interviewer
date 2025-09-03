@@ -125,3 +125,6 @@ watchfiles==1.1.0
 websockets==13.1
 yarl==1.20.1
 yt-dlp==2025.6.9
+langgraph==0.2.60
+langchain-core==0.3.31
+langchain-openai==0.3.6

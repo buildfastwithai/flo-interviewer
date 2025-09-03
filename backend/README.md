@@ -451,3 +451,164 @@ When contributing to this project:
 ## 📄 License
 
 This project is designed for internal use and follows professional interview standards and best practices.
+
+---
+
+## 🧩 Human-in-the-Loop (HIL) Chat Agent (LangGraph)
+
+This project also includes a chat-only interview agent that can pause and ask the user for input before continuing. This is called human-in-the-loop (HIL).
+
+### What is HIL?
+
+- The agent can stop mid-flow and ask a clarifying question instead of guessing.
+- The backend returns a prompt like: "The interviewer needs your input: ...".
+- After the user replies, the agent continues with that answer.
+
+### Where is it implemented?
+
+- Backend: `backend/human_in_loop_agent.py`
+  - FastAPI endpoints: `POST /hil/start`, `POST /hil/message`, `POST /hil/resume`
+  - LangGraph nodes: `agent` (LLM) and `ask_human` (interrupt)
+  - Uses `interrupt()` to pause and `Command(resume=...)` to continue
+- Frontend: `frontend/app/(user)/interview_v3/page.tsx`
+  - Chat UI that calls the HIL endpoints and shows the banner when input is needed
+- Access code lookup: `frontend/app/api/interview/lookup-by-access-code/route.ts`
+  - Resolves `recordId` and role from `accessCode`
+
+### How the flow works
+
+1. User opens `/interview_v3` and clicks Join.
+2. Frontend resolves `recordId` from `accessCode`, calls `POST /hil/start`.
+3. Backend builds instructions and questions (same logic as the voice agent) and runs the graph until either:
+   - it has an AI reply, or
+   - it needs human input (HIL interrupt).
+4. Frontend renders the result. If `awaiting_user` is present, it shows a banner with the question.
+5. If a banner is shown, the next user reply goes to `POST /hil/resume`. Otherwise, normal messages go to `POST /hil/message`.
+
+### Endpoints (quick reference)
+
+- `POST /hil/start`
+  - Body: `{ name, accessCode, practice, recordId?, role? }`
+  - Returns: `{ thread_id, messages, awaiting_user?, meta }`
+- `POST /hil/message`
+  - Body: `{ thread_id, message }`
+- `POST /hil/resume`
+  - Body: `{ thread_id, input }` (used when the backend asked a question)
+
+### How to trigger HIL during a chat
+
+Send messages like:
+- "Ask me which area to focus on (SSR, performance, or API), then wait for my answer."
+- "Ask me my preferred language (JavaScript or TypeScript), and wait."
+- "Ask me to pick difficulty (easy, medium, hard), then wait."
+
+You should see a banner: "The interviewer needs your input:". Reply to that question to resume.
+
+### Run locally (HIL)
+
+- Backend
+  - Set `OPENAI_API_KEY`
+  - Install: `backend/venv/Scripts/pip.exe install -r backend/requirements.txt`
+  - Run: `backend/venv/Scripts/python.exe backend/human_in_loop_agent.py` (http://localhost:8010)
+- Frontend
+  - `frontend/.env.local`: `NEXT_PUBLIC_BACKEND_URL=http://localhost:8010`
+  - Open `/interview_v3`
+
+### Troubleshooting
+
+- 405/CORS on `/hil/*`: ensure the HIL server is running; CORS is enabled in `human_in_loop_agent.py`.
+- No AI reply: check `OPENAI_API_KEY` and backend logs.
+- `recordId` missing: confirm the access code exists; test `/api/interview/lookup-by-access-code`.
+
+### Backend module: function-by-function (human_in_loop_agent.py)
+
+- `StartRequest`, `MessageRequest`, `ResumeRequest` (Pydantic models)
+  - Define request bodies for `/hil/start`, `/hil/message`, `/hil/resume` respectively.
+  - Keep payloads typed and validated.
+
+- `ChatResponse` (Pydantic model)
+  - Standard response wrapper: `thread_id`, array of AI `messages`, optional `awaiting_user` (the HIL prompt), and optional `meta`.
+
+- `app = FastAPI(...)` + CORS middleware
+  - Hosts the HIL HTTP API.
+  - CORS allows the Next.js app to call this backend from `localhost:3000`.
+
+- `build_instructions(candidate_name, role, practice_mode, questions_list, all_questions)`
+  - Builds the interview system prompt.
+  - Mirrors the style/guardrails from `backend/agent.py`.
+  - Uses practice instructions when `practice_mode` is true; otherwise injects the full questions list if available.
+
+- `AskHumanSpec` (Pydantic tool schema)
+  - A mock tool definition “Ask the human a question”.
+  - Binding this to the model teaches it to explicitly request human input.
+
+- `create_graph()`
+  - Constructs the LangGraph workflow and compiles it (with a shared in‑memory checkpointer):
+    - Binds model: `ChatOpenAI(...).bind_tools([AskHumanSpec])`.
+    - `call_model(state)`: calls the tool‑bound model with `state["messages"]` and appends the AI reply.
+    - `should_continue(state)`: if last AI message called `AskHumanSpec`, route to `ask_human`; otherwise end the turn.
+    - `ask_human(state)`: extracts the tool call’s question, calls `interrupt(question)` to pause the graph, and returns a `ToolMessage` placeholder so LangGraph can resume later.
+  - Returns a `StateGraph` with edges: `START -> agent`, `agent -> ask_human (conditional)`, `ask_human -> agent` (after resume).
+
+- `graph_app = create_graph().compile(checkpointer=memory)`
+  - The runnable graph used by the API stream calls.
+
+- `_collect_stream_values(stream_iter)`
+  - Consumes LangGraph `stream(..., stream_mode="updates")` generator.
+  - Collects AI messages emitted by nodes and detects HIL interrupts (stores `awaiting_user.question`).
+  - Returns `{ messages: [...], awaiting: { question } | null }`.
+
+- `@app.post("/hil/start") -> start_chat(req: StartRequest)`
+  - Generates a new `thread_id`.
+  - Resolves questions: practice preset or dynamic template via `extract_questions_from_template(record_id, room)` from `agent.py`.
+  - Builds instructions and primes the graph with a `SystemMessage` + kickoff `HumanMessage`.
+  - Runs the graph until it returns an AI reply or an interrupt prompt.
+  - Response includes `meta` (role and total questions).
+
+- `@app.post("/hil/message") -> send_message(req: MessageRequest)`
+  - Appends the user message to the existing thread and streams a step.
+  - May return normal AI messages or a new HIL prompt.
+
+- `@app.post("/hil/resume") -> resume_interruption(req: ResumeRequest)`
+  - Used only when the previous response had `awaiting_user`.
+  - Calls `Command(resume=req.input)` to continue the paused graph and returns the next AI output.
+
+- `if __name__ == "__main__": uvicorn.run(app, ...)`
+  - Local development entrypoint (defaults to port 8010).
+
+### Frontend chat page: function-by-function (app/(user)/interview_v3/page.tsx)
+
+- State
+  - `threadId`: active HIL session id from the backend.
+  - `messages`: chat transcript (user and assistant messages displayed in the UI).
+  - `awaitingQuestion`: when set, shows the HIL banner that expects a specific answer.
+  - `meta`: role and total planned questions (informational sidebar).
+
+- `startInterview()`
+  - Looks up `recordId` and role from access code via `POST /api/interview/lookup-by-access-code`.
+  - Calls `POST {BACKEND_URL}/hil/start` with `{ name, accessCode, practice, recordId, role }`.
+  - Saves `thread_id`, initial AI messages, `awaiting_user` prompt (if any), and `meta`.
+
+- `send()`
+  - If `awaitingQuestion` is set, sends the user’s input to `POST /hil/resume`.
+  - Otherwise, sends a normal chat message to `POST /hil/message`.
+  - Appends returned AI messages and updates `awaitingQuestion`.
+
+- Rendering
+  - Sidebar shows connection status and role.
+  - Chat area lists messages and, when present, renders the HIL banner: “The interviewer needs your input: …”.
+
+### Data contracts (simplified)
+
+- Backend AI message object (as returned to UI)
+  - `{ role: "assistant", content: string }`
+- Awaiting prompt
+  - `{ awaiting_user: { question: string } }` or `null`
+- Thread identifier
+  - `{ thread_id: string }` included in every response; must be sent with `/hil/message` and `/hil/resume`.
+
+### Notes and best practices
+
+- Encourage HIL by asking the agent to “ask me X and wait”.
+- In production, restrict CORS `allow_origins` to your web app origin.
+- You can persist chat history server‑side by storing thread state; currently we use an in‑memory checkpointer for simplicity.
