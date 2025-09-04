@@ -3,7 +3,8 @@ import os
 import aiohttp
 import asyncio
 from datetime import datetime, date, timedelta
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, AsyncIterable
+import re
 from enum import Enum
 
 """
@@ -47,8 +48,10 @@ from livekit.agents import (
     metrics,
     RoomInputOptions,
     function_tool,
-    RunContext
+    RunContext,
+    ModelSettings
 )
+from livekit import rtc
 from livekit.agents.metrics import LLMMetrics, STTMetrics, TTSMetrics, EOUMetrics
 from livekit.plugins import (
     openai,
@@ -172,7 +175,7 @@ YOU MUST FOLLOW THESE RULES:
 2. You MAY answer questions about the interview structure, what the candidate needs to do, expectations, and basic rules. Keep answers brief and friendly.
 3. DO NOT reveal correct answers or provide hints for technical questions.
 4. Guardrails: If asked about the job description (JD), company, role details, compensation/CTC, hiring process/next steps, or feedback about performance, DO NOT answer. Reply something like but must not be exact same to this sentence: "I don't have that specific information, but the hiring team can provide all the details you need."
-5. After each answer, acknowledge it naturally before moving to the next question.
+5. After each answer, acknowledge briefly (one short sentence) without repeating or summarizing the candidate's answer.
 6. At the end of practice, say: "We can wrap up practice here. Are you ready to start the real interview?"
 7. If the candidate says yes he/she is ready for real interview and ask them to clcik on end interview and click on start new interview button to get back to interview form
 8. If the candidate says no he/she is not ready for real interview and ask them if he/she has any doubts or questions about the practice session or real interview
@@ -217,12 +220,12 @@ YOU MUST FOLLOW THESE RULES:
 1. Ask the questions shown above in the given order (1, 2, 3, 4...), one at a time. If the candidate explicitly requests switching to a closely related skill (e.g., GCP instead of AWS), you may adapt the current and subsequent questions to that requested skill while preserving the core intent and difficulty.
 2. Do not invent new topics. You may rephrase a question only to map it to the requested, closely related skill while keeping the same competency focus.
 3. Present each question conversationally as a human would, but preserve the core content
-4. After each answer, acknowledge it naturally before moving to the next question
+4. After each answer, acknowledge briefly (one short sentence) without repeating or summarizing the candidate's answer
 5. If the candidate says they don't know, respond supportively with something like "That's completely fine, these can be tricky"
 6. DO NOT SKIP QUESTIONS under any circumstances
 7. Convert numerical values to natural speech (e.g., "twenty thousand rupees" instead of "20,000")
 8. Never answer questions yourself or give hints. Do not reveal correct answers or provide any hints in any situation.
-9. Limit follow-up questions to 1-2 per question, maximum 6 total in the interview
+9. Limit follow-up questions to 1-2 per question, maximum 6 total in the interview. Keep each follow-up to one sentence and do not repeat or summarize the candidate's answer; refer to at most a single key phrase.
 10. Occasionally stumble slightly in your speech like a real person - "So, the next thing I wanted to ask about is... actually, let me rephrase that..."
 11. Guardrails: If the candidate asks about the job description (JD), company, role details, compensation/CTC, hiring process/next steps, or feedback about their performance, DO NOT answer. Your response must be exactly: "I don't have that specific information, but the hiring team can provide all the details you need."
 12. Do not handle employer branding, provide company information, or discuss compensation/CTC under any circumstances. Politely redirect with the exact response above.
@@ -246,7 +249,7 @@ INTERVIEW STRUCTURE:
 - Start warmly: "Hey {candidate_name}, welcome! I'm here to interview you for the {role} position. How are you doing today? and are you ready for the interview?"
 - If they're not ready: "No rush at all, take the time you need. I'll be right here."
 - If they're ready: "Great! Let's dive in then. I will ask a series of questions to get to know you better."
-- After answers: Mix up your acknowledgments - "That's a solid approach", "I see what you mean there", "That's helpful context"
+- After answers: Mix up your acknowledgments (keep them brief; do not repeat their content) - "That's a solid approach", "I see what you mean there", "That's helpful context"
 - For transitions: "Alright, let's explore another area..." or "That leads nicely into my next question..."
 - End the interview: "Before we wrap up, {candidate_name.split(' ')[0]}, do you have any questions for me?" If they ask about the JD, company, role, CTC, next steps, or feedback, reply with: "I don't have that specific information, but the hiring team can provide all the details you need."
 - Closing: "It's been a pleasure talking with you today. Thanks so much for your time. You can end the call whenever you're ready. Take care!"
@@ -266,7 +269,8 @@ IMPORTANT GUIDELINES:
 3. Keep the conversation flowing naturally while following the question order
 4. Be encouraging and supportive throughout the interview
 5. Use the candidate's name sparingly (2-3 times) to avoid sounding robotic
-6. Ask follow up questions to the candidate's answer if they are not clear or if they want to know more about the answer
+6. Acknowledgments must be concise and must not repeat or summarize the candidate's answer.
+7. Ask follow up questions to the candidate's answer if they are not clear or if they want to know more about the answer
 
 SILENCE HANDLING:
 - If the candidate is silent for ~8–10 seconds after you ask something, provide a brief, natural prompt such as: "No rush — when you're ready, you can go ahead." or "Would you like me to repeat the question?"
@@ -466,6 +470,117 @@ Remember: You're having a genuine conversation with a real person. Be authentic,
             self.tts.on("metrics_collected", tts_metrics_wrapper)
             
        
+    async def tts_node(self, text: AsyncIterable[str], model_settings: ModelSettings) -> AsyncIterable[rtc.AudioFrame]:
+        """Customize TTS pronunciation for common technical terms before synthesizing.
+
+        This wraps the default implementation to adjust pronunciations (e.g., "Next.js" → "Next J S").
+        """
+        # Base pronunciation replacements for simple words/abbreviations
+        simple_pronunciations: Dict[str, str] = {
+            # Acronyms & abbreviations
+            "API": "A P I",
+            "REST": "rest",
+            "SQL": "sequel",
+            "GraphQL": "Graph Q L",
+            "NoSQL": "No S Q L",
+            "JSON": "Jay sawn",
+            "YAML": "Yam ell",
+            "HTML": "H T M L",
+            "CSS": "C S S",
+            "JSX": "J S X",
+            "TSX": "T S X",
+            "URL": "U R L",
+            "URI": "U R I",
+            "HTTP": "H T T P",
+            "HTTPS": "H T T P S",
+            "IDE": "I D E",
+            "GUI": "gooey",
+            "JS": "Jayess",
+            "npm": "N P M",
+            "npx": "N P X",
+            "AWS": "A W S",
+            "GCP": "G C P",
+            "S3": "S three",
+            "EC2": "E C two",
+            "RDS": "R D S",
+            "IAM": "I A M",
+            "DynamoDB": "Dynamo D B",
+            "SNS": "S N S",
+            "SQS": "S Q S",
+            "GPU": "G P U",
+            "SSD": "S S D",
+            "UI": "U I",
+            "UX": "U X",
+
+            # Common product/tech names
+            "NGINX": "engine x",
+            "nginx": "engine x",
+            "GNU": "guh new",
+            "kubectl": "kube control",
+            "Linux": "Lin ucks",
+            "Regex": "Rej ex",
+            "regex": "Rej ex",
+            "Cache": "Cash",
+            "cache": "Cash",
+            "Epoch": "Eh pock",
+            "epoch": "Eh pock",
+            "LaTeX": "Lay tek",
+            "Python": "Pie thon",
+            "Django": "Jango",
+            "GIF": "Jif",
+            "PyPI": "Pie P I",
+
+            # Company / product names
+            "Asus": "Ay soos",
+            "Huawei": "Hwah way",
+            "Xiaomi": "Shau mee",
+            "Oracle": "Or uh kull",
+        }
+
+        # Frameworks and terms with punctuation or special casing
+        complex_patterns: Dict[str, str] = {
+            r"\bnext\.js\b": "Next Jayess",
+            r"\bnextjs\b": "Next Jayess",
+            r"\bnext\s*js\b": "Next Jayess",
+            r"\bnode\.js\b": "Node Jayess",
+            r"\bnodejs\b": "Node Jayess",
+            r"\bnode\s*js\b": "Node Jayess",
+            r"\bexpress\.js\b": "Express Jayess",
+            r"\bexpress\s*js\b": "Express Jayess",
+            r"\breact\.js\b": "React Jayess",
+            r"\breact\s*js\b": "React Jayess",
+            r"\bvue\.js\b": "View Jayess",
+            r"\bvue\s*js\b": "View Jayess",
+            r"\bnuxt\.js\b": "Nuxt Jayess",
+            r"\bnuxt\s*js\b": "Nuxt Jayess",
+            r"\bsveltekit\b": "Svelte Kit",
+            r"\btypescript\b": "Type Script",
+            r"\bjavascript\b": "Java Script",
+            r"\bpostgresql\b": "Postgres Q L",
+            r"\bpostgres\b": "Post gres",
+            r"\bkubernetes\b": "Koo ber net ees",
+            r"\blivekit\b": "Live Kit",
+            r"\bc\#\b": "C sharp",
+            r"\bwi[\s-]?fi\b": "Why Fy",
+        }
+
+        async def adjust_pronunciation(input_text: AsyncIterable[str]) -> AsyncIterable[str]:
+            async for chunk in input_text:
+                modified_chunk = chunk
+
+                # Apply complex regex-based substitutions first
+                for pattern, replacement in complex_patterns.items():
+                    modified_chunk = re.sub(pattern, replacement, modified_chunk, flags=re.IGNORECASE)
+
+                # Apply simple word-boundary substitutions
+                for term, pronunciation in simple_pronunciations.items():
+                    modified_chunk = re.sub(rf"\b{re.escape(term)}\b", pronunciation, modified_chunk, flags=re.IGNORECASE)
+
+                yield modified_chunk
+
+        async for frame in Agent.default.tts_node(self, adjust_pronunciation(text), model_settings):
+            yield frame
+
     # @function_tool()
     # async def update_question_count(self, context: RunContext) -> None:
     #     """Increment the question counter after each interview question complete from the given question list . Does'nt matter if the candidate answered or not but if the question is completed and we move to the next then counter should be incremented"""
@@ -506,7 +621,7 @@ Remember: You're having a genuine conversation with a real person. Be authentic,
         log_info(f"Starting with warm introduction: {intro_text}")
         
         # Start with the warm introduction
-        await self.session.say(intro_text, allow_interruptions=True)
+        await self.session.say(intro_text, allow_interruptions=False)
 
     async def on_exit(self):
         """Store final metrics and summary when interview ends"""
@@ -719,7 +834,8 @@ async def entrypoint(ctx: JobContext):
     session_kwargs = {
         "vad": ctx.proc.userdata["vad"],
         # Adjusted for interview context - longer delays for thinking time
-        "min_endpointing_delay": 1.0,
+        # Slightly higher min_endpointing_delay to avoid false barge-in from short noises
+        "min_endpointing_delay": 1.5,
         "max_endpointing_delay": 6.0,
     }
     if os.getenv("SESSION_STT_FROM_AUDIO", "false").lower() in ("1", "true", "yes"):  # opt-in to avoid changing current format

@@ -17,14 +17,18 @@ from livekit.plugins import silero, assemblyai, deepgram
 def get_vad() -> silero.VAD:
     """Return a Silero VAD tuned for interview pacing.
 
-    Uses longer minimum silence to allow thinking pauses.
+    Uses longer minimum silence to allow thinking pauses and a higher
+    speech threshold to avoid background-noise barge-in while the agent speaks.
     """
     # Falls back to library defaults if parameters are unsupported
     try:
         return silero.VAD.load(
-            min_speech_duration=0.3,
+            # Require longer continuous speech to consider it a user utterance
+            min_speech_duration=0.6,
+            # Keep generous silence for natural thinking pauses
             min_silence_duration=1.2,
-            threshold=0.5,
+            # Make VAD less sensitive to background noise
+            threshold=0.8,
         )
     except Exception:
         return silero.VAD.load()
