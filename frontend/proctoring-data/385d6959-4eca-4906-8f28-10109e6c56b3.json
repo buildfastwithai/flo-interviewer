@@ -1,0 +1,274 @@
+{
+  "interviewId": "636bec12-c4b8-4fac-ba38-32ac4833920a",
+  "interviewDataId": "385d6959-4eca-4906-8f28-10109e6c56b3",
+  "candidateName": "Prathmesh Sadake",
+  "startedAt": "2025-09-04T09:18:47.715Z",
+  "endedAt": "2025-09-04T09:22:30.454Z",
+  "events": [
+    {
+      "type": "window_blur",
+      "ts": "2025-09-04T09:18:43.218Z",
+      "description": "Window lost focus"
+    },
+    {
+      "type": "page_hidden",
+      "ts": "2025-09-04T09:18:44.000Z",
+      "description": "Page became hidden"
+    },
+    {
+      "type": "page_visible",
+      "ts": "2025-09-04T09:18:45.850Z",
+      "description": "Page became visible"
+    },
+    {
+      "type": "page_hidden_duration",
+      "ts": "2025-09-04T09:18:45.850Z",
+      "description": "Computed hidden duration",
+      "meta": {
+        "ms": 1850
+      }
+    },
+    {
+      "type": "window_focus",
+      "ts": "2025-09-04T09:18:46.382Z",
+      "description": "Window gained focus"
+    },
+    {
+      "type": "window_blur",
+      "ts": "2025-09-04T09:18:47.419Z",
+      "description": "Window lost focus"
+    },
+    {
+      "type": "window_focus",
+      "ts": "2025-09-04T09:18:47.539Z",
+      "description": "Window gained focus"
+    },
+    {
+      "type": "window_blur",
+      "ts": "2025-09-04T09:18:49.912Z",
+      "description": "Window lost focus"
+    },
+    {
+      "type": "window_focus",
+      "ts": "2025-09-04T09:18:51.090Z",
+      "description": "Window gained focus"
+    },
+    {
+      "type": "webcam_started",
+      "ts": "2025-09-04T09:18:51.258Z",
+      "description": "Webcam stream started via react-webcam"
+    },
+    {
+      "type": "window_blur",
+      "ts": "2025-09-04T09:19:06.414Z",
+      "description": "Window lost focus"
+    },
+    {
+      "type": "page_hidden",
+      "ts": "2025-09-04T09:19:07.201Z",
+      "description": "Page became hidden"
+    },
+    {
+      "type": "page_visible",
+      "ts": "2025-09-04T09:19:12.606Z",
+      "description": "Page became visible"
+    },
+    {
+      "type": "page_hidden_duration",
+      "ts": "2025-09-04T09:19:12.606Z",
+      "description": "Computed hidden duration",
+      "meta": {
+        "ms": 5405
+      }
+    },
+    {
+      "type": "window_focus",
+      "ts": "2025-09-04T09:19:13.135Z",
+      "description": "Window gained focus"
+    },
+    {
+      "type": "window_blur",
+      "ts": "2025-09-04T09:19:25.028Z",
+      "description": "Window lost focus"
+    },
+    {
+      "type": "page_hidden",
+      "ts": "2025-09-04T09:19:25.400Z",
+      "description": "Page became hidden"
+    },
+    {
+      "type": "page_visible",
+      "ts": "2025-09-04T09:19:27.121Z",
+      "description": "Page became visible"
+    },
+    {
+      "type": "page_hidden_duration",
+      "ts": "2025-09-04T09:19:27.121Z",
+      "description": "Computed hidden duration",
+      "meta": {
+        "ms": 1721
+      }
+    },
+    {
+      "type": "window_focus",
+      "ts": "2025-09-04T09:19:27.638Z",
+      "description": "Window gained focus"
+    },
+    {
+      "type": "window_blur",
+      "ts": "2025-09-04T09:19:33.804Z",
+      "description": "Window lost focus"
+    },
+    {
+      "type": "page_hidden",
+      "ts": "2025-09-04T09:19:34.183Z",
+      "description": "Page became hidden"
+    },
+    {
+      "type": "page_visible",
+      "ts": "2025-09-04T09:19:34.786Z",
+      "description": "Page became visible"
+    },
+    {
+      "type": "page_hidden_duration",
+      "ts": "2025-09-04T09:19:34.786Z",
+      "description": "Computed hidden duration",
+      "meta": {
+        "ms": 603
+      }
+    },
+    {
+      "type": "window_focus",
+      "ts": "2025-09-04T09:19:35.319Z",
+      "description": "Window gained focus"
+    },
+    {
+      "type": "window_blur",
+      "ts": "2025-09-04T09:19:52.087Z",
+      "description": "Window lost focus"
+    },
+    {
+      "type": "page_hidden",
+      "ts": "2025-09-04T09:19:52.484Z",
+      "description": "Page became hidden"
+    },
+    {
+      "type": "page_visible",
+      "ts": "2025-09-04T09:20:00.888Z",
+      "description": "Page became visible"
+    },
+    {
+      "type": "page_hidden_duration",
+      "ts": "2025-09-04T09:20:00.888Z",
+      "description": "Computed hidden duration",
+      "meta": {
+        "ms": 8404
+      }
+    },
+    {
+      "type": "window_focus",
+      "ts": "2025-09-04T09:20:01.454Z",
+      "description": "Window gained focus"
+    },
+    {
+      "type": "window_blur",
+      "ts": "2025-09-04T09:20:04.667Z",
+      "description": "Window lost focus"
+    },
+    {
+      "type": "page_hidden",
+      "ts": "2025-09-04T09:20:05.450Z",
+      "description": "Page became hidden"
+    },
+    {
+      "type": "page_visible",
+      "ts": "2025-09-04T09:20:24.719Z",
+      "description": "Page became visible"
+    },
+    {
+      "type": "page_hidden_duration",
+      "ts": "2025-09-04T09:20:24.719Z",
+      "description": "Computed hidden duration",
+      "meta": {
+        "ms": 19269
+      }
+    },
+    {
+      "type": "window_focus",
+      "ts": "2025-09-04T09:20:25.272Z",
+      "description": "Window gained focus"
+    },
+    {
+      "type": "window_blur",
+      "ts": "2025-09-04T09:20:36.619Z",
+      "description": "Window lost focus"
+    },
+    {
+      "type": "page_hidden",
+      "ts": "2025-09-04T09:20:37.034Z",
+      "description": "Page became hidden"
+    },
+    {
+      "type": "page_visible",
+      "ts": "2025-09-04T09:20:39.687Z",
+      "description": "Page became visible"
+    },
+    {
+      "type": "page_hidden_duration",
+      "ts": "2025-09-04T09:20:39.687Z",
+      "description": "Computed hidden duration",
+      "meta": {
+        "ms": 2653
+      }
+    },
+    {
+      "type": "window_focus",
+      "ts": "2025-09-04T09:20:40.221Z",
+      "description": "Window gained focus"
+    },
+    {
+      "type": "network_disconnected",
+      "ts": "2025-09-04T09:22:30.454Z",
+      "description": "LiveKit disconnected"
+    },
+    {
+      "type": "window_blur",
+      "ts": "2025-09-04T09:22:31.747Z",
+      "description": "Window lost focus"
+    },
+    {
+      "type": "page_hidden",
+      "ts": "2025-09-04T09:22:31.747Z",
+      "description": "Page became hidden"
+    },
+    {
+      "type": "page_visible",
+      "ts": "2025-09-04T09:22:32.580Z",
+      "description": "Page became visible"
+    },
+    {
+      "type": "page_hidden_duration",
+      "ts": "2025-09-04T09:22:32.580Z",
+      "description": "Computed hidden duration",
+      "meta": {
+        "ms": 833
+      }
+    },
+    {
+      "type": "window_focus",
+      "ts": "2025-09-04T09:22:32.581Z",
+      "description": "Window gained focus"
+    },
+    {
+      "type": "window_blur",
+      "ts": "2025-09-04T09:22:34.783Z",
+      "description": "Window lost focus"
+    },
+    {
+      "type": "page_hidden",
+      "ts": "2025-09-04T09:22:34.990Z",
+      "description": "Page became hidden"
+    }
+  ],
+  "receivedAt": "2025-09-04T09:22:41.787Z"
+}

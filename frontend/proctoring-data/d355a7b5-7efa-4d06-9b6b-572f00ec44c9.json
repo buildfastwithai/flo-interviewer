@@ -1,0 +1,89 @@
+{
+  "interviewId": "88d0115f-f4bd-4dfc-9e86-e710aaf981da",
+  "interviewDataId": "d355a7b5-7efa-4d06-9b6b-572f00ec44c9",
+  "candidateName": "Prathmesh Sadake",
+  "startedAt": "2025-09-02T09:40:27.963Z",
+  "endedAt": "2025-09-02T09:42:46.595Z",
+  "events": [
+    {
+      "type": "webcam_started",
+      "ts": "2025-09-02T09:40:29.860Z",
+      "description": "Webcam stream started via react-webcam"
+    },
+    {
+      "type": "hotkey",
+      "ts": "2025-09-02T09:42:34.423Z",
+      "description": "Hotkey Cmd+C"
+    },
+    {
+      "type": "clipboard_copy",
+      "ts": "2025-09-02T09:42:34.428Z",
+      "description": "User copied selection",
+      "meta": {
+        "text": "could you tell me a bit more about how keys help React during reconciliation, especially in the context of lists?"
+      }
+    },
+    {
+      "type": "window_blur",
+      "ts": "2025-09-02T09:42:35.573Z",
+      "description": "Window lost focus"
+    },
+    {
+      "type": "page_hidden",
+      "ts": "2025-09-02T09:42:39.003Z",
+      "description": "Page became hidden"
+    },
+    {
+      "type": "window_focus",
+      "ts": "2025-09-02T09:42:44.039Z",
+      "description": "Window gained focus"
+    },
+    {
+      "type": "page_visible",
+      "ts": "2025-09-02T09:42:44.039Z",
+      "description": "Page became visible"
+    },
+    {
+      "type": "page_hidden_duration",
+      "ts": "2025-09-02T09:42:44.039Z",
+      "description": "Computed hidden duration",
+      "meta": {
+        "ms": 5036
+      }
+    },
+    {
+      "type": "network_disconnected",
+      "ts": "2025-09-02T09:42:46.595Z",
+      "description": "LiveKit disconnected"
+    },
+    {
+      "type": "window_blur",
+      "ts": "2025-09-02T09:42:50.472Z",
+      "description": "Window lost focus"
+    },
+    {
+      "type": "page_hidden",
+      "ts": "2025-09-02T09:42:50.473Z",
+      "description": "Page became hidden"
+    },
+    {
+      "type": "page_visible",
+      "ts": "2025-09-02T09:42:52.161Z",
+      "description": "Page became visible"
+    },
+    {
+      "type": "page_hidden_duration",
+      "ts": "2025-09-02T09:42:52.161Z",
+      "description": "Computed hidden duration",
+      "meta": {
+        "ms": 1688
+      }
+    },
+    {
+      "type": "window_focus",
+      "ts": "2025-09-02T09:42:52.162Z",
+      "description": "Window gained focus"
+    }
+  ],
+  "receivedAt": "2025-09-02T09:42:53.217Z"
+}
