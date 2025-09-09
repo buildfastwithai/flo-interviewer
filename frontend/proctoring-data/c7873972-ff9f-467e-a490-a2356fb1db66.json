@@ -1,0 +1,152 @@
+{
+  "interviewId": "72cf1049-e187-4e66-b1e6-9389b4839ce0",
+  "interviewDataId": "c7873972-ff9f-467e-a490-a2356fb1db66",
+  "candidateName": "Kanishaka Pranjal",
+  "startedAt": "2025-09-09T12:04:44.584Z",
+  "endedAt": "2025-09-09T12:05:30.426Z",
+  "events": [
+    {
+      "type": "webcam_started",
+      "ts": "2025-09-09T12:04:51.370Z",
+      "description": "Webcam stream started via react-webcam"
+    },
+    {
+      "type": "face_detection_loaded",
+      "ts": "2025-09-09T12:04:53.061Z",
+      "description": "Face detection models loaded successfully"
+    },
+    {
+      "type": "face_detection_loaded",
+      "ts": "2025-09-09T12:04:53.115Z",
+      "description": "Face detection models loaded successfully"
+    },
+    {
+      "type": "face_not_detected",
+      "ts": "2025-09-09T12:04:56.145Z",
+      "description": "No face detected in frame"
+    },
+    {
+      "type": "face_detected",
+      "ts": "2025-09-09T12:04:58.094Z",
+      "description": "Single face detected",
+      "meta": {
+        "confidence": 0.5221933217641894
+      }
+    },
+    {
+      "type": "face_not_detected",
+      "ts": "2025-09-09T12:04:59.673Z",
+      "description": "No face detected in frame"
+    },
+    {
+      "type": "face_detected",
+      "ts": "2025-09-09T12:05:01.680Z",
+      "description": "Single face detected",
+      "meta": {
+        "confidence": 0.7150781050904543
+      }
+    },
+    {
+      "type": "face_not_detected",
+      "ts": "2025-09-09T12:05:03.106Z",
+      "description": "No face detected in frame"
+    },
+    {
+      "type": "face_detected",
+      "ts": "2025-09-09T12:05:04.308Z",
+      "description": "Single face detected",
+      "meta": {
+        "confidence": 0.589815926181054
+      }
+    },
+    {
+      "type": "face_not_detected",
+      "ts": "2025-09-09T12:05:06.305Z",
+      "description": "No face detected in frame"
+    },
+    {
+      "type": "face_detected",
+      "ts": "2025-09-09T12:05:07.109Z",
+      "description": "Single face detected",
+      "meta": {
+        "confidence": 0.6869397410382954
+      }
+    },
+    {
+      "type": "face_not_detected",
+      "ts": "2025-09-09T12:05:07.753Z",
+      "description": "No face detected in frame"
+    },
+    {
+      "type": "face_detected",
+      "ts": "2025-09-09T12:05:09.506Z",
+      "description": "Single face detected",
+      "meta": {
+        "confidence": 0.7622872055221793
+      }
+    },
+    {
+      "type": "face_not_detected",
+      "ts": "2025-09-09T12:05:12.955Z",
+      "description": "No face detected in frame"
+    },
+    {
+      "type": "face_detected",
+      "ts": "2025-09-09T12:05:13.345Z",
+      "description": "Single face detected",
+      "meta": {
+        "confidence": 0.5472465969512106
+      }
+    },
+    {
+      "type": "face_not_detected",
+      "ts": "2025-09-09T12:05:14.551Z",
+      "description": "No face detected in frame"
+    },
+    {
+      "type": "face_detected",
+      "ts": "2025-09-09T12:05:14.763Z",
+      "description": "Single face detected",
+      "meta": {
+        "confidence": 0.7206304040604158
+      }
+    },
+    {
+      "type": "face_not_detected",
+      "ts": "2025-09-09T12:05:15.366Z",
+      "description": "No face detected in frame"
+    },
+    {
+      "type": "face_detected",
+      "ts": "2025-09-09T12:05:16.565Z",
+      "description": "Single face detected",
+      "meta": {
+        "confidence": 0.7251380841573738
+      }
+    },
+    {
+      "type": "face_not_detected",
+      "ts": "2025-09-09T12:05:25.631Z",
+      "description": "No face detected in frame"
+    },
+    {
+      "type": "face_detected",
+      "ts": "2025-09-09T12:05:27.442Z",
+      "description": "Single face detected",
+      "meta": {
+        "confidence": 0.694217334336843
+      }
+    },
+    {
+      "type": "network_disconnected",
+      "ts": "2025-09-09T12:05:30.426Z",
+      "description": "LiveKit disconnected"
+    },
+    {
+      "type": "window_blur",
+      "ts": "2025-09-09T12:05:33.883Z",
+      "description": "Window lost focus"
+    }
+  ],
+  "receivedAt": "2025-09-09T12:05:40.657Z"
+}

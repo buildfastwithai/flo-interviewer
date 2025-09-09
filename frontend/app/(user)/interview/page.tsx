@@ -47,6 +47,8 @@ import { useSearchParams } from "next/navigation";
 import InterviewFeedback from "@/components/interview-feedback";
 // import { InterviewVAD } from "@/lib/interview-vad"; // Client-side VAD helper for responsive UI
 import Webcam from "react-webcam";
+import { useFaceDetection } from "@/hooks/useFaceDetectionSimple.js";
+import { AlertCircle, UserCheck, Users, Eye, Shield } from "lucide-react";
 
 interface UserFormData {
   name: string;
@@ -107,6 +109,13 @@ export default function InterviewPage() {
   // const vadRef = useRef<InterviewVAD | null>(null);
   const skipSaveOnDisconnectRef = useRef<boolean>(false);
   const [webcamProctoringEnabled, setWebcamProctoringEnabled] = useState(false);
+  const [proctoringStats, setProctoringStats] = useState({
+    noFaceCount: 0,
+    multipleFaceCount: 0,
+    tabSwitchCount: 0,
+    copyPasteCount: 0,
+  });
+  
   const proctoringRef = useRef<{
     events: Array<{
       type: string;
@@ -135,6 +144,13 @@ export default function InterviewPage() {
           description,
           meta,
         });
+        
+        // Update stats for certain events separately to avoid infinite loop
+        if (type === 'clipboard_copy' || type === 'clipboard_paste' || type === 'clipboard_cut') {
+          setProctoringStats(prev => ({ ...prev, copyPasteCount: prev.copyPasteCount + 1 }));
+        } else if (type === 'page_hidden' || type === 'window_blur') {
+          setProctoringStats(prev => ({ ...prev, tabSwitchCount: prev.tabSwitchCount + 1 }));
+        }
       } catch {}
     },
     []
@@ -647,9 +663,12 @@ export default function InterviewPage() {
             const events = proctoringRef.current.events;
             const scores = {
               face_presence: {
-                supported: false,
+                supported: true,
                 deductions: 0,
-                notes: "Face detection not enabled",
+                noFaceEvents: 0,
+                multipleFaceEvents: 0,
+                prolongedNoFaceEvents: 0,
+                prolongedMultipleFaceEvents: 0,
               },
               attention: { deductions: 0, hiddenMs: 0 },
               device_integrity: { deductions: 0, issues: 0 },
@@ -667,6 +686,18 @@ export default function InterviewPage() {
             // derive from duration events
             for (const ev of events) {
               switch (ev.type) {
+                case "face_not_detected":
+                  scores.face_presence.noFaceEvents += 1;
+                  break;
+                case "multiple_faces_detected":
+                  scores.face_presence.multipleFaceEvents += 1;
+                  break;
+                case "prolonged_no_face":
+                  scores.face_presence.prolongedNoFaceEvents += 1;
+                  break;
+                case "prolonged_multiple_faces":
+                  scores.face_presence.prolongedMultipleFaceEvents += 1;
+                  break;
                 case "page_hidden_duration":
                   scores.attention.hiddenMs += ev.meta?.ms || 0;
                   break;
@@ -701,6 +732,14 @@ export default function InterviewPage() {
               }
             }
             // Deductions (conservative)
+            // Face presence deductions
+            scores.face_presence.deductions = Math.min(
+              25,
+              scores.face_presence.noFaceEvents * 1 +
+              scores.face_presence.multipleFaceEvents * 2 +
+              scores.face_presence.prolongedNoFaceEvents * 3 +
+              scores.face_presence.prolongedMultipleFaceEvents * 4
+            );
             scores.attention.deductions = Math.min(
               20,
               Math.floor(scores.attention.hiddenMs / 30000) * 3
@@ -726,7 +765,7 @@ export default function InterviewPage() {
             );
             // scores.speaking_anomalies.deductions = Math.min(10, scores.speaking_anomalies.count);
             const deductionSum =
-              (scores.face_presence.deductions || 0) +
+              scores.face_presence.deductions +
               scores.attention.deductions +
               scores.device_integrity.deductions +
               scores.speaking_anomalies.deductions +
@@ -736,6 +775,13 @@ export default function InterviewPage() {
             totalScore = Math.max(0, totalScore - deductionSum);
 
             const typeDescriptions: Record<string, string> = {
+              face_detection_loaded: "Face detection models loaded successfully",
+              face_detection_error: "Failed to load face detection models",
+              face_detected: "Single face detected in frame",
+              face_not_detected: "No face detected in frame",
+              multiple_faces_detected: "Multiple faces detected in frame",
+              prolonged_no_face: "No face detected for extended period",
+              prolonged_multiple_faces: "Multiple faces detected for extended period",
               webcam_started: "Webcam stream started for local preview only",
               webcam_track_ended: "Webcam track ended by system or user",
               webcam_error: "Failure to start or maintain webcam stream",
@@ -827,6 +873,8 @@ export default function InterviewPage() {
             candidateName={userData.name}
             webcamProctoringEnabled={webcamProctoringEnabled}
             onProctorEvent={recordProctorEvent}
+            proctoringStats={proctoringStats}
+            setProctoringStats={setProctoringStats}
             isSpeakingUI={isSpeaking}
             onStartRealInterview={async () => {
               if (!userData) return;
@@ -1127,6 +1175,8 @@ function InterviewInterface({
   candidateName,
   webcamProctoringEnabled,
   onProctorEvent,
+  proctoringStats,
+  setProctoringStats,
   isSpeakingUI,
   onStartRealInterview,
   showFeedbackModal,
@@ -1141,6 +1191,18 @@ function InterviewInterface({
   candidateName: string;
   webcamProctoringEnabled?: boolean;
   onProctorEvent?: (type: string, description?: string, meta?: any) => void;
+  proctoringStats: {
+    noFaceCount: number;
+    multipleFaceCount: number;
+    tabSwitchCount: number;
+    copyPasteCount: number;
+  };
+  setProctoringStats: React.Dispatch<React.SetStateAction<{
+    noFaceCount: number;
+    multipleFaceCount: number;
+    tabSwitchCount: number;
+    copyPasteCount: number;
+  }>>;
   isSpeakingUI?: boolean;
   onStartRealInterview: () => void | Promise<void>;
   showFeedbackModal: boolean;
@@ -1156,10 +1218,29 @@ function InterviewInterface({
   const [confirmStartOpen, setConfirmStartOpen] = useState(false);
   const transcriptions = useCombinedTranscriptions();
   const lastAnomalyTsRef = useRef<number>(0);
+  const webcamRef = useRef<any>(null);
 
   const isRecording = agentState === "listening";
   const isConnected = agentState !== "disconnected";
   // React WebCam handles its own media binding
+  
+  // Face detection proctoring
+  const faceDetectionStatus = useFaceDetection(webcamRef, {
+    enabled: !!(webcamProctoringEnabled && isConnected),
+    detectionInterval: 2000,
+    onFaceDetected: (count: number) => {
+      console.log(`Face detected: ${count}`);
+    },
+    onNoFaceDetected: () => {
+      console.log('No face detected');
+      setProctoringStats(prev => ({ ...prev, noFaceCount: prev.noFaceCount + 1 }));
+    },
+    onMultipleFacesDetected: (count: number) => {
+      console.log(`Multiple faces detected: ${count}`);
+      setProctoringStats(prev => ({ ...prev, multipleFaceCount: prev.multipleFaceCount + 1 }));
+    },
+    onProctorEvent,
+  });
 
   // Simple silence timer while agent is listening
   useEffect(() => {
@@ -1245,6 +1326,47 @@ function InterviewInterface({
           </div>
         )}
 
+        {/* Proctoring Stats Panel */}
+        {webcamProctoringEnabled && isConnected && (
+          <motion.div
+            className="p-4 mx-6 mt-4 bg-[#1D244F]/40 backdrop-blur-sm rounded-xl border border-[#2663FF]/20 relative z-10"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <Shield className="w-4 h-4 text-[#2663FF]" />
+              <span className="text-xs font-medium text-white">Proctoring Active</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="flex items-center justify-between bg-[#1D244F]/60 rounded px-2 py-1">
+                <span className="text-[#F7F7FA]/70">No Face</span>
+                <span className={`font-medium ${proctoringStats.noFaceCount > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                  {proctoringStats.noFaceCount}
+                </span>
+              </div>
+              <div className="flex items-center justify-between bg-[#1D244F]/60 rounded px-2 py-1">
+                <span className="text-[#F7F7FA]/70">Multi Face</span>
+                <span className={`font-medium ${proctoringStats.multipleFaceCount > 0 ? 'text-orange-400' : 'text-green-400'}`}>
+                  {proctoringStats.multipleFaceCount}
+                </span>
+              </div>
+              <div className="flex items-center justify-between bg-[#1D244F]/60 rounded px-2 py-1">
+                <span className="text-[#F7F7FA]/70">Tab Switch</span>
+                <span className={`font-medium ${proctoringStats.tabSwitchCount > 2 ? 'text-orange-400' : 'text-green-400'}`}>
+                  {proctoringStats.tabSwitchCount}
+                </span>
+              </div>
+              <div className="flex items-center justify-between bg-[#1D244F]/60 rounded px-2 py-1">
+                <span className="text-[#F7F7FA]/70">Copy/Paste</span>
+                <span className={`font-medium ${proctoringStats.copyPasteCount > 0 ? 'text-orange-400' : 'text-green-400'}`}>
+                  {proctoringStats.copyPasteCount}
+                </span>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* Audio Visualizer */}
         <div className="p-6 relative z-10">
           {webcamProctoringEnabled && (
@@ -1253,32 +1375,64 @@ function InterviewInterface({
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
             >
-              <Webcam
-                audio={false}
-                mirrored
-                videoConstraints={{
-                  width: 320,
-                  height: 200,
-                  frameRate: { ideal: 5, max: 10 },
-                }}
-                className="w-full h-full object-cover"
-                onUserMedia={() =>
-                  onProctorEvent?.(
-                    "webcam_started",
-                    "Webcam stream started via react-webcam"
-                  )
-                }
-                onUserMediaError={(e) =>
-                  onProctorEvent?.(
-                    "webcam_error",
-                    "Error starting webcam preview",
-                    { message: (e as any)?.message || String(e) }
-                  )
-                }
-              />
-              {/* <div className="px-2 py-1 text-[10px] text-[#F7F7FA] bg-[#1D244F]/70 border-t border-[#2663FF]/10 text-center">
-                Webcam preview (not recorded)
-              </div> */}
+              <div className="relative">
+                <Webcam
+                  ref={webcamRef}
+                  audio={false}
+                  mirrored
+                  videoConstraints={{
+                    width: 320,
+                    height: 200,
+                    frameRate: { ideal: 5, max: 10 },
+                  }}
+                  className="w-full h-full object-cover"
+                  onUserMedia={() =>
+                    onProctorEvent?.(
+                      "webcam_started",
+                      "Webcam stream started via react-webcam"
+                    )
+                  }
+                  onUserMediaError={(e) =>
+                    onProctorEvent?.(
+                      "webcam_error",
+                      "Error starting webcam preview",
+                      { message: (e as any)?.message || String(e) }
+                    )
+                  }
+                />
+                
+                {/* Face Detection Status Overlay */}
+                <div className="absolute top-2 right-2">
+                  {faceDetectionStatus.isLoading ? (
+                    <div className="bg-gray-800/70 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                      <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                      Loading...
+                    </div>
+                  ) : faceDetectionStatus.status === 'no-face' ? (
+                    <div className="bg-red-600/70 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1 animate-pulse">
+                      <AlertCircle className="w-3 h-3" />
+                      No Face
+                    </div>
+                  ) : faceDetectionStatus.status === 'multiple-faces' ? (
+                    <div className="bg-orange-600/70 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1 animate-pulse">
+                      <Users className="w-3 h-3" />
+                      {faceDetectionStatus.faceCount} Faces
+                    </div>
+                  ) : faceDetectionStatus.status === 'single-face' ? (
+                    <div className="bg-green-600/70 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                      <UserCheck className="w-3 h-3" />
+                      Face OK
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+              <div className="px-2 py-1 text-[10px] text-[#F7F7FA] bg-[#1D244F]/70 border-t border-[#2663FF]/10 text-center">
+                {faceDetectionStatus.status === 'no-face' 
+                  ? 'Please position your face in view'
+                  : faceDetectionStatus.status === 'multiple-faces'
+                  ? 'Multiple people detected - please ensure you\'re alone'
+                  : 'Proctoring active'}
+              </div>
             </motion.div>
           )}
           {/* <div className="flex items-center gap-2 mb-4"> */}
