@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,32 +16,46 @@ export async function POST(req: NextRequest) {
       receivedAt: new Date().toISOString(),
     };
 
-    if (!interviewId) {
+    if (!interviewId && !interviewDataId) {
       return NextResponse.json(
-        { success: false, error: "Missing interviewId" },
+        { success: false, error: "Missing interviewId or interviewDataId" },
         { status: 400 }
       );
     }
 
-    const baseDir = path.join(process.cwd(), "proctoring-data");
-    try {
-      fs.mkdirSync(baseDir, { recursive: true });
-    } catch {}
+    let targetInterviewDataId: string | undefined = interviewDataId;
 
-    // Sanitize filename to avoid path traversal
-    const safeName = String(interviewDataId).replace(/[^a-zA-Z0-9-_]/g, "_");
-    const filePath = path.join(baseDir, `${safeName}.json`);
+    // if (!targetInterviewDataId && interviewId) {
+    //   const latest = await prisma.interviewData.findFirst({
+    //     where: { interviewId },
+    //     orderBy: { createdAt: "desc" },
+    //     select: { id: true },
+    //   });
+
+    //   if (!latest) {
+    //     return NextResponse.json(
+    //       { success: false, error: "InterviewData not found for interviewId" },
+    //       { status: 404 }
+    //     );
+    //   }
+
+    //   targetInterviewDataId = latest.id;
+    // }
 
     try {
-      fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf-8");
-    } catch (e) {
+      const updated = await prisma.interviewData.update({
+        where: { id: targetInterviewDataId as string },
+        data: { proctoring: data },
+        select: { id: true },
+      });
+
+      return NextResponse.json({ success: true, interviewDataId: updated.id });
+    } catch (e: any) {
       return NextResponse.json(
-        { success: false, error: "Failed to write file" },
-        { status: 500 }
+        { success: false, error: "InterviewData not found" },
+        { status: 404 }
       );
     }
-
-    return NextResponse.json({ success: true, path: `proctoring-data/${safeName}.json` });
   } catch (e: any) {
     return NextResponse.json(
       { success: false, error: e?.message || "Unexpected error" },

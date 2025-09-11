@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,128 +8,128 @@ datasource db {
 }
 
 model SkillRecord {
-  id             String    @id @default(uuid())
-  jobTitle       String
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  skills         Skill[]
-  questions      Question[]
-  interviewLength Int?     // Interview length in minutes
-  rawJobDescription String? @db.Text // Raw job description text
-  globalFeedback GlobalFeedback?
-  regenerations  Regeneration[]
+  id                String             @id @default(uuid())
+  jobTitle          String
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  interviewLength   Int?
+  rawJobDescription String?
   excelQuestionSets ExcelQuestionSet[]
-  interviews     Interview[]  // Add this relation
+  globalFeedback    GlobalFeedback?
+  interviews        Interview[]
+  questions         Question[]
+  regenerations     Regeneration[]
+  skills            Skill[]
 }
 
 model Skill {
-  id           String       @id @default(uuid())
-  name         String
-  level        SkillLevel   @default(INTERMEDIATE)
-  requirement  Requirement  @default(OPTIONAL)
-  numQuestions Int          @default(0)
-  difficulty   String?      
-  recordId     String
-  record       SkillRecord  @relation(fields: [recordId], references: [id], onDelete: Cascade)
-  questions    Question[]
-  feedbacks    Feedback[]
-  regenerations Regeneration[]
-  priority     Int?         // Priority order for sequencing questions
-  category     SkillCategory? @default(TECHNICAL)
-  questionFormat String?    @default("Scenario based")
-  
+  id             String         @id @default(uuid())
+  name           String
+  level          SkillLevel     @default(INTERMEDIATE)
+  requirement    Requirement    @default(OPTIONAL)
+  recordId       String
+  difficulty     String?
+  numQuestions   Int            @default(0)
+  priority       Int?
+  category       SkillCategory? @default(TECHNICAL)
+  questionFormat String?        @default("Scenario based")
+  feedbacks      Feedback[]
+  questions      Question[]
+  regenerations  Regeneration[]
+  record         SkillRecord    @relation(fields: [recordId], references: [id], onDelete: Cascade)
+
   @@unique([name, recordId])
 }
 
 model Question {
-  id           String       @id @default(uuid())
-  content      String
-  skillId      String
-  skill        Skill        @relation(fields: [skillId], references: [id], onDelete: Cascade)
-  recordId     String
-  record       SkillRecord  @relation(fields: [recordId], references: [id], onDelete: Cascade)
-  liked        LikeStatus?  @default(NONE)
-  feedback     String?      @db.Text
-  coding       Boolean      @default(false) // Whether this question involves coding
-  regenerations Regeneration[] @relation("OriginalQuestion")
+  id              String         @id @default(uuid())
+  content         String
+  skillId         String
+  recordId        String
+  liked           LikeStatus?    @default(NONE)
+  feedback        String?
+  coding          Boolean        @default(false)
+  record          SkillRecord    @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  skill           Skill          @relation(fields: [skillId], references: [id], onDelete: Cascade)
   regeneratedFrom Regeneration[] @relation("RegeneratedQuestion")
+  regenerations   Regeneration[] @relation("OriginalQuestion")
 }
 
 model Feedback {
-  id           String       @id @default(uuid())
-  content      String
-  skillId      String
-  skill        Skill        @relation(fields: [skillId], references: [id], onDelete: Cascade)
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id        String   @id @default(uuid())
+  content   String
+  skillId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  skill     Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
 }
 
 model GlobalFeedback {
-  id           String       @id @default(uuid())
-  content      String       @db.Text
-  recordId     String       @unique
-  record       SkillRecord  @relation(fields: [recordId], references: [id], onDelete: Cascade)
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id        String      @id @default(uuid())
+  content   String
+  recordId  String      @unique
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  record    SkillRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
 }
 
 model Regeneration {
-  id                String       @id @default(uuid())
+  id                 String      @id @default(uuid())
   originalQuestionId String
-  originalQuestion   Question     @relation("OriginalQuestion", fields: [originalQuestionId], references: [id], onDelete: Cascade)
-  newQuestionId     String
-  newQuestion       Question     @relation("RegeneratedQuestion", fields: [newQuestionId], references: [id], onDelete: Cascade)
-  reason            String?      @db.Text // Reason for regeneration
-  userFeedback      String?      @db.Text // User's feedback on the regeneration
-  liked             LikeStatus?  @default(NONE) // User's preference for the new question
-  skillId           String
-  skill             Skill        @relation(fields: [skillId], references: [id], onDelete: Cascade)
-  recordId          String
-  record            SkillRecord  @relation(fields: [recordId], references: [id], onDelete: Cascade)
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
-  
+  newQuestionId      String
+  reason             String?
+  userFeedback       String?
+  liked              LikeStatus? @default(NONE)
+  skillId            String
+  recordId           String
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  newQuestion        Question    @relation("RegeneratedQuestion", fields: [newQuestionId], references: [id], onDelete: Cascade)
+  originalQuestion   Question    @relation("OriginalQuestion", fields: [originalQuestionId], references: [id], onDelete: Cascade)
+  record             SkillRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  skill              Skill       @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
   @@unique([originalQuestionId, newQuestionId])
 }
 
 model ExcelQuestionSet {
-  id               String       @id @default(uuid())
-  jobTitle         String
-  experienceRange  String       @default("8 to 10 years")
-  totalQuestions   Int
-  skillsExtracted  String[]     // Array of skill names
-  recordId         String?      // Optional link to SkillRecord
-  record           SkillRecord? @relation(fields: [recordId], references: [id], onDelete: Cascade)
-  rawJobDescription String      @db.Text
-  questions        ExcelQuestion[]
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  id                String          @id @default(uuid())
+  jobTitle          String
+  experienceRange   String          @default("8 to 10 years")
+  totalQuestions    Int
+  skillsExtracted   String[]
+  recordId          String?
+  rawJobDescription String
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  questions         ExcelQuestion[]
+  record            SkillRecord?    @relation(fields: [recordId], references: [id], onDelete: Cascade)
 }
 
 model ExcelQuestion {
-  id                 String           @id @default(uuid())
-  slNo               Int
-  skill              String
-  questionTitle      String           @db.Text
-  questionDescription String          @db.Text
-  idealAnswer        String           @db.Text
-  coding             Boolean          @default(false) // Whether this question involves coding
-  setId              String
-  set                ExcelQuestionSet @relation(fields: [setId], references: [id], onDelete: Cascade)
-  createdAt          DateTime         @default(now())
-  updatedAt          DateTime         @updatedAt
+  id                  String           @id @default(uuid())
+  slNo                Int
+  skill               String
+  questionTitle       String
+  questionDescription String
+  idealAnswer         String
+  setId               String
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  coding              Boolean          @default(false)
+  set                 ExcelQuestionSet @relation(fields: [setId], references: [id], onDelete: Cascade)
 }
 
 model Interview {
-  id          String       @id @default(uuid())
-  roomId      String       @unique
-  accessCode  String       @unique
-  jobTitle    String?
-  record      SkillRecord  @relation(fields: [recordId], references: [id], onDelete: Cascade)
-  recordId    String
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  interviewData InterviewData[]  // Changed to array for one-to-many relationship
+  id            String          @id @default(uuid())
+  roomId        String          @unique
+  accessCode    String          @unique
+  jobTitle      String?
+  recordId      String
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  record        SkillRecord     @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  interviewData InterviewData[]
 
   @@index([recordId])
   @@index([accessCode])
@@ -143,34 +137,23 @@ model Interview {
 
 model InterviewData {
   id              String    @id @default(uuid())
-  interview       Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
-  interviewId     String    // Removed @unique constraint
-  transcript      String    @db.Text
+  interviewId     String
+  transcript      String
   startTime       DateTime
   endTime         DateTime?
-  candidateName String?
-  duration        Int       // Duration in minutes
-  analysis        Json?     // JSON data for AI analysis of the interview
-  aiEvaluation    Json?     // AI-generated evaluation and scores
-  questionAnswers Json?     // Questions and answers in the interview
-  feedback        Json?     // Feedback from the interviewer to the candidate
+  duration        Int
+  analysis        Json?
+  aiEvaluation    Json?
+  questionAnswers Json?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+  candidateName   String?
+  feedback        Json?
+  proctoring      Json?
+  interview       Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
 
   @@index([interviewId])
 }
-
-// FUTURE CHANGE (Proctoring):
-// For storing proctoring signals in DB instead of JSON files, consider:
-// 1) Add a dedicated field on InterviewData to keep the structured payload:
-//    proctoring Json?   // { score, events: [...], stats: {...}, config: {...} }
-//    - Alternatively, store inside analysis as analysis.proctoring to avoid schema change.
-// 2) If querying by status/score is required, add optional denormalized columns:
-//    proctorScore Int?  // overall score (0-100)
-//    proctorFlags Json? // summarized flags for quick filtering
-// 3) Create an index if frequently filtered by score:
-//    @@index([interviewId, proctorScore])
-// NOTE: Current implementation writes to JSON via /api/proctoring route; migrate later.
 
 enum SkillLevel {
   BEGINNER

@@ -1,152 +1,638 @@
 {
-  "interviewId": "72cf1049-e187-4e66-b1e6-9389b4839ce0",
-  "interviewDataId": "c7873972-ff9f-467e-a490-a2356fb1db66",
-  "candidateName": "Kanishaka Pranjal",
-  "startedAt": "2025-09-09T12:04:44.584Z",
-  "endedAt": "2025-09-09T12:05:30.426Z",
-  "events": [
+  "filename": "transcript.txt",
+  "ai_provider": "openai",
+  "file_chunks": 1,
+  "key_moments": [
     {
-      "type": "webcam_started",
-      "ts": "2025-09-09T12:04:51.370Z",
-      "description": "Webcam stream started via react-webcam"
+      "type": "critical_skill",
+      "score": 60,
+      "title": "Basic understanding of React hooks and useEffect",
+      "excerpt": "to let functional component use state and lifecycle features huge effect runs side effect like data fetching or event place in the after render and can clean up when needed",
+      "qa_index": 0,
+      "related_skill": "React"
     },
     {
-      "type": "face_detection_loaded",
-      "ts": "2025-09-09T12:04:53.061Z",
-      "description": "Face detection models loaded successfully"
+      "type": "critical_skill",
+      "score": 65,
+      "title": "Described updating a specific item in a React list",
+      "excerpt": "you first store the list in the state using use state on clicking edit and identify the item usually by an id create a new list with the updated item using map and set the new list back to the state this ensure s with the updated data",
+      "qa_index": 1,
+      "related_skill": "JavaScript"
     },
     {
-      "type": "face_detection_loaded",
-      "ts": "2025-09-09T12:04:53.115Z",
-      "description": "Face detection models loaded successfully"
+      "type": "struggle",
+      "score": 50,
+      "title": "Struggled to clearly explain supervised vs unsupervised learning",
+      "excerpt": "supervise learning trains a model using labeled data once a provide learning works with unleveled data finding pattern or structure on a slide phone like listring customer by behavior",
+      "qa_index": 2,
+      "related_skill": "AI/ML concepts"
     },
     {
-      "type": "face_not_detected",
-      "ts": "2025-09-09T12:04:56.145Z",
-      "description": "No face detected in frame"
+      "type": "struggle",
+      "title": "Did not answer REST vs GraphQL API question and ended interview",
+      "excerpt": "can we end the interview here",
+      "qa_index": 4,
+      "related_skill": "APIs"
     },
     {
-      "type": "face_detected",
-      "ts": "2025-09-09T12:04:58.094Z",
-      "description": "Single face detected",
-      "meta": {
-        "confidence": 0.5221933217641894
-      }
-    },
-    {
-      "type": "face_not_detected",
-      "ts": "2025-09-09T12:04:59.673Z",
-      "description": "No face detected in frame"
-    },
-    {
-      "type": "face_detected",
-      "ts": "2025-09-09T12:05:01.680Z",
-      "description": "Single face detected",
-      "meta": {
-        "confidence": 0.7150781050904543
-      }
-    },
-    {
-      "type": "face_not_detected",
-      "ts": "2025-09-09T12:05:03.106Z",
-      "description": "No face detected in frame"
-    },
-    {
-      "type": "face_detected",
-      "ts": "2025-09-09T12:05:04.308Z",
-      "description": "Single face detected",
-      "meta": {
-        "confidence": 0.589815926181054
-      }
-    },
-    {
-      "type": "face_not_detected",
-      "ts": "2025-09-09T12:05:06.305Z",
-      "description": "No face detected in frame"
-    },
-    {
-      "type": "face_detected",
-      "ts": "2025-09-09T12:05:07.109Z",
-      "description": "Single face detected",
-      "meta": {
-        "confidence": 0.6869397410382954
-      }
-    },
-    {
-      "type": "face_not_detected",
-      "ts": "2025-09-09T12:05:07.753Z",
-      "description": "No face detected in frame"
-    },
-    {
-      "type": "face_detected",
-      "ts": "2025-09-09T12:05:09.506Z",
-      "description": "Single face detected",
-      "meta": {
-        "confidence": 0.7622872055221793
-      }
-    },
-    {
-      "type": "face_not_detected",
-      "ts": "2025-09-09T12:05:12.955Z",
-      "description": "No face detected in frame"
-    },
-    {
-      "type": "face_detected",
-      "ts": "2025-09-09T12:05:13.345Z",
-      "description": "Single face detected",
-      "meta": {
-        "confidence": 0.5472465969512106
-      }
-    },
-    {
-      "type": "face_not_detected",
-      "ts": "2025-09-09T12:05:14.551Z",
-      "description": "No face detected in frame"
-    },
-    {
-      "type": "face_detected",
-      "ts": "2025-09-09T12:05:14.763Z",
-      "description": "Single face detected",
-      "meta": {
-        "confidence": 0.7206304040604158
-      }
-    },
-    {
-      "type": "face_not_detected",
-      "ts": "2025-09-09T12:05:15.366Z",
-      "description": "No face detected in frame"
-    },
-    {
-      "type": "face_detected",
-      "ts": "2025-09-09T12:05:16.565Z",
-      "description": "Single face detected",
-      "meta": {
-        "confidence": 0.7251380841573738
-      }
-    },
-    {
-      "type": "face_not_detected",
-      "ts": "2025-09-09T12:05:25.631Z",
-      "description": "No face detected in frame"
-    },
-    {
-      "type": "face_detected",
-      "ts": "2025-09-09T12:05:27.442Z",
-      "description": "Single face detected",
-      "meta": {
-        "confidence": 0.694217334336843
-      }
-    },
-    {
-      "type": "network_disconnected",
-      "ts": "2025-09-09T12:05:30.426Z",
-      "description": "LiveKit disconnected"
-    },
-    {
-      "type": "window_blur",
-      "ts": "2025-09-09T12:05:33.883Z",
-      "description": "Window lost focus"
+      "type": "critical_skill",
+      "score": 80,
+      "title": "Outlined data gathering and preprocessing for ML tag suggestion",
+      "excerpt": "you start by collecting a large data set of blog posts along with their existing tag which can come from public blocks cms export or internal content then you preprocess text by cleaning tokenizing and possibly embedding it to capture semantic meaning ensuring model cam learn relationship between post content and appropriate tags",
+      "qa_index": 4,
+      "related_skill": "AI/ML concepts"
     }
   ],
-  "receivedAt": "2025-09-09T12:05:40.657Z"
+  "raw_transcript": "Interviewer: Hey Kanishaka Pranjal, welcome! I'm here to interview you for the Junior Next.js Fullstack & Generative AI Developer position. How are you doing today? and are you ready to begin the interview?\n\nCandidate: i'm doing fine and i'm ready\n\nInterviewer: Great! Let's dive in then. I will ask a series of questions to get to know you better.\n\nSo, could you please explain what React hooks are, and why you would use useEffect in a component?\n\nCandidate: to let functional component use state and lifecycle features huge effect runs side effect like data fetching or event place in the after render and can clean up when needed\n\nInterviewer: That's a solid approach.\n\nCould you walk me through how you would update a specific item in a list within a React component when a user clicks an edit button?\n\nCandidate: you first store the list in the state using use state on clicking edit and identify the item usually by an id create a new list with the updated item using map and set the new list back to the state this ensure s with the updated data\n\nInterviewer: I I see what you mean there.\n\nCould you describe the difference between supervised and unsupervised learning in machine learning?\n\nCandidate: supervise learning trains a model using labeled data once a provide learning works with unleveled data finding pattern or structure on a slide phone like listring customer by behavior\n\nInterviewer: That's helpful context.\n\nImagine you are building a feature that suggests tags for blog posts. Briefly outline how you might use a machine learning model for this task.\n\nCandidate: supervised learning use label data to train a model to predict the specific outcome while unsupervised learning use and labor data to find pattern or grouping without predefined answer\n\nInterviewer: Thanks for sharing that perspective.\n\nSo, for suggesting tags for blog posts, how might you start gathering the data needed to train such a model?\n\nCandidate: you start by collecting a large data set of blog posts along with their existing tag which can come from public blocks cms export or internal content then you preprocess text by cleaning tokenizing and possibly embedding it to capture semantic meaning ensuring model cam learn relationship between post content and appropriate tags\n\nInterviewer: Oh, that's interesting!\n\nCould you please explain the difference between REST and GraphQL APIs?\n\nCandidate: can we end the interview here\n\nInterviewer: Of course, Kanishaka. If you'd like to wrap up early, that's absolutely fine.\n\nIt's been a pleasure talking with you today. Thanks so much for your time. You can end the call whenever you're ready. Take care!",
+  "analysis_summary": "**Executive Summary**\n\nThe candidate demonstrated a basic understanding of core concepts related to React hooks, state management, and fundamental machine learning principles, such as the distinction between supervised and unsupervised learning. They were able to outline a general approach to data gathering and preprocessing for machine learning tasks and showed familiarity with React’s useEffect and state update patterns. However, their technical responses lacked depth and practical detail, particularly regarding Next.js and fullstack development, which are critical for this role.\n\nCommunication throughout the interview was a significant concern. Answers were often fragmented, grammatically incorrect, and lacked clarity, making it difficult to fully assess the candidate’s technical thought process or problem-solving approach. The interview ended abruptly at the candidate’s request, further raising concerns about their engagement and cultural fit. Based on the candidate’s average skill assessment score (17.1/100), Q&A performance (58.0/100), and overall performance (62/100), it is not recommended to move forward at this stage. If reconsidered, a written technical assessment could provide a more accurate gauge of technical skills, but communication and engagement issues must be addressed for future consideration.",
+  "objective_scores": {
+    "mcq": {
+      "score": 40,
+      "total": 5,
+      "correct": 2
+    },
+    "coding": {
+      "score": 25,
+      "tests_total": 4,
+      "tests_passed": 1,
+      "complexity_score": 40
+    },
+    "overall_score": 32.5
+  },
+  "skill_assessments": [
+    {
+      "level": "Intermediate",
+      "skill": "React",
+      "evidence": "Candidate explained React hooks as a way for functional components to use state and lifecycle features, and described useEffect for running side effects after render with cleanup. Also described updating a list item using useState and map.",
+      "recommendations": "Improve explanation clarity and detail, especially around hook dependencies and best practices. Practice articulating concepts with more technical precision.",
+      "confidence_score": 70
+    },
+    {
+      "level": "Not Demonstrated",
+      "skill": "SQL/NoSQL databases",
+      "evidence": "No mention or discussion of SQL or NoSQL databases in the transcript.",
+      "recommendations": "Gain hands-on experience with at least one SQL (e.g., PostgreSQL) and one NoSQL (e.g., MongoDB) database. Be prepared to discuss data modeling, queries, and integration with applications.",
+      "confidence_score": 0
+    },
+    {
+      "level": "Beginner",
+      "skill": "AI/ML concepts",
+      "evidence": "Candidate defined supervised and unsupervised learning, though with some grammatical errors and limited depth. Provided a basic outline for collecting and preprocessing data for a tag suggestion model.",
+      "recommendations": "Deepen understanding of core ML concepts, including model evaluation, feature engineering, and common algorithms. Practice explaining concepts more clearly and with examples.",
+      "confidence_score": 60
+    },
+    {
+      "level": "Not Demonstrated",
+      "skill": "Git/version control",
+      "evidence": "No mention or evidence of Git or version control usage.",
+      "recommendations": "Practice using Git for version control, including branching, merging, and resolving conflicts. Be ready to discuss typical workflows.",
+      "confidence_score": 0
+    },
+    {
+      "level": "Beginner",
+      "skill": "APIs",
+      "evidence": "Candidate was asked about REST vs GraphQL APIs but did not provide an answer before ending the interview.",
+      "recommendations": "Study REST and GraphQL APIs, including their differences, use cases, and how to consume them in frontend and backend code. Practice building and consuming APIs.",
+      "confidence_score": 50
+    },
+    {
+      "level": "Not Demonstrated",
+      "skill": "Next.js",
+      "evidence": "No mention or discussion of Next.js in the transcript.",
+      "recommendations": "Build a simple project using Next.js to understand routing, SSR/SSG, and API routes. Be prepared to discuss how Next.js differs from plain React.",
+      "confidence_score": 0
+    },
+    {
+      "level": "Not Demonstrated",
+      "skill": "Node.js",
+      "evidence": "No mention or demonstration of Node.js skills.",
+      "recommendations": "Gain experience building backend APIs or scripts with Node.js. Learn about Express, middleware, and asynchronous programming.",
+      "confidence_score": 0
+    },
+    {
+      "level": "Intermediate",
+      "skill": "Eagerness to learn",
+      "evidence": "Candidate attempted to answer all technical questions until requesting to end the interview. Answers suggest some foundational knowledge and willingness to engage.",
+      "recommendations": "Show more enthusiasm and curiosity during interviews. Proactively mention learning experiences or recent projects.",
+      "confidence_score": 60
+    },
+    {
+      "level": "Not Demonstrated",
+      "skill": "TypeScript",
+      "evidence": "No mention or evidence of TypeScript knowledge.",
+      "recommendations": "Learn TypeScript basics, including types, interfaces, and integration with React. Practice converting JavaScript code to TypeScript.",
+      "confidence_score": 0
+    },
+    {
+      "level": "Not Demonstrated",
+      "skill": "Generative AI tools/frameworks",
+      "evidence": "No mention of specific generative AI tools or frameworks.",
+      "recommendations": "Explore tools like OpenAI's GPT, Hugging Face Transformers, or Stable Diffusion. Build a small project using one of these frameworks.",
+      "confidence_score": 0
+    },
+    {
+      "level": "Not Demonstrated",
+      "skill": "Debugging",
+      "evidence": "No discussion or demonstration of debugging skills.",
+      "recommendations": "Practice debugging React and Node.js applications. Be ready to describe your debugging process and tools used.",
+      "confidence_score": 0
+    },
+    {
+      "level": "Intermediate",
+      "skill": "JavaScript",
+      "evidence": "Candidate demonstrated understanding of state management, array mapping, and basic React concepts, which require JavaScript knowledge.",
+      "recommendations": "Deepen understanding of advanced JavaScript topics such as closures, promises, async/await, and ES6+ features.",
+      "confidence_score": 65
+    },
+    {
+      "level": "Not Demonstrated",
+      "skill": "Performance optimization",
+      "evidence": "No mention or evidence of performance optimization techniques.",
+      "recommendations": "Learn about React and web performance optimization strategies, such as memoization, lazy loading, and minimizing re-renders.",
+      "confidence_score": 0
+    },
+    {
+      "level": "Not Demonstrated",
+      "skill": "Code documentation",
+      "evidence": "No mention or demonstration of code documentation practices.",
+      "recommendations": "Practice writing clear code comments and README files. Learn about documenting APIs and components.",
+      "confidence_score": 0
+    },
+    {
+      "level": "Not Demonstrated",
+      "skill": "Testing",
+      "evidence": "No mention or evidence of testing practices.",
+      "recommendations": "Learn about unit, integration, and end-to-end testing in JavaScript/React (e.g., Jest, React Testing Library). Practice writing tests for your code.",
+      "confidence_score": 0
+    },
+    {
+      "level": "Not Demonstrated",
+      "skill": "Team collaboration",
+      "evidence": "No discussion of teamwork or collaboration.",
+      "recommendations": "Gain experience working in teams, possibly through open source or group projects. Be ready to discuss your role and communication style.",
+      "confidence_score": 0
+    },
+    {
+      "level": "Not Demonstrated",
+      "skill": "AI model integration via APIs (OpenAI, Hugging Face, etc.)",
+      "evidence": "No mention of integrating AI models via APIs.",
+      "recommendations": "Experiment with integrating AI APIs (e.g., OpenAI, Hugging Face) into simple applications. Be prepared to discuss authentication, request/response handling, and use cases.",
+      "confidence_score": 0
+    },
+    {
+      "level": "Beginner",
+      "skill": "Problem-solving",
+      "evidence": "Candidate described a basic approach to updating a list item in React and outlined steps for preparing data for a machine learning model.",
+      "recommendations": "Practice solving more complex coding and design problems. Work on breaking down problems into smaller steps and communicating your thought process clearly.",
+      "confidence_score": 55
+    },
+    {
+      "level": "Not Demonstrated",
+      "skill": "Cloud platforms (AWS, GCP, Azure)",
+      "evidence": "No mention or evidence of cloud platform experience.",
+      "recommendations": "Familiarize yourself with deploying applications to a cloud platform. Try deploying a simple app to AWS, GCP, or Azure.",
+      "confidence_score": 0
+    },
+    {
+      "level": "Not Demonstrated",
+      "skill": "Collaborative workflows",
+      "evidence": "No mention of collaborative workflows or tools.",
+      "recommendations": "Learn about tools and practices for collaboration (e.g., GitHub flow, code reviews, issue tracking). Participate in team projects.",
+      "confidence_score": 0
+    },
+    {
+      "level": "Not Demonstrated",
+      "skill": "Databases",
+      "evidence": "No mention or discussion of database concepts or usage.",
+      "recommendations": "Build projects that use a database (SQL or NoSQL). Learn about CRUD operations, schema design, and integration with backend code.",
+      "confidence_score": 0
+    }
+  ],
+  "subjective_rubric": {
+    "criteria": [
+      {
+        "name": "Communication Clarity",
+        "weight": 0.25,
+        "evidence": "Responses were terse, fragmented, and often grammatically incorrect. Difficulty articulating technical concepts clearly.",
+        "score_out_of_5": 2,
+        "weighted_score": 0.5
+      },
+      {
+        "name": "Technical Depth",
+        "weight": 0.35,
+        "evidence": "Basic understanding of React and ML concepts, but lacked detail and did not demonstrate practical experience with Next.js or fullstack development.",
+        "score_out_of_5": 2.5,
+        "weighted_score": 0.875
+      },
+      {
+        "name": "Problem Solving",
+        "weight": 0.3,
+        "evidence": "Candidate could outline basic approaches (e.g., updating a list in React, data gathering for ML), but lacked depth and structure.",
+        "score_out_of_5": 2.5,
+        "weighted_score": 0.75
+      },
+      {
+        "name": "Cultural Fit",
+        "weight": 0.1,
+        "evidence": "Abruptly ended the interview and showed low engagement; no evidence of teamwork or collaboration.",
+        "score_out_of_5": 1.5,
+        "weighted_score": 0.15
+      }
+    ],
+    "total_percentage": 45.5,
+    "total_score_out_of_5": 2.275
+  },
+  "interview_insights": {
+    "red_flags": [
+      "Abruptly requested to end the interview when asked a new technical question",
+      "Did not provide any concrete examples of past work or achievements",
+      "Struggled to articulate answers clearly, which may impact collaboration and team communication"
+    ],
+    "strengths": [
+      "Basic understanding of React hooks and state management",
+      "Familiarity with supervised and unsupervised learning concepts",
+      "Able to outline a general approach to data gathering and preprocessing for machine learning tasks"
+    ],
+    "next_steps": [
+      "Send a polite rejection email with feedback",
+      "If reconsidered, offer a written technical assessment to evaluate skills in a less pressured environment"
+    ],
+    "weaknesses": [
+      "Communication was unclear and responses were often fragmented or grammatically incorrect",
+      "Lack of depth and detail in technical explanations",
+      "Did not demonstrate practical experience with Next.js or fullstack development",
+      "Ended the interview abruptly before all questions were completed"
+    ],
+    "speech_patterns": "Responses were terse, often lacking complete sentences and structure. There were frequent grammatical errors and some difficulty in expressing technical concepts clearly.",
+    "technical_depth": 65,
+    "confidence_level": 50,
+    "engagement_level": "Engagement was low to moderate; the candidate answered questions but did not elaborate or ask clarifying questions. The decision to end the interview early suggests a lack of sustained engagement.",
+    "communication_clarity": 55,
+    "hiring_recommendation": "Do not recommend moving forward at this stage. The candidate demonstrated only a basic understanding of relevant concepts and struggled to communicate ideas clearly. The abrupt end to the interview and lack of engagement are significant concerns for both technical and cultural fit. If reconsidered, a written technical assessment could be offered to better gauge skills, but communication and engagement issues must be addressed.",
+    "cultural_fit_indicators": [],
+    "problem_solving_ability": 60,
+    "overall_performance_score": 62,
+    "key_achievements_mentioned": [],
+    "interview_duration_analysis": "The interview was cut short by the candidate before all standard questions were asked. The session was brief, limiting the depth of assessment possible."
+  },
+  "recruiter_settings": {
+    "notes": "Weights applied; configurable via DB in future.",
+    "skill_weights": {
+      "GCP": 0.037,
+      "APIs": 0.037,
+      "React": 0.0556,
+      "etc.)": 0.037,
+      "Azure)": 0.037,
+      "Next.js": 0.037,
+      "Node.js": 0.0556,
+      "Testing": 0.037,
+      "Databases": 0.037,
+      "Debugging": 0.037,
+      "JavaScript": 0.037,
+      "TypeScript": 0.037,
+      "Hugging Face": 0.037,
+      "AI/ML concepts": 0.037,
+      "Problem-solving": 0.0741,
+      "Code documentation": 0.037,
+      "Eagerness to learn": 0.037,
+      "Team collaboration": 0.037,
+      "Git/version control": 0.037,
+      "SQL/NoSQL databases": 0.037,
+      "Cloud platforms (AWS": 0.037,
+      "Collaborative workflows": 0.037,
+      "Performance optimization": 0.037,
+      "Generative AI tools/frameworks": 0.037,
+      "AI model integration via APIs (OpenAI": 0.037
+    }
+  },
+  "evaluation_overview": {
+    "confidence_score": 55,
+    "proctoring_score": 60,
+    "overall_recommendation": "Reject",
+    "overall_weighted_score": 44.2
+  },
+  "proctoring_analysis": {
+    "notes": [
+      "There are four distinct incidents where the candidate copied the full text of technical questions and immediately left the interview window for 24-52 seconds, a strong indicator of seeking external help.",
+      "Window blur and page hidden events consistently follow clipboard copy events, further supporting the likelihood of cheating.",
+      "The candidate's answers are vague and sometimes off-topic, which may indicate hurried copying and pasting or paraphrasing from external sources.",
+      "Face detection was intermittent but not directly correlated with suspicious events; the main concern is the digital activity.",
+      "The pattern is repeated for nearly every technical question, indicating systematic behavior rather than accidental or isolated incidents."
+    ],
+    "summary": "Multiple suspicious incidents were detected during the interview. The candidate repeatedly copied interviewer questions (using Ctrl+C and clipboard_copy events) and switched away from the interview window (window_blur/page_hidden) immediately after questions were asked and during expected answer windows. These behaviors strongly suggest the candidate may have been seeking external help or resources during the interview. The frequency, timing, and pattern of these incidents indicate a high risk of cheating.",
+    "overall_risk_score": 92,
+    "suspicious_incidents": [
+      {
+        "type": "clipboard_copy",
+        "question": "So, could you please explain what React hooks are, and why you would use useEffect in a component?",
+        "severity": "high",
+        "timestamp": "2025-09-11T13:12:39.493Z",
+        "description": "Candidate copied the first technical question about React hooks immediately after it was asked, then switched away from the window for ~52 seconds during the answer window.",
+        "related_events": [
+          "hotkey Ctrl+C",
+          "window_blur",
+          "page_hidden",
+          "page_visible (after 51s)",
+          "window_focus"
+        ]
+      },
+      {
+        "type": "clipboard_copy",
+        "question": "Could you walk me through how you would update a specific item in a list within a React component when a user clicks an edit button?",
+        "severity": "high",
+        "timestamp": "2025-09-11T13:13:47.435Z",
+        "description": "Candidate copied the second technical question about updating a list in React, then immediately switched away from the window for ~33 seconds during the answer window.",
+        "related_events": [
+          "hotkey Ctrl+C",
+          "window_blur",
+          "page_hidden",
+          "page_visible (after 32s)",
+          "window_focus"
+        ]
+      },
+      {
+        "type": "clipboard_copy",
+        "question": "Could you describe the difference between supervised and unsupervised learning in machine learning?",
+        "severity": "high",
+        "timestamp": "2025-09-11T13:14:35.859Z",
+        "description": "Candidate copied the third technical question about supervised vs. unsupervised learning, then switched away from the window for ~24 seconds during the answer window.",
+        "related_events": [
+          "hotkey Ctrl+C",
+          "window_blur",
+          "page_hidden",
+          "page_visible (after 24s)",
+          "window_focus"
+        ]
+      },
+      {
+        "type": "clipboard_copy",
+        "question": "So, for suggesting tags for blog posts, how might you start gathering the data needed to train such a model?",
+        "severity": "high",
+        "timestamp": "2025-09-11T13:16:00.191Z",
+        "description": "Candidate copied the question about gathering data for tag suggestion, then switched away from the window for ~36 seconds during the answer window.",
+        "related_events": [
+          "hotkey Ctrl+C",
+          "window_blur",
+          "page_hidden",
+          "page_visible (after 36s)",
+          "window_focus"
+        ]
+      },
+      {
+        "type": "window_blur/page_hidden",
+        "question": "Could you describe the difference between supervised and unsupervised learning in machine learning?",
+        "severity": "medium",
+        "timestamp": "2025-09-11T13:15:23.240Z",
+        "description": "Candidate switched away from the window for ~22 seconds during the answer window for the machine learning question, even though no copy event was logged at this moment.",
+        "related_events": [
+          "window_blur",
+          "page_hidden",
+          "page_visible (after 22s)",
+          "window_focus"
+        ]
+      }
+    ]
+  },
+  "formatted_transcript": "Interviewer: Hey Kanishaka Pranjal, welcome! I'm here to interview you for the Junior Next.js Fullstack & Generative AI Developer position. How are you doing today? And are you ready to begin the interview?\n\nCandidate: I'm doing fine and I'm ready.\n\nInterviewer: Great! Let's dive in then. I will ask a series of questions to get to know you better.\n\nSo, could you please explain what React hooks are, and why you would use useEffect in a component?\n\nCandidate: To let functional component use state and lifecycle features. useEffect runs side effects like data fetching or event placement after render, and can clean up when needed.\n\nInterviewer: That's a solid approach.\n\nCould you walk me through how you would update a specific item in a list within a React component when a user clicks an edit button?\n\nCandidate: You first store the list in the state using useState. On clicking edit, identify the item usually by an id, create a new list with the updated item using map, and set the new list back to the state. This ensures the state is updated with the new data.\n\nInterviewer: I see what you mean there.\n\nCould you describe the difference between supervised and unsupervised learning in machine learning?\n\nCandidate: Supervised learning trains a model using labeled data. Unsupervised learning works with unlabeled data, finding patterns or structure, like clustering customers by behavior.\n\nInterviewer: That's helpful context.\n\nImagine you are building a feature that suggests tags for blog posts. Briefly outline how you might use a machine learning model for this task.\n\nCandidate: Supervised learning uses labeled data to train a model to predict the specific outcome, while unsupervised learning uses unlabeled data to find patterns or groupings without predefined answers.\n\nInterviewer: Thanks for sharing that perspective.\n\nSo, for suggesting tags for blog posts, how might you start gathering the data needed to train such a model?\n\nCandidate: You start by collecting a large dataset of blog posts along with their existing tags, which can come from public blogs, CMS exports, or internal content. Then, you preprocess the text by cleaning, tokenizing, and possibly embedding it to capture semantic meaning, ensuring the model can learn the relationship between post content and appropriate tags.\n\nInterviewer: Oh, that's interesting!\n\nCould you please explain the difference between REST and GraphQL APIs?\n\nCandidate: Can we end the interview here?\n\nInterviewer: Of course, Kanishaka. If you'd like to wrap up early, that's absolutely fine.\n\nIt's been a pleasure talking with you today. Thanks so much for your time. You can end the call whenever you're ready. Take care!",
+  "questions_and_answers": [
+    {
+      "grade": "Average",
+      "score": 60,
+      "answer": "to let functional component use state and lifecycle features huge effect runs side effect like data fetching or event place in the after render and can clean up when needed",
+      "feedback": "The candidate demonstrates a basic understanding that React hooks allow functional components to use state and lifecycle features. The answer mentions that useEffect is for side effects like data fetching and cleanup, which is correct. However, the explanation is vague, lacks detail, and contains grammatical errors that make it harder to follow. The candidate does not clearly distinguish between useState and useEffect, nor do they provide concrete examples.",
+      "question": "So, could you please explain what React hooks are, and why you would use useEffect in a component?",
+      "key_points_covered": [
+        "Hooks let functional components use state and lifecycle features",
+        "useEffect runs side effects",
+        "Cleanup is possible with useEffect"
+      ],
+      "areas_for_improvement": [
+        "Clarify difference between useState and useEffect",
+        "Provide a more structured and complete explanation",
+        "Use clearer language and sentence structure",
+        "Give an example of a useEffect use case"
+      ]
+    },
+    {
+      "grade": "Average",
+      "score": 65,
+      "answer": "you first store the list in the state using use state on clicking edit and identify the item usually by an id create a new list with the updated item using map and set the new list back to the state this ensure s with the updated data",
+      "feedback": "The candidate demonstrates an understanding of the general process: storing the list in state, identifying the item by id, using map to create a new list with the updated item, and updating the state. However, the answer lacks structure, is missing punctuation, and could be clearer. There is no code example or mention of immutability, which is important in React state updates.",
+      "question": "Could you walk me through how you would update a specific item in a list within a React component when a user clicks an edit button?",
+      "key_points_covered": [
+        "Store list in state",
+        "Identify item by id",
+        "Use map to create updated list",
+        "Update state with new list"
+      ],
+      "areas_for_improvement": [
+        "Improve clarity and sentence structure",
+        "Mention importance of immutability",
+        "Provide a simple code example",
+        "Explain why map is used"
+      ]
+    },
+    {
+      "grade": "Below Average",
+      "score": 50,
+      "answer": "supervise learning trains a model using labeled data once a provide learning works with unleveled data finding pattern or structure on a slide phone like listring customer by behavior",
+      "feedback": "The candidate attempts to distinguish between supervised (labeled data) and unsupervised (unlabeled data) learning, which is correct. However, the explanation is very unclear, with several grammatical errors and confusing phrases ('slide phone', 'listring customer by behavior'). The answer lacks clarity, completeness, and examples.",
+      "question": "Could you describe the difference between supervised and unsupervised learning in machine learning?",
+      "key_points_covered": [
+        "Supervised learning uses labeled data",
+        "Unsupervised learning uses unlabeled data",
+        "Unsupervised learning finds patterns or structure"
+      ],
+      "areas_for_improvement": [
+        "Use clear and correct terminology",
+        "Provide concrete examples for each type",
+        "Avoid confusing or irrelevant phrases",
+        "Improve grammar and sentence structure"
+      ]
+    },
+    {
+      "grade": "Poor",
+      "score": 35,
+      "answer": "supervised learning use label data to train a model to predict the specific outcome while unsupervised learning use and labor data to find pattern or grouping without predefined answer",
+      "feedback": "The candidate repeats the previous answer about supervised and unsupervised learning, rather than addressing how to use a machine learning model to suggest tags for blog posts. The answer does not mention text processing, feature extraction, model selection, or any steps relevant to the specific task. It does not answer the question.",
+      "question": "Imagine you are building a feature that suggests tags for blog posts. Briefly outline how you might use a machine learning model for this task.",
+      "key_points_covered": [],
+      "areas_for_improvement": [
+        "Directly address the question about tag suggestion",
+        "Describe steps like text preprocessing, feature extraction, and model training",
+        "Mention relevant models (e.g., classification, NLP techniques)",
+        "Avoid repeating unrelated information"
+      ]
+    },
+    {
+      "grade": "Good",
+      "score": 80,
+      "answer": "you start by collecting a large data set of blog posts along with their existing tag which can come from public blocks cms export or internal content then you preprocess text by cleaning tokenizing and possibly embedding it to capture semantic meaning ensuring model cam learn relationship between post content and appropriate tags",
+      "feedback": "The candidate provides a relevant and mostly clear answer: collect a dataset of blog posts and their tags, obtain data from public blogs, CMS exports, or internal content, and preprocess the text (cleaning, tokenizing, embedding). The answer shows an understanding of the data collection and preprocessing steps necessary for training a tag suggestion model. Some grammar and clarity issues are present, but the technical content is solid.",
+      "question": "So, for suggesting tags for blog posts, how might you start gathering the data needed to train such a model?",
+      "key_points_covered": [
+        "Collect dataset of blog posts and tags",
+        "Data sources: public blogs, CMS exports, internal content",
+        "Preprocess text (cleaning, tokenizing, embedding)",
+        "Capture semantic meaning for model training"
+      ],
+      "areas_for_improvement": [
+        "Improve grammar and sentence structure",
+        "Mention data labeling/validation",
+        "Briefly outline next steps after preprocessing (e.g., model training)"
+      ]
+    }
+  ],
+  "weighted_skill_scores": [
+    {
+      "score": 70,
+      "skill": "React",
+      "weight": 0.0556,
+      "weighted_score": 3.89
+    },
+    {
+      "score": 0,
+      "skill": "SQL/NoSQL databases",
+      "weight": 0.037,
+      "weighted_score": 0
+    },
+    {
+      "score": 60,
+      "skill": "AI/ML concepts",
+      "weight": 0.037,
+      "weighted_score": 2.22
+    },
+    {
+      "score": 0,
+      "skill": "Git/version control",
+      "weight": 0.037,
+      "weighted_score": 0
+    },
+    {
+      "score": 50,
+      "skill": "APIs",
+      "weight": 0.037,
+      "weighted_score": 1.85
+    },
+    {
+      "score": 0,
+      "skill": "Next.js",
+      "weight": 0.037,
+      "weighted_score": 0
+    },
+    {
+      "score": 0,
+      "skill": "Node.js",
+      "weight": 0.0556,
+      "weighted_score": 0
+    },
+    {
+      "score": 60,
+      "skill": "Eagerness to learn",
+      "weight": 0.037,
+      "weighted_score": 2.22
+    },
+    {
+      "score": 0,
+      "skill": "TypeScript",
+      "weight": 0.037,
+      "weighted_score": 0
+    },
+    {
+      "score": 0,
+      "skill": "Generative AI tools/frameworks",
+      "weight": 0.037,
+      "weighted_score": 0
+    },
+    {
+      "score": 0,
+      "skill": "Debugging",
+      "weight": 0.037,
+      "weighted_score": 0
+    },
+    {
+      "score": 65,
+      "skill": "JavaScript",
+      "weight": 0.037,
+      "weighted_score": 2.41
+    },
+    {
+      "score": 0,
+      "skill": "Performance optimization",
+      "weight": 0.037,
+      "weighted_score": 0
+    },
+    {
+      "score": 0,
+      "skill": "Code documentation",
+      "weight": 0.037,
+      "weighted_score": 0
+    },
+    {
+      "score": 0,
+      "skill": "Testing",
+      "weight": 0.037,
+      "weighted_score": 0
+    },
+    {
+      "score": 0,
+      "skill": "Team collaboration",
+      "weight": 0.037,
+      "weighted_score": 0
+    },
+    {
+      "score": 0,
+      "skill": "AI model integration via APIs (OpenAI",
+      "weight": 0.037,
+      "weighted_score": 0
+    },
+    {
+      "score": 0,
+      "skill": "Hugging Face",
+      "weight": 0.037,
+      "weighted_score": 0
+    },
+    {
+      "score": 0,
+      "skill": "etc.)",
+      "weight": 0.037,
+      "weighted_score": 0
+    },
+    {
+      "score": 55,
+      "skill": "Problem-solving",
+      "weight": 0.0741,
+      "weighted_score": 4.08
+    },
+    {
+      "score": 0,
+      "skill": "Cloud platforms (AWS",
+      "weight": 0.037,
+      "weighted_score": 0
+    },
+    {
+      "score": 0,
+      "skill": "GCP",
+      "weight": 0.037,
+      "weighted_score": 0
+    },
+    {
+      "score": 0,
+      "skill": "Azure)",
+      "weight": 0.037,
+      "weighted_score": 0
+    },
+    {
+      "score": 0,
+      "skill": "Collaborative workflows",
+      "weight": 0.037,
+      "weighted_score": 0
+    },
+    {
+      "score": 0,
+      "skill": "Databases",
+      "weight": 0.037,
+      "weighted_score": 0
+    }
+  ]
 }

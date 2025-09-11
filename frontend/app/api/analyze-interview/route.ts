@@ -1,6 +1,7 @@
 export const maxDuration = 299;
 
 import { OpenAI } from 'openai';
+import { prisma } from '@/lib/prisma';
 import * as pdfjs from 'pdfjs-dist';
 import { TextItem } from 'pdfjs-dist/types/src/display/api';
 
@@ -115,6 +116,27 @@ interface ComprehensiveAnalysisResponse {
     qa_index?: number;
     score?: number;
   }>;
+  // --- NEW: Proctoring AI analysis ---
+  proctoring_analysis?: {
+    summary: {
+      total_events: number;
+      face_presence_percent: number;
+      focus_loss_events: number;
+      hidden_ms: number;
+      clipboard_copies: number;
+      suspicious_count: number;
+    };
+    suspicious_incidents: Array<{
+      ts: string;
+      type: string;
+      description?: string;
+      reason: string;
+      severity: "high" | "medium" | "low";
+      related_question?: { text: string; timestamp?: string; index?: number } | null;
+    }>;
+    overall_risk_score: number; // 0-100
+    notes?: string[];
+  };
 }
 
 // Initialize OpenAI client
@@ -640,7 +662,8 @@ async function generateEnhancedEvaluationWithOpenAI(
   questions_and_answers: QuestionAnswer[],
   interview_insights: InterviewInsights,
   normalizedWeights: Record<string, number>,
-  is_valid_transcript: boolean
+  is_valid_transcript: boolean,
+  proctoring_data: any | null
 ): Promise<{
   evaluation_overview: {
     overall_weighted_score: number;
@@ -695,6 +718,9 @@ ${JSON.stringify(normalizedWeights)}
 Transcript_validity:
 ${is_valid_transcript}
 
+Proctoring data (events and metadata captured during interview; use to estimate proctoring_score and to influence confidence if appropriate):
+${JSON.stringify(proctoring_data)}
+
 Task:
 Produce a JSON object with the following structure and semantics:
 {
@@ -741,6 +767,115 @@ Rules:
 
   const content = response.choices[0].message.content || "{}";
   return JSON.parse(content);
+}
+
+// NEW: Proctoring → AI analysis
+async function generateProctoringAnalysisWithOpenAI(
+  transcript_entries: Array<{ speaker: string; text: string; timestamp: string }> | null,
+  qa_pairs: QuestionAnswer[] | null,
+  proctoring_data: any | null
+): Promise<{
+  summary: {
+    total_events: number;
+    face_presence_percent: number;
+    focus_loss_events: number;
+    hidden_ms: number;
+    clipboard_copies: number;
+    suspicious_count: number;
+  };
+  suspicious_incidents: Array<{
+    ts: string;
+    type: string;
+    description?: string;
+    reason: string;
+    severity: "high" | "medium" | "low";
+    related_question?: { text: string; timestamp?: string; index?: number } | null;
+  }>;
+  overall_risk_score: number;
+  notes?: string[];
+}> {
+  const response = await openai.chat.completions.create({
+    model: "gpt-4.1",
+    messages: [
+      {
+        role: "system",
+        content:
+          "You are an AI proctoring auditor. Analyze event logs against a timestamped transcript to detect likely cheating. Return STRICT JSON per schema."
+      },
+      {
+        role: "user",
+        content: `Inputs:\nTranscript entries (with timestamps):\n${JSON.stringify(transcript_entries || [])}\n\nQ&A pairs (if available):\n${JSON.stringify(qa_pairs || [])}\n\nProctoring events:\n${JSON.stringify(proctoring_data || {})}\n\nTask:\n- Identify suspicious incidents where clipboard/hotkey/window blur/page hidden correlate closely with a question being asked or while candidate is expected to answer (within ~90s window immediately after the latest interviewer line).\n- Summarize counts and compute an overall_risk_score (0-100).\n- Prefer high severity for copy events during answer windows, medium for blur/hidden, low for borderline.\n- Return JSON with fields summary, suspicious_incidents[], overall_risk_score, notes[].`
+      }
+    ],
+    response_format: { type: "json_object" },
+    temperature: 0.2,
+  });
+  const content = response.choices[0].message.content || "{}";
+  return JSON.parse(content);
+}
+
+// NEW: Heuristic fallback if AI proctoring fails
+function generateProctoringAnalysisHeuristic(
+  transcript_entries: Array<{ speaker: string; text: string; timestamp: string }> | null,
+  proctoring_data: any | null
+) {
+  const events: Array<{ ts: string; type: string; description?: string; meta?: any }> =
+    (proctoring_data?.events || []) as any[];
+  const sorted = [...events].sort((a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime());
+  const faceDetected = sorted.filter(e => e.type === 'face_detected').length;
+  const faceNot = sorted.filter(e => e.type === 'face_not_detected').length;
+  const blur = sorted.filter(e => e.type === 'window_blur').length;
+  const hiddenMs = sorted.filter(e => e.type === 'page_hidden_duration' && e.meta?.ms).reduce((s, e) => s + (Number(e.meta.ms) || 0), 0);
+  const clips = sorted.filter(e => e.type === 'clipboard_copy').length;
+
+  const questions = (transcript_entries || [])
+    .map((t, idx) => ({ ...t, index: idx }))
+    .filter(t => t.speaker === 'interviewer');
+  const findActiveQuestion = (iso: string) => {
+    const ts = new Date(iso).getTime();
+    const prior = [...questions].reverse().find(q => new Date(q.timestamp).getTime() <= ts);
+    if (!prior) return { prior: null as any, inWindow: false };
+    const next = questions.find(q => new Date(q.timestamp).getTime() > new Date(prior.timestamp).getTime());
+    const endTs = Math.min(next ? new Date(next.timestamp).getTime() : new Date(prior.timestamp).getTime() + 90_000, new Date(prior.timestamp).getTime() + 90_000);
+    const inWindow = ts >= new Date(prior.timestamp).getTime() && ts <= endTs;
+    return { prior, inWindow };
+  };
+
+  const suspicious: Array<{ ts: string; type: string; description?: string; reason: string; severity: "high"|"medium"|"low"; related_question?: { text: string; timestamp?: string; index?: number } | null; }> = [];
+  for (const e of sorted) {
+    if (['clipboard_copy','hotkey','window_blur','page_hidden'].includes(e.type)) {
+      const rel = findActiveQuestion(e.ts);
+      const baseReason = e.type === 'clipboard_copy' ? 'Clipboard copy during/near answer window' : e.type === 'hotkey' ? 'Copy/paste hotkey near answer window' : e.type === 'window_blur' ? 'Window blur during potential answer' : 'Page hidden during potential answer';
+      const sev: any = e.type === 'clipboard_copy' || e.type === 'hotkey' ? 'high' : 'medium';
+      suspicious.push({
+        ts: e.ts,
+        type: e.type,
+        description: e.description,
+        reason: baseReason,
+        severity: rel.inWindow ? sev : 'low',
+        related_question: rel.prior ? { text: rel.prior.text, timestamp: rel.prior.timestamp, index: (rel as any).prior.index } : null
+      });
+    }
+  }
+
+  const total = sorted.length;
+  const facePresencePercent = total ? Math.round((faceDetected / Math.max(1, faceDetected + faceNot)) * 100) : 0;
+  const riskBase = suspicious.filter(s => s.severity !== 'low').length * 15 + (100 - facePresencePercent) * 0.2 + Math.min(30, hiddenMs / 10000);
+  const overall_risk_score = Math.max(0, Math.min(100, Math.round(riskBase)));
+
+  return {
+    summary: {
+      total_events: total,
+      face_presence_percent: facePresencePercent,
+      focus_loss_events: blur,
+      hidden_ms: hiddenMs,
+      clipboard_copies: clips,
+      suspicious_count: suspicious.length,
+    },
+    suspicious_incidents: suspicious,
+    overall_risk_score,
+    notes: [] as string[]
+  };
 }
 
 export async function POST(request: Request) {
@@ -793,6 +928,32 @@ export async function POST(request: Request) {
         { detail: "OpenAI API key is not configured. Please set the OPENAI_API_KEY environment variable." },
         { status: 500 }
       );
+    }
+
+    // Optionally load proctoring data from InterviewData
+    const interview_data_id = formData.get("interview_data_id")?.toString() || null;
+    let proctoringData: any | null = null;
+    try {
+      if (interview_data_id) {
+        const rec = await prisma.interviewData.findUnique({
+          where: { id: interview_data_id },
+          select: { proctoring: true },
+        });
+        proctoringData = rec?.proctoring || null;
+      }
+    } catch (e) {
+      console.warn('Failed to load proctoring data for interview_data_id', interview_data_id, e);
+    }
+    // Optional raw transcript JSON (with timestamps) for better alignment
+    let transcriptEntries: Array<{ speaker: string; text: string; timestamp: string }> | null = null;
+    try {
+      const tjson = formData.get('transcript_json')?.toString();
+      if (tjson) {
+        const parsed = JSON.parse(tjson);
+        if (Array.isArray(parsed)) transcriptEntries = parsed as any[];
+      }
+    } catch (e) {
+      console.warn('Failed parsing transcript_json');
     }
 
     // Extract file content
@@ -959,7 +1120,8 @@ export async function POST(request: Request) {
         questions_and_answers,
         interview_insights!,
         normalizedWeights,
-        is_valid
+        is_valid,
+        proctoringData
       );
       evaluation_overview = aiScorecard.evaluation_overview;
       subjective_rubric = aiScorecard.subjective_rubric;
@@ -1009,7 +1171,24 @@ export async function POST(request: Request) {
       const qaFactor = Math.min(20, (questions_and_answers?.length || 0) * 2);
       const qualityPenalty = (is_valid ? 0 : 10);
       const confidence_score = Math.max(0, Math.min(100, Math.round(base_confidence + qaFactor - qualityPenalty)));
-      const proctoring_score = 90;
+      // Proctoring fallback derived from events if available
+      const computeProctoringScore = (pd: any | null): number => {
+        try {
+          if (!pd || !Array.isArray(pd.events)) return 70;
+          const events = pd.events as Array<{ type: string; ts?: string; description?: string; meta?: any }>;
+          const total = events.length || 1;
+          const faceDetected = events.filter(e => e.type === 'face_detected').length;
+          const faceNot = events.filter(e => e.type === 'face_not_detected').length;
+          const windowBlur = events.filter(e => e.type === 'window_blur').length;
+          const networkDown = events.filter(e => e.type === 'network_disconnected').length;
+          const facePresenceScore = Math.max(0, Math.min(100, Math.round((faceDetected / total) * 100)));
+          const penalties = windowBlur * 5 + networkDown * 10 + Math.max(0, faceNot - faceDetected) * 2;
+          return Math.max(20, Math.min(100, Math.round(facePresenceScore - penalties)));
+        } catch {
+          return 70;
+        }
+      };
+      const proctoring_score = computeProctoringScore(proctoringData);
       // Recommendation fallback
       const combinedScore = 0.6 * overall_weighted_score + 0.2 * objective_overall + 0.2 * (interview_insights?.overall_performance_score || 0);
       let overall_recommendation: "Select" | "Review" | "Reject" = "Review";
@@ -1030,7 +1209,53 @@ export async function POST(request: Request) {
       });
     }
 
-    // Step 5: Return comprehensive response
+    // Step 5: Proctoring AI analysis
+    let proctoring_analysis: ComprehensiveAnalysisResponse['proctoring_analysis'] | undefined;
+    try {
+      proctoring_analysis = await generateProctoringAnalysisWithOpenAI(
+        transcriptEntries,
+        questions_and_answers,
+        proctoringData
+      );
+    } catch (e) {
+      console.warn('AI proctoring analysis failed; using heuristic.');
+      proctoring_analysis = generateProctoringAnalysisHeuristic(transcriptEntries, proctoringData);
+    }
+
+    // Normalize AI proctoring analysis keys to expected schema
+    try {
+      if (proctoring_analysis) {
+        const s: any = (proctoring_analysis as any).summary || {};
+        const normalizedSummary = {
+          total_events: Number(s.total_events ?? s.totalEvents ?? 0) || 0,
+          face_presence_percent: Number(s.face_presence_percent ?? s.facePresencePercent ?? 0) || 0,
+          focus_loss_events: Number(s.focus_loss_events ?? s.focusLossEvents ?? s.focusLoss ?? 0) || 0,
+          hidden_ms: Number(s.hidden_ms ?? s.hiddenMs ?? 0) || 0,
+          clipboard_copies: Number(s.clipboard_copies ?? s.clipboardCopies ?? 0) || 0,
+          suspicious_count: Number(s.suspicious_count ?? s.suspiciousCount ?? 0) || 0,
+        };
+        const incidents: any[] = (proctoring_analysis as any).suspicious_incidents || (proctoring_analysis as any).incidents || [];
+        const normalizedIncidents = incidents.map((it: any) => {
+          const tsRaw = it.ts || it.timestamp || it.time || (it.related_question?.timestamp) || null;
+          const ts = tsRaw && !Number.isNaN(Date.parse(tsRaw)) ? new Date(tsRaw).toISOString() : '';
+          const type = it.type || it.event_type || 'event';
+          const reason = it.reason || it.note || 'Suspicious activity';
+          const severity = (it.severity || 'medium').toLowerCase();
+          const related_question = it.related_question || it.relatedQuestion || null;
+          return { ts, type, description: it.description, reason, severity, related_question };
+        });
+        proctoring_analysis = {
+          summary: normalizedSummary,
+          suspicious_incidents: normalizedIncidents,
+          overall_risk_score: Number((proctoring_analysis as any).overall_risk_score ?? (proctoring_analysis as any).riskScore ?? 0) || 0,
+          notes: (proctoring_analysis as any).notes || [],
+        };
+      }
+    } catch (e) {
+      console.warn('Failed to normalize proctoring analysis', e);
+    }
+
+    // Step 6: Return comprehensive response
     const response: ComprehensiveAnalysisResponse = {
       filename: file instanceof File ? file.name : undefined,
       raw_transcript,
@@ -1046,8 +1271,9 @@ export async function POST(request: Request) {
       subjective_rubric,
       objective_scores,
       weighted_skill_scores,
-      recruiter_settings: { skill_weights: normalizedWeights, notes: "Mock weights applied; will be configurable via DB in future." },
-      key_moments
+      recruiter_settings: { skill_weights: normalizedWeights, notes: "Weights applied; configurable via DB in future." },
+      key_moments,
+      proctoring_analysis
     };
 
     return Response.json(response);
