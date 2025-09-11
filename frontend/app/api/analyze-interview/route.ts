@@ -151,20 +151,19 @@ async function extractTextFromPdf(fileContent: ArrayBuffer): Promise<string> {
     const loadingTask = pdfjs.getDocument(new Uint8Array(fileContent));
     const pdf = await loadingTask.promise;
     
-    let fullText = '';
-    
-    // Iterate through each page
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-      
-      // Extract text items and join them
-      const pageText = content.items
-        .map(item => (item as TextItem).str)
-        .join(' ');
-      
-      fullText += pageText + '\n';
-    }
+    // Extract all pages in parallel for speed
+    const pageIndices = Array.from({ length: pdf.numPages }, (_, idx) => idx + 1);
+    const pageTexts = await Promise.all(
+      pageIndices.map(async (i) => {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        const pageText = content.items
+          .map(item => (item as TextItem).str)
+          .join(' ');
+        return pageText;
+      })
+    );
+    let fullText = pageTexts.join('\n');
     
     // Basic cleanup
     fullText = fullText.replace(/\n{3,}/g, '\n\n'); // Remove excessive newlines
@@ -1016,18 +1015,22 @@ export async function POST(request: Request) {
     }
 
     // Step 3: Parallel analysis
-    console.log("Performing comprehensive analysis...");
-    
-    // Run analyses one at a time to avoid overwhelming the API
+    console.log("Performing comprehensive analysis in parallel...");
+
     let skill_assessments: SkillAssessment[] = [];
     let questions_and_answers: QuestionAnswer[] = [];
     let interview_insights: InterviewInsights | null = null;
-    
-    try {
-      skill_assessments = await assessSkillsWithOpenAI(raw_transcript, skills_list, job_role);
-    } catch (error) {
-      console.error("Error assessing skills:", error);
-      // Continue with empty skills
+
+    const [skillsRes, qaRes, insightsRes] = await Promise.allSettled([
+      assessSkillsWithOpenAI(raw_transcript, skills_list, job_role),
+      extractQAWithOpenAI(raw_transcript, job_role),
+      generateInterviewInsightsWithOpenAI(raw_transcript, job_role)
+    ]);
+
+    if (skillsRes.status === 'fulfilled') {
+      skill_assessments = skillsRes.value;
+    } else {
+      console.error("Error assessing skills:", skillsRes.reason);
       skill_assessments = skills_list.map(skill => ({
         skill,
         level: SkillLevel.NOT_DEMONSTRATED,
@@ -1036,20 +1039,18 @@ export async function POST(request: Request) {
         recommendations: "Try again with a more detailed transcript"
       }));
     }
-    
-    try {
-      questions_and_answers = await extractQAWithOpenAI(raw_transcript, job_role);
-    } catch (error) {
-      console.error("Error extracting Q&A pairs:", error);
-      // Continue with empty Q&A
+
+    if (qaRes.status === 'fulfilled') {
+      questions_and_answers = qaRes.value;
+    } else {
+      console.error("Error extracting Q&A pairs:", qaRes.reason);
       questions_and_answers = [];
     }
-    
-    try {
-      interview_insights = await generateInterviewInsightsWithOpenAI(raw_transcript, job_role);
-    } catch (error) {
-      console.error("Error generating interview insights:", error);
-      // Create a default insights object
+
+    if (insightsRes.status === 'fulfilled') {
+      interview_insights = insightsRes.value;
+    } else {
+      console.error("Error generating interview insights:", insightsRes.reason);
       interview_insights = {
         overall_performance_score: 50,
         communication_clarity: 50,
@@ -1069,21 +1070,19 @@ export async function POST(request: Request) {
       };
     }
 
-    // Step 4: Generate executive summary
+    // Step 4: Generate executive summary (will be run in parallel with other post-processing)
     console.log("Generating analysis summary...");
-    let analysis_summary;
-    try {
-      analysis_summary = await generateAnalysisSummaryWithOpenAI(
-        skill_assessments,
-        questions_and_answers,
-        interview_insights!,
-        job_role,
-        raw_transcript
-      );
-    } catch (error) {
+    let analysis_summary: string = "";
+    const summaryPromise = generateAnalysisSummaryWithOpenAI(
+      skill_assessments,
+      questions_and_answers,
+      interview_insights!,
+      job_role,
+      raw_transcript
+    ).then((s) => { analysis_summary = s; }).catch((error) => {
       console.error("Error generating summary:", error);
       analysis_summary = "Unable to generate analysis summary due to an error during processing.";
-    }
+    });
 
     // --- NEW: Mock recruiter weights (can be sourced from DB in future) ---
     const defaultWeight = 1;
@@ -1111,33 +1110,13 @@ export async function POST(request: Request) {
     let weighted_skill_scores: Array<{ skill: string; score: number; weight: number; weighted_score: number }> | undefined;
     let key_moments: Array<{ type: "critical_skill" | "project_example" | "struggle"; title: string; excerpt: string; related_skill?: string; qa_index?: number; score?: number }> | undefined;
 
-    try {
-      const aiScorecard = await generateEnhancedEvaluationWithOpenAI(
-        raw_transcript,
-        job_role,
-        skills_list,
-        skill_assessments,
-        questions_and_answers,
-        interview_insights!,
-        normalizedWeights,
-        is_valid,
-        proctoringData
-      );
-      evaluation_overview = aiScorecard.evaluation_overview;
-      subjective_rubric = aiScorecard.subjective_rubric;
-      objective_scores = aiScorecard.objective_scores;
-      weighted_skill_scores = aiScorecard.weighted_skill_scores;
-      key_moments = aiScorecard.key_moments;
-    } catch (e) {
-      console.warn("AI scorecard generation failed; using heuristic fallback.", e);
-      // Fallbacks replicate prior heuristic logic
+    const buildHeuristicEvaluation = () => {
       weighted_skill_scores = (skill_assessments || []).map(sa => {
         const weight = normalizedWeights[sa.skill] ?? Number((1 / Math.max(1, skills_list.length)).toFixed(4));
         const weighted_score = Number(((sa.confidence_score || 0) * weight).toFixed(2));
         return { skill: sa.skill, score: sa.confidence_score || 0, weight, weighted_score };
       });
       const overall_weighted_score = Number((weighted_skill_scores.reduce((s, x) => s + x.weighted_score, 0)).toFixed(2));
-      // Subjective rubric quick build
       const rubricCriteria = [
         { key: "communication_clarity", name: "Communication Clarity", weight: 0.25 },
         { key: "technical_depth", name: "Technical Depth", weight: 0.35 },
@@ -1156,7 +1135,6 @@ export async function POST(request: Request) {
       const total_score_out_of_5 = Number(items.reduce((s, x) => s + x.weighted_score, 0).toFixed(2));
       const total_percentage = Number(((total_score_out_of_5 / rubricCriteria.reduce((s, x) => s + (x as any).weight, 0)) * 20).toFixed(2));
       subjective_rubric = { criteria: items as any, total_score_out_of_5, total_percentage };
-      // Objective fallback
       const mcq_total = 10;
       const mcq_correct = Math.max(0, Math.min(mcq_total, Math.round((questions_and_answers || []).filter(q => q.grade === GradeLevel.EXCELLENT || q.grade === GradeLevel.GOOD).length * 0.6)));
       const mcq_score = Number(((mcq_correct / mcq_total) * 100).toFixed(2));
@@ -1166,12 +1144,10 @@ export async function POST(request: Request) {
       const complexity_score = Math.min(100, (interview_insights?.technical_depth || 50) + (questions_and_answers.length > 5 ? 10 : 0));
       const coding_score = Number((((coding_tests_passed / coding_tests_total) * 70) + (complexity_score * 0.3)).toFixed(2));
       const objective_overall = Number((((mcq_score + coding_score) / 2)).toFixed(2));
-      // Confidence & proctoring fallback
       const base_confidence = interview_insights?.confidence_level ?? 50;
       const qaFactor = Math.min(20, (questions_and_answers?.length || 0) * 2);
       const qualityPenalty = (is_valid ? 0 : 10);
       const confidence_score = Math.max(0, Math.min(100, Math.round(base_confidence + qaFactor - qualityPenalty)));
-      // Proctoring fallback derived from events if available
       const computeProctoringScore = (pd: any | null): number => {
         try {
           if (!pd || !Array.isArray(pd.events)) return 70;
@@ -1189,7 +1165,6 @@ export async function POST(request: Request) {
         }
       };
       const proctoring_score = computeProctoringScore(proctoringData);
-      // Recommendation fallback
       const combinedScore = 0.6 * overall_weighted_score + 0.2 * objective_overall + 0.2 * (interview_insights?.overall_performance_score || 0);
       let overall_recommendation: "Select" | "Review" | "Reject" = "Review";
       if (combinedScore >= 75 && proctoring_score >= 70 && confidence_score >= 60) overall_recommendation = "Select";
@@ -1207,53 +1182,82 @@ export async function POST(request: Request) {
         const excerpt = qa.answer.length > 180 ? qa.answer.slice(0, 177) + "..." : qa.answer;
         return { type, title, excerpt, related_skill, qa_index: idx, score: qa.score };
       });
-    }
+    };
 
-    // Step 5: Proctoring AI analysis
-    let proctoring_analysis: ComprehensiveAnalysisResponse['proctoring_analysis'] | undefined;
-    try {
-      proctoring_analysis = await generateProctoringAnalysisWithOpenAI(
-        transcriptEntries,
-        questions_and_answers,
-        proctoringData
-      );
-    } catch (e) {
-      console.warn('AI proctoring analysis failed; using heuristic.');
-      proctoring_analysis = generateProctoringAnalysisHeuristic(transcriptEntries, proctoringData);
-    }
-
-    // Normalize AI proctoring analysis keys to expected schema
-    try {
-      if (proctoring_analysis) {
-        const s: any = (proctoring_analysis as any).summary || {};
-        const normalizedSummary = {
-          total_events: Number(s.total_events ?? s.totalEvents ?? 0) || 0,
-          face_presence_percent: Number(s.face_presence_percent ?? s.facePresencePercent ?? 0) || 0,
-          focus_loss_events: Number(s.focus_loss_events ?? s.focusLossEvents ?? s.focusLoss ?? 0) || 0,
-          hidden_ms: Number(s.hidden_ms ?? s.hiddenMs ?? 0) || 0,
-          clipboard_copies: Number(s.clipboard_copies ?? s.clipboardCopies ?? 0) || 0,
-          suspicious_count: Number(s.suspicious_count ?? s.suspiciousCount ?? 0) || 0,
-        };
-        const incidents: any[] = (proctoring_analysis as any).suspicious_incidents || (proctoring_analysis as any).incidents || [];
-        const normalizedIncidents = incidents.map((it: any) => {
-          const tsRaw = it.ts || it.timestamp || it.time || (it.related_question?.timestamp) || null;
-          const ts = tsRaw && !Number.isNaN(Date.parse(tsRaw)) ? new Date(tsRaw).toISOString() : '';
-          const type = it.type || it.event_type || 'event';
-          const reason = it.reason || it.note || 'Suspicious activity';
-          const severity = (it.severity || 'medium').toLowerCase();
-          const related_question = it.related_question || it.relatedQuestion || null;
-          return { ts, type, description: it.description, reason, severity, related_question };
-        });
-        proctoring_analysis = {
-          summary: normalizedSummary,
-          suspicious_incidents: normalizedIncidents,
-          overall_risk_score: Number((proctoring_analysis as any).overall_risk_score ?? (proctoring_analysis as any).riskScore ?? 0) || 0,
-          notes: (proctoring_analysis as any).notes || [],
-        };
+    const evaluationPromise = (async () => {
+      try {
+        const aiScorecard = await generateEnhancedEvaluationWithOpenAI(
+          raw_transcript,
+          job_role,
+          skills_list,
+          skill_assessments,
+          questions_and_answers,
+          interview_insights!,
+          normalizedWeights,
+          is_valid,
+          proctoringData
+        );
+        evaluation_overview = aiScorecard.evaluation_overview;
+        subjective_rubric = aiScorecard.subjective_rubric;
+        objective_scores = aiScorecard.objective_scores;
+        weighted_skill_scores = aiScorecard.weighted_skill_scores;
+        key_moments = aiScorecard.key_moments;
+      } catch (e) {
+        console.warn("AI scorecard generation failed; using heuristic fallback.", e);
+        buildHeuristicEvaluation();
       }
-    } catch (e) {
-      console.warn('Failed to normalize proctoring analysis', e);
-    }
+    })();
+
+    // Step 5: Proctoring AI analysis (run in parallel with evaluation & summary)
+    let proctoring_analysis: ComprehensiveAnalysisResponse['proctoring_analysis'] | undefined;
+    const proctoringPromise = (async () => {
+      try {
+        proctoring_analysis = await generateProctoringAnalysisWithOpenAI(
+          transcriptEntries,
+          questions_and_answers,
+          proctoringData
+        );
+      } catch (e) {
+        console.warn('AI proctoring analysis failed; using heuristic.');
+        proctoring_analysis = generateProctoringAnalysisHeuristic(transcriptEntries, proctoringData);
+      }
+
+      // Normalize AI proctoring analysis keys to expected schema
+      try {
+        if (proctoring_analysis) {
+          const s: any = (proctoring_analysis as any).summary || {};
+          const normalizedSummary = {
+            total_events: Number(s.total_events ?? s.totalEvents ?? 0) || 0,
+            face_presence_percent: Number(s.face_presence_percent ?? s.facePresencePercent ?? 0) || 0,
+            focus_loss_events: Number(s.focus_loss_events ?? s.focusLossEvents ?? s.focusLoss ?? 0) || 0,
+            hidden_ms: Number(s.hidden_ms ?? s.hiddenMs ?? 0) || 0,
+            clipboard_copies: Number(s.clipboard_copies ?? s.clipboardCopies ?? 0) || 0,
+            suspicious_count: Number(s.suspicious_count ?? s.suspiciousCount ?? 0) || 0,
+          };
+          const incidents: any[] = (proctoring_analysis as any).suspicious_incidents || (proctoring_analysis as any).incidents || [];
+          const normalizedIncidents = incidents.map((it: any) => {
+            const tsRaw = it.ts || it.timestamp || it.time || (it.related_question?.timestamp) || null;
+            const ts = tsRaw && !Number.isNaN(Date.parse(tsRaw)) ? new Date(tsRaw).toISOString() : '';
+            const type = it.type || it.event_type || 'event';
+            const reason = it.reason || it.note || 'Suspicious activity';
+            const severity = (it.severity || 'medium').toLowerCase();
+            const related_question = it.related_question || it.relatedQuestion || null;
+            return { ts, type, description: it.description, reason, severity, related_question };
+          });
+          proctoring_analysis = {
+            summary: normalizedSummary,
+            suspicious_incidents: normalizedIncidents,
+            overall_risk_score: Number((proctoring_analysis as any).overall_risk_score ?? (proctoring_analysis as any).riskScore ?? 0) || 0,
+            notes: (proctoring_analysis as any).notes || [],
+          };
+        }
+      } catch (e) {
+        console.warn('Failed to normalize proctoring analysis', e);
+      }
+    })();
+
+    // Execute summary, evaluation, and proctoring concurrently
+    await Promise.all([summaryPromise, evaluationPromise, proctoringPromise]);
 
     // Step 6: Return comprehensive response
     const response: ComprehensiveAnalysisResponse = {

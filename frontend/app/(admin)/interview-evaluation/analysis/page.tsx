@@ -182,87 +182,57 @@ function AnalysisContent() {
 
     const fetchInterviewData = async () => {
       try {
-        // Use the specific interviewData ID directly instead of looking up by interviewId
-        const response = await fetch(`/api/interview-data/${interviewId}`);
+        // Kick off concurrent fetches
+        const interviewPromise = fetch(`/api/interview-data/${interviewId}`);
+        const existingAnalysisPromise = fetch(`/api/interview-data/${interviewId}/analysis`);
+        const specificAnalysisPromise = analysisId && analysisId !== "new"
+          ? fetch(`/api/interview-analysis/${analysisId}`)
+          : null;
 
-        if (!response.ok) {
+        const [interviewRes, existingAnalysisRes, specificAnalysisRes] = await Promise.allSettled([
+          interviewPromise,
+          existingAnalysisPromise,
+          specificAnalysisPromise ?? Promise.resolve(null as any),
+        ]);
+
+        // Parse interview data
+        let interviewDataRecord: any = null;
+        if (interviewRes.status === "fulfilled" && interviewRes.value && interviewRes.value.ok) {
+          const result = await interviewRes.value.json();
+          interviewDataRecord = result.data;
+          if (!interviewDataRecord) {
+            throw new Error("No interview data found");
+          }
+          setInterviewData(interviewDataRecord);
+        } else {
           throw new Error("Failed to fetch interview data");
         }
 
-        const result = await response.json();
-        const interviewDataRecord = result.data;
-
-        if (!interviewDataRecord) {
-          throw new Error("No interview data found");
-        }
-
-        setInterviewData(interviewDataRecord);
-
-        // Check for existing analysis in the database
-        try {
-          console.log(
-            `Checking for existing analysis for interview data ${interviewId}`
-          );
-          // Update path to use interviewDataId directly
-          const analysisResponse = await fetch(
-            `/api/interview-data/${interviewId}/analysis`
-          );
-
-          if (analysisResponse.ok) {
-            // If analysis exists in the database, use it
-            const analysisData = await analysisResponse.json();
-            console.log(
-              "Found existing analysis in database:",
-              analysisData.success
-            );
-            if (analysisData.success && analysisData.data) {
-              setAnalysisResult(analysisData.data);
-              setLoading(false);
-              return;
-            }
-          }
-
-          // If we got here, no analysis exists in the database
-          console.log("No existing analysis found in database");
-        } catch (analysisError) {
-          console.error("Error fetching existing analysis:", analysisError);
-          // Continue with the flow to check for specified analysis ID or generate new
-        }
-
-        // If specific analysisId is provided and not 'new', try to fetch it
-        if (analysisId && analysisId !== "new") {
-          try {
-            console.log(`Fetching specific analysis with ID: ${analysisId}`);
-            const specificAnalysisResponse = await fetch(
-              `/api/interview-analysis/${analysisId}`
-            );
-            if (specificAnalysisResponse.ok) {
-              const analysisData = await specificAnalysisResponse.json();
-              setAnalysisResult(analysisData);
-              setLoading(false);
-              return;
-            } else {
-              console.error(
-                "Failed to fetch specified analysis, will generate new"
-              );
-            }
-          } catch (specificAnalysisError) {
-            console.error(
-              "Error fetching specific analysis:",
-              specificAnalysisError
-            );
-          }
-        }
-
-        // If we get here, either no analysis exists, analysis ID is 'new',
-        // or we failed to fetch a specific analysis
-        if (interviewDataRecord) {
-          console.log("Starting new analysis generation");
-          performAnalysis(interviewDataRecord);
-        } else {
-          setError("No interview data found");
+        // Prefer specific analysis if explicitly requested
+        if (specificAnalysisRes && specificAnalysisRes.status === "fulfilled" && specificAnalysisRes.value && specificAnalysisRes.value.ok) {
+          const analysisData = await specificAnalysisRes.value.json();
+          setAnalysisResult(analysisData);
           setLoading(false);
+          return;
         }
+
+        // Otherwise, check for existing stored analysis
+        if (existingAnalysisRes.status === "fulfilled" && existingAnalysisRes.value && existingAnalysisRes.value.ok) {
+          const analysisData = await existingAnalysisRes.value.json();
+          console.log("Found existing analysis in database:", analysisData.success);
+          if (analysisData.success && analysisData.data) {
+            setAnalysisResult(analysisData.data);
+            setLoading(false);
+            return;
+          }
+          console.log("No existing analysis found in database");
+        } else if (existingAnalysisRes.status === "rejected") {
+          console.error("Error fetching existing analysis:", existingAnalysisRes.reason);
+        }
+
+        // If we get here, either no analysis exists, analysis ID is 'new', or fetch failed
+        console.log("Starting new analysis generation");
+        performAnalysis(interviewDataRecord);
       } catch (err) {
         console.error("Error retrieving interview data:", err);
         setError(err instanceof Error ? err.message : "An error occurred");
@@ -970,12 +940,12 @@ function AnalysisContent() {
                 <div className="flex items-center justify-between text-sm">
                   <span>Proctoring</span>
                   <span className="font-medium">
-                    {analysisResult?.evaluation_overview?.proctoring_score || 0}
+                    {analysisResult?.proctoring_analysis?.overall_risk_score|| 0}
                   </span>
                 </div>
                 <Progress
                   value={
-                    analysisResult?.evaluation_overview?.proctoring_score || 0
+                    analysisResult?.proctoring_analysis?.overall_risk_score || 0
                   }
                 />
               </CardContent>
@@ -1287,12 +1257,12 @@ function AnalysisContent() {
                 <div className="flex items-center justify-between text-sm">
                   <span>Proctoring</span>
                   <span className="font-medium">
-                    {analysisResult?.evaluation_overview?.proctoring_score || 0}
+                    {analysisResult?.proctoring_analysis?.overall_risk_score || 0}
                   </span>
                 </div>
                 <Progress
                   value={
-                    analysisResult?.evaluation_overview?.proctoring_score || 0
+                    analysisResult?.proctoring_analysis?.overall_risk_score || 0
                   }
                 />
               </CardContent>
@@ -1820,32 +1790,7 @@ function AnalysisContent() {
                           <CardDescription>Correlates clipboard/focus events with questions to flag potential cheating</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 text-sm">
-                            <div className="p-3 rounded border bg-gray-50">
-                              <div className="text-gray-600">Total Events</div>
-                              <div className="font-semibold">{analysisResult.proctoring_analysis.summary.total_events ?? 0}</div>
-                            </div>
-                            <div className="p-3 rounded border bg-gray-50">
-                              <div className="text-gray-600">Face Presence</div>
-                              <div className="font-semibold">{analysisResult.proctoring_analysis.summary.face_presence_percent ?? 0}%</div>
-                            </div>
-                            <div className="p-3 rounded border bg-gray-50">
-                              <div className="text-gray-600">Focus Loss</div>
-                              <div className="font-semibold">{analysisResult.proctoring_analysis.summary.focus_loss_events ?? 0}</div>
-                            </div>
-                            <div className="p-3 rounded border bg-gray-50">
-                              <div className="text-gray-600">Hidden</div>
-                              <div className="font-semibold">{Math.round(((analysisResult.proctoring_analysis.summary.hidden_ms ?? 0) as number) / 1000)}s</div>
-                            </div>
-                            <div className="p-3 rounded border bg-gray-50">
-                              <div className="text-gray-600">Clipboard</div>
-                              <div className="font-semibold">{analysisResult.proctoring_analysis.summary.clipboard_copies ?? 0}</div>
-                            </div>
-                            <div className="p-3 rounded border bg-gray-50">
-                              <div className="text-gray-600">Suspicious</div>
-                              <div className="font-semibold">{analysisResult.proctoring_analysis.summary.suspicious_count ?? 0}</div>
-                            </div>
-                          </div>
+                          
                           <div className="flex items-center justify-between">
                             <div className="text-sm text-gray-700">Overall Risk Score</div>
                             <div className="text-lg font-semibold text-red-600">{analysisResult.proctoring_analysis.overall_risk_score}/100</div>
