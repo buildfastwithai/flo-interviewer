@@ -31,7 +31,12 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import Link from "next/link";
-import { SkillAssessment, QuestionAnswer, InterviewInsights, AnalysisResponse } from "@/components/interview-analysis";
+import {
+  SkillAssessment,
+  QuestionAnswer,
+  InterviewInsights,
+  AnalysisResponse,
+} from "@/components/interview-analysis";
 import { generateInterviewPDF } from "@/components/interview-analysis-pdf";
 
 // NEW: Extended response type to include enhanced evaluation fields (mock-enabled)
@@ -55,7 +60,12 @@ interface ExtendedAnalysisResponse extends AnalysisResponse {
   };
   objective_scores?: {
     mcq: { total: number; correct: number; score: number };
-    coding: { tests_passed: number; tests_total: number; complexity_score: number; score: number };
+    coding: {
+      tests_passed: number;
+      tests_total: number;
+      complexity_score: number;
+      score: number;
+    };
     overall_score: number;
   };
   weighted_skill_scores?: Array<{
@@ -84,17 +94,21 @@ function AnalysisContent() {
   const searchParams = useSearchParams();
   const interviewId = searchParams.get("id");
   const analysisId = searchParams.get("analysisId");
-  
+
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [interviewData, setInterviewData] = useState<any>(null);
-  const [analysisResult, setAnalysisResult] = useState<ExtendedAnalysisResponse | null>(null);
+  const [analysisResult, setAnalysisResult] =
+    useState<ExtendedAnalysisResponse | null>(null);
   const [progress, setProgress] = useState(0);
-  const [progressStage, setProgressStage] = useState('');
+  const [progressStage, setProgressStage] = useState("");
   // NEW: Local UI state for recruiter weight adjustments and feedback (mock only)
-  const [skillWeights, setSkillWeights] = useState<Record<string, number> | null>(null);
+  const [skillWeights, setSkillWeights] = useState<Record<
+    string,
+    number
+  > | null>(null);
   const [feedbackText, setFeedbackText] = useState("");
   const [feedbackRating, setFeedbackRating] = useState<number>(5);
 
@@ -104,7 +118,10 @@ function AnalysisContent() {
     } else if (analysisResult?.skill_assessments) {
       // Initialize uniform weights if not provided
       const uniform = Object.fromEntries(
-        analysisResult.skill_assessments.map(sa => [sa.skill, Number((1 / analysisResult.skill_assessments!.length).toFixed(4))])
+        analysisResult.skill_assessments.map((sa) => [
+          sa.skill,
+          Number((1 / analysisResult.skill_assessments!.length).toFixed(4)),
+        ])
       );
       setSkillWeights(uniform);
     }
@@ -112,16 +129,29 @@ function AnalysisContent() {
 
   // NEW: Helpers for new evaluation tab
   const computeWeightedSkills = () => {
-    if (!analysisResult?.skill_assessments || !skillWeights) return [] as Array<{ skill: string; score: number; weight: number; weighted: number }>;
+    if (!analysisResult?.skill_assessments || !skillWeights)
+      return [] as Array<{
+        skill: string;
+        score: number;
+        weight: number;
+        weighted: number;
+      }>;
     const sum = Object.values(skillWeights).reduce((s, v) => s + v, 0) || 1;
-    return analysisResult.skill_assessments.map(sa => {
+    return analysisResult.skill_assessments.map((sa) => {
       const weight = (skillWeights[sa.skill] ?? 0) / sum;
       const weighted = Number(((sa.confidence_score || 0) * weight).toFixed(2));
-      return { skill: sa.skill, score: sa.confidence_score || 0, weight: Number(weight.toFixed(4)), weighted };
+      return {
+        skill: sa.skill,
+        score: sa.confidence_score || 0,
+        weight: Number(weight.toFixed(4)),
+        weighted,
+      };
     });
   };
   const computedWeighted = computeWeightedSkills();
-  const computedOverallWeighted = Number((computedWeighted.reduce((s, x) => s + x.weighted, 0)).toFixed(2));
+  const computedOverallWeighted = Number(
+    computedWeighted.reduce((s, x) => s + x.weighted, 0).toFixed(2)
+  );
 
   useEffect(() => {
     if (!interviewId) {
@@ -134,69 +164,83 @@ function AnalysisContent() {
       try {
         // Use the specific interviewData ID directly instead of looking up by interviewId
         const response = await fetch(`/api/interview-data/${interviewId}`);
-        
+
         if (!response.ok) {
           throw new Error("Failed to fetch interview data");
         }
-        
+
         const result = await response.json();
         const interviewDataRecord = result.data;
-        
+
         if (!interviewDataRecord) {
           throw new Error("No interview data found");
         }
-          
+
         setInterviewData(interviewDataRecord);
-        
+
         // Check for existing analysis in the database
         try {
-          console.log(`Checking for existing analysis for interview data ${interviewId}`);
+          console.log(
+            `Checking for existing analysis for interview data ${interviewId}`
+          );
           // Update path to use interviewDataId directly
-          const analysisResponse = await fetch(`/api/interview-data/${interviewId}/analysis`);
-          
+          const analysisResponse = await fetch(
+            `/api/interview-data/${interviewId}/analysis`
+          );
+
           if (analysisResponse.ok) {
             // If analysis exists in the database, use it
             const analysisData = await analysisResponse.json();
-            console.log('Found existing analysis in database:', analysisData.success);
+            console.log(
+              "Found existing analysis in database:",
+              analysisData.success
+            );
             if (analysisData.success && analysisData.data) {
               setAnalysisResult(analysisData.data);
               setLoading(false);
               return;
             }
           }
-          
+
           // If we got here, no analysis exists in the database
-          console.log('No existing analysis found in database');
+          console.log("No existing analysis found in database");
         } catch (analysisError) {
-          console.error('Error fetching existing analysis:', analysisError);
+          console.error("Error fetching existing analysis:", analysisError);
           // Continue with the flow to check for specified analysis ID or generate new
         }
-        
+
         // If specific analysisId is provided and not 'new', try to fetch it
-        if (analysisId && analysisId !== 'new') {
+        if (analysisId && analysisId !== "new") {
           try {
             console.log(`Fetching specific analysis with ID: ${analysisId}`);
-            const specificAnalysisResponse = await fetch(`/api/interview-analysis/${analysisId}`);
+            const specificAnalysisResponse = await fetch(
+              `/api/interview-analysis/${analysisId}`
+            );
             if (specificAnalysisResponse.ok) {
               const analysisData = await specificAnalysisResponse.json();
               setAnalysisResult(analysisData);
               setLoading(false);
               return;
             } else {
-              console.error('Failed to fetch specified analysis, will generate new');
+              console.error(
+                "Failed to fetch specified analysis, will generate new"
+              );
             }
           } catch (specificAnalysisError) {
-            console.error('Error fetching specific analysis:', specificAnalysisError);
+            console.error(
+              "Error fetching specific analysis:",
+              specificAnalysisError
+            );
           }
         }
-        
-        // If we get here, either no analysis exists, analysis ID is 'new', 
+
+        // If we get here, either no analysis exists, analysis ID is 'new',
         // or we failed to fetch a specific analysis
         if (interviewDataRecord) {
-          console.log('Starting new analysis generation');
+          console.log("Starting new analysis generation");
           performAnalysis(interviewDataRecord);
         } else {
-          setError('No interview data found');
+          setError("No interview data found");
           setLoading(false);
         }
       } catch (err) {
@@ -211,10 +255,10 @@ function AnalysisContent() {
 
   const performAnalysis = async (data: any) => {
     if (!data || !data.transcript) return;
-    
+
     setAnalyzing(true);
     setProgress(5);
-    setProgressStage('Initializing analysis...');
+    setProgressStage("Initializing analysis...");
     setError(null);
     setSuccess(null);
 
@@ -224,126 +268,147 @@ function AnalysisContent() {
       try {
         // Parse the JSON transcript and format it for analysis
         const transcriptObj = JSON.parse(transcript);
-        transcript = transcriptObj.map((entry: any) => 
-          `${entry.speaker === 'interviewer' ? 'Interviewer' : 'Candidate'}: ${entry.text}`
-        ).join('\n\n');
+        transcript = transcriptObj
+          .map(
+            (entry: any) =>
+              `${
+                entry.speaker === "interviewer" ? "Interviewer" : "Candidate"
+              }: ${entry.text}`
+          )
+          .join("\n\n");
         console.log("Successfully formatted transcript from JSON");
         setProgress(15);
-        setProgressStage('Transcript formatted');
+        setProgressStage("Transcript formatted");
       } catch (e) {
         console.error("Error parsing transcript JSON:", e);
         // If we can't parse as JSON, use as is
         setProgress(15);
-        setProgressStage('Using raw transcript');
+        setProgressStage("Using raw transcript");
       }
-      
+
       // Create form data for analysis
       const formData = new FormData();
-      const textBlob = new Blob([transcript], { type: 'text/plain' });
-      formData.append('file', textBlob, 'transcript.txt');
-      
+      const textBlob = new Blob([transcript], { type: "text/plain" });
+      formData.append("file", textBlob, "transcript.txt");
+
       // Directly fetch skills from the interview record
-      let skillsToAssess = '';
-      
+      let skillsToAssess = "";
+
       setProgress(20);
-      setProgressStage('Fetching skills to assess...');
-      
+      setProgressStage("Fetching skills to assess...");
+
       try {
         // Fetch the full interview data with skills
-        const interviewResponse = await fetch(`/api/interview/${data.interview.id}`);
+        const interviewResponse = await fetch(
+          `/api/interview/${data.interview.id}`
+        );
         if (interviewResponse.ok) {
           const interviewData = await interviewResponse.json();
           console.log("Interview data with skills:", interviewData);
-          
-          if (interviewData.data.record?.skills && interviewData.data.record.skills.length > 0) {
+
+          if (
+            interviewData.data.record?.skills &&
+            interviewData.data.record.skills.length > 0
+          ) {
             skillsToAssess = interviewData.data.record.skills
               .map((skill: any) => skill.name)
-              .join(', ');
+              .join(", ");
             console.log("Skills extracted from record:", skillsToAssess);
           }
         }
         setProgress(25);
-        setProgressStage('Skills retrieved');
+        setProgressStage("Skills retrieved");
       } catch (err) {
         console.error("Error fetching skills:", err);
         setProgress(25);
-        setProgressStage('Using default skills');
+        setProgressStage("Using default skills");
       }
-      
+
       // If skills couldn't be fetched, use default
       if (!skillsToAssess) {
-        skillsToAssess = 'Communication, Technical Knowledge, Problem Solving, Collaboration, Leadership';
+        skillsToAssess =
+          "Communication, Technical Knowledge, Problem Solving, Collaboration, Leadership";
         console.log("Using default skills");
       }
-      
+
       // Add other fields
-      formData.append('skills_to_assess', skillsToAssess);
-      formData.append('job_role', data.interview?.jobTitle || 'Software Engineer');
-      formData.append('company_name', 'Your Company');
-      
+      formData.append("skills_to_assess", skillsToAssess);
+      formData.append(
+        "job_role",
+        data.interview?.jobTitle || "Software Engineer"
+      );
+      formData.append("company_name", "Your Company");
+
       // Send request to analysis API
       setProgress(30);
-      setProgressStage('Sending data for AI analysis...');
-      
+      setProgressStage("Sending data for AI analysis...");
+
       // Start progress simulation
       const progressInterval = startProgressSimulation();
-      
+
       // Send request to analysis API
-      const response = await fetch('/api/analyze-interview', {
-        method: 'POST',
+      const response = await fetch("/api/analyze-interview", {
+        method: "POST",
         body: formData,
       });
-      
+
       // Clear the progress simulation when the real response arrives
       clearInterval(progressInterval);
-      
+
       if (!response.ok) {
-        throw new Error('Analysis failed');
+        throw new Error("Analysis failed");
       }
-      
+
       setProgress(95);
-      setProgressStage('Processing results...');
-      
+      setProgressStage("Processing results...");
+
       const result = await response.json();
-      
+
       setAnalysisResult(result);
-      
+
       setProgress(98);
-      setProgressStage('Saving analysis results to database...');
-      
+      setProgressStage("Saving analysis results to database...");
+
       // Store analysis result
       try {
-        const saveResponse = await fetch(`/api/interview-data/${interviewId}/analysis`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ analysis: result }),
-        });
-        
+        const saveResponse = await fetch(
+          `/api/interview-data/${interviewId}/analysis`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ analysis: result }),
+          }
+        );
+
         if (!saveResponse.ok) {
-          console.error('Error saving analysis to database:', await saveResponse.text());
-          throw new Error('Failed to save analysis to database');
+          console.error(
+            "Error saving analysis to database:",
+            await saveResponse.text()
+          );
+          throw new Error("Failed to save analysis to database");
         }
-        
+
         const saveResult = await saveResponse.json();
-        console.log('Analysis saved to database:', saveResult);
-        setSuccess('Analysis successfully generated and saved to database!');
+        console.log("Analysis saved to database:", saveResult);
+        setSuccess("Analysis successfully generated and saved to database!");
       } catch (saveError) {
-        console.error('Error saving analysis:', saveError);
+        console.error("Error saving analysis:", saveError);
         // We still continue since the analysis is available in the UI
         // but we should notify the user about the issue
-        setError("Analysis completed, but couldn't save to the database. Your results are available but not permanently stored.");
+        setError(
+          "Analysis completed, but couldn't save to the database. Your results are available but not permanently stored."
+        );
       }
-      
+
       setProgress(100);
-      setProgressStage('Analysis complete!');
-      
+      setProgressStage("Analysis complete!");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Analysis failed");
     } finally {
       setTimeout(() => {
         setAnalyzing(false);
         setProgress(0);
-        setProgressStage('');
+        setProgressStage("");
       }, 1000); // Keep the 100% progress visible for a moment
     }
   };
@@ -352,28 +417,28 @@ function AnalysisContent() {
   const startProgressSimulation = () => {
     // Define the different stages of analysis with their respective progress ranges
     const stages = [
-      { range: [30, 40], message: 'Formatting transcript...' },
-      { range: [40, 55], message: 'Analyzing skills...' },
-      { range: [55, 70], message: 'Analyzing question-answer pairs...' },
-      { range: [70, 85], message: 'Generating interview insights...' },
-      { range: [85, 95], message: 'Creating summary...' }
+      { range: [30, 40], message: "Formatting transcript..." },
+      { range: [40, 55], message: "Analyzing skills..." },
+      { range: [55, 70], message: "Analyzing question-answer pairs..." },
+      { range: [70, 85], message: "Generating interview insights..." },
+      { range: [85, 95], message: "Creating summary..." },
     ];
-    
+
     let currentStageIndex = 0;
-    
+
     return setInterval(() => {
       if (currentStageIndex < stages.length) {
         const stage = stages[currentStageIndex];
         const [min, max] = stage.range;
-        
+
         // Calculate a new progress value within the current stage's range
         if (progress < min) {
           setProgress(min);
           setProgressStage(stage.message);
         } else if (progress < max) {
           // Slowly increment progress within the stage
-          setProgress(prev => Math.min(prev + 0.5, max));
-          
+          setProgress((prev) => Math.min(prev + 0.5, max));
+
           // If we've reached the max for this stage, move to the next one
           if (progress >= max - 0.5) {
             currentStageIndex++;
@@ -394,23 +459,35 @@ function AnalysisContent() {
 
   const getSkillLevelColor = (level: string) => {
     switch (level) {
-      case "Expert": return "bg-green-500";
-      case "Advanced": return "bg-blue-500";
-      case "Intermediate": return "bg-yellow-500";
-      case "Beginner": return "bg-orange-500";
-      case "Not Demonstrated": return "bg-gray-500";
-      default: return "bg-gray-500";
+      case "Expert":
+        return "bg-green-500";
+      case "Advanced":
+        return "bg-blue-500";
+      case "Intermediate":
+        return "bg-yellow-500";
+      case "Beginner":
+        return "bg-orange-500";
+      case "Not Demonstrated":
+        return "bg-gray-500";
+      default:
+        return "bg-gray-500";
     }
   };
 
   const getGradeColor = (grade: string) => {
     switch (grade) {
-      case "Excellent": return "text-green-600 bg-green-50 border-green-200";
-      case "Good": return "text-blue-600 bg-blue-50 border-blue-200";
-      case "Average": return "text-yellow-600 bg-yellow-50 border-yellow-200";
-      case "Below Average": return "text-orange-600 bg-orange-50 border-orange-200";
-      case "Poor": return "text-red-600 bg-red-50 border-red-200";
-      default: return "text-gray-600 bg-gray-50 border-gray-200";
+      case "Excellent":
+        return "text-green-600 bg-green-50 border-green-200";
+      case "Good":
+        return "text-blue-600 bg-blue-50 border-blue-200";
+      case "Average":
+        return "text-yellow-600 bg-yellow-50 border-yellow-200";
+      case "Below Average":
+        return "text-orange-600 bg-orange-50 border-orange-200";
+      case "Poor":
+        return "text-red-600 bg-red-50 border-red-200";
+      default:
+        return "text-gray-600 bg-gray-50 border-gray-200";
     }
   };
 
@@ -425,7 +502,7 @@ function AnalysisContent() {
 
   const downloadPDF = (includeTranscript: boolean = false) => {
     if (!analysisResult) return;
-    
+
     if (includeTranscript) {
       generateInterviewPDF(analysisResult, {
         includeRawData: false,
@@ -478,24 +555,27 @@ function AnalysisContent() {
             </Link>
           </Button>
         </div>
-        
+
         <Card>
           <CardHeader>
             <CardTitle>Analyzing Interview</CardTitle>
             <CardDescription>
-              Our AI is analyzing the interview transcript. This may take a few minutes.
+              Our AI is analyzing the interview transcript. This may take a few
+              minutes.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-blue-500 rounded-full transition-all duration-300 ease-in-out" 
+              <div
+                className="h-full bg-blue-500 rounded-full transition-all duration-300 ease-in-out"
                 style={{ width: `${progress}%` }}
               ></div>
             </div>
             <div className="flex justify-between items-center">
               <p className="text-sm text-gray-500">{progressStage}</p>
-              <span className="text-sm font-medium">{Math.round(progress)}%</span>
+              <span className="text-sm font-medium">
+                {Math.round(progress)}%
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -514,16 +594,19 @@ function AnalysisContent() {
             </Link>
           </Button>
         </div>
-        
+
         <Card>
           <CardHeader>
             <CardTitle>No Analysis Available</CardTitle>
             <CardDescription>
-              The interview analysis could not be found or has not been generated yet.
+              The interview analysis could not be found or has not been
+              generated yet.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={() => interviewData && performAnalysis(interviewData)}>
+            <Button
+              onClick={() => interviewData && performAnalysis(interviewData)}
+            >
               Generate Analysis Now
             </Button>
           </CardContent>
@@ -541,27 +624,27 @@ function AnalysisContent() {
             Back to Interviews
           </Link>
         </Button>
-        
+
         <div className="flex gap-4">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => downloadPDF(false)}
             className="flex items-center gap-2"
           >
             <Download className="h-4 w-4" />
             Download PDF
           </Button>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => performAnalysis(interviewData)}
             className="flex items-center gap-2"
           >
             <FileText className="h-4 w-4" />
             Generate Analysis
-          </Button> 
+          </Button>
         </div>
       </div>
-      
+
       {/* Success message */}
       {success && (
         <Alert className="mb-6 bg-green-50 border-green-200 text-green-800">
@@ -569,7 +652,7 @@ function AnalysisContent() {
           <AlertDescription>{success}</AlertDescription>
         </Alert>
       )}
-      
+
       {/* Error message */}
       {error && error !== "No interview ID provided" && (
         <Alert className="mb-6" variant="destructive">
@@ -578,10 +661,10 @@ function AnalysisContent() {
         </Alert>
       )}
       {/* NEW: Top-level tabs for New vs Old evaluation */}
-      <Tabs defaultValue="new-eval" className="mb-6">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="new-eval">New Evaluation (Scorecard)</TabsTrigger>
-          <TabsTrigger value="old-eval">Old Evaluation (Legacy)</TabsTrigger>
+      <Tabs defaultValue="old-eval" className="mb-6">
+        <TabsList className="grid w-full grid-cols-1">
+          {/* <TabsTrigger value="new-eval">New Evaluation (Scorecard)</TabsTrigger>/ */}
+          <TabsTrigger value="old-eval">Evaluation</TabsTrigger>
         </TabsList>
 
         {/* NEW VERSION EVALUATION TAB */}
@@ -589,50 +672,100 @@ function AnalysisContent() {
           {/* Header KPIs */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card>
-              <CardHeader className="pb-2"><CardTitle>Recommendation</CardTitle></CardHeader>
+              <CardHeader className="pb-2">
+                <CardTitle>Recommendation</CardTitle>
+              </CardHeader>
               <CardContent className="flex items-center justify-between">
-                <Badge className={
-                  analysisResult?.evaluation_overview?.overall_recommendation === 'Select' ? 'bg-green-600' :
-                  analysisResult?.evaluation_overview?.overall_recommendation === 'Reject' ? 'bg-red-600' : 'bg-yellow-600'
-                }>
-                  {analysisResult?.evaluation_overview?.overall_recommendation || 'Review'}
+                <Badge
+                  className={
+                    analysisResult?.evaluation_overview
+                      ?.overall_recommendation === "Select"
+                      ? "bg-green-600"
+                      : analysisResult?.evaluation_overview
+                          ?.overall_recommendation === "Reject"
+                      ? "bg-red-600"
+                      : "bg-yellow-600"
+                  }
+                >
+                  {analysisResult?.evaluation_overview
+                    ?.overall_recommendation || "Review"}
                 </Badge>
                 <span className="text-sm text-gray-500">Overall</span>
               </CardContent>
             </Card>
             <Card>
-              <CardHeader className="pb-2"><CardTitle>Weighted Score</CardTitle></CardHeader>
+              <CardHeader className="pb-2">
+                <CardTitle>Weighted Score</CardTitle>
+              </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-3">
-                  <div className="text-2xl font-bold text-blue-600">{(analysisResult?.evaluation_overview?.overall_weighted_score ?? computedOverallWeighted).toFixed(0)}</div>
+                  <div className="text-2xl font-bold text-blue-600">
+                    {(
+                      analysisResult?.evaluation_overview
+                        ?.overall_weighted_score ?? computedOverallWeighted
+                    ).toFixed(0)}
+                  </div>
                   <span className="text-sm text-gray-500">/100</span>
                 </div>
-                <Progress value={analysisResult?.evaluation_overview?.overall_weighted_score ?? computedOverallWeighted} className="mt-2" />
+                <Progress
+                  value={
+                    analysisResult?.evaluation_overview
+                      ?.overall_weighted_score ?? computedOverallWeighted
+                  }
+                  className="mt-2"
+                />
               </CardContent>
             </Card>
             <Card>
-              <CardHeader className="pb-2"><CardTitle>Objective Score</CardTitle></CardHeader>
+              <CardHeader className="pb-2">
+                <CardTitle>Objective Score</CardTitle>
+              </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-3">
-                  <div className="text-2xl font-bold text-purple-600">{analysisResult?.objective_scores?.overall_score?.toFixed?.(0) || 0}</div>
+                  <div className="text-2xl font-bold text-purple-600">
+                    {analysisResult?.objective_scores?.overall_score?.toFixed?.(
+                      0
+                    ) || 0}
+                  </div>
                   <span className="text-sm text-gray-500">/100</span>
                 </div>
-                <Progress value={analysisResult?.objective_scores?.overall_score || 0} className="mt-2" />
+                <Progress
+                  value={analysisResult?.objective_scores?.overall_score || 0}
+                  className="mt-2"
+                />
               </CardContent>
             </Card>
             <Card>
-              <CardHeader className="pb-2"><CardTitle>Confidence & Proctoring</CardTitle></CardHeader>
+              <CardHeader className="pb-2">
+                <CardTitle>Confidence & Proctoring</CardTitle>
+              </CardHeader>
               <CardContent className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span>Confidence</span>
-                  <span className="font-medium">{analysisResult?.evaluation_overview?.confidence_score || analysisResult?.interview_insights?.confidence_level || 0}</span>
+                  <span className="font-medium">
+                    {analysisResult?.evaluation_overview?.confidence_score ||
+                      analysisResult?.interview_insights?.confidence_level ||
+                      0}
+                  </span>
                 </div>
-                <Progress value={analysisResult?.evaluation_overview?.confidence_score || analysisResult?.interview_insights?.confidence_level || 0} />
+                <Progress
+                  value={
+                    analysisResult?.evaluation_overview?.confidence_score ||
+                    analysisResult?.interview_insights?.confidence_level ||
+                    0
+                  }
+                />
                 <div className="flex items-center justify-between text-sm">
                   <span>Proctoring</span>
-                  <span className="font-medium">{analysisResult?.evaluation_overview?.proctoring_score || 0}</span>
+                  <span className="font-medium">
+                    {analysisResult?.evaluation_overview?.proctoring_score || 0}
+                  </span>
                 </div>
-                <Progress value={analysisResult?.evaluation_overview?.proctoring_score || 0} />
+                <Progress
+                  value={
+                    analysisResult?.evaluation_overview?.proctoring_score || 0
+                  }
+                />
               </CardContent>
             </Card>
           </div>
@@ -641,16 +774,32 @@ function AnalysisContent() {
           <Card>
             <CardHeader>
               <CardTitle>Skill-wise Performance & Weights</CardTitle>
-              <CardDescription>Recruiters can set weighting per skill (mock, not saved)</CardDescription>
+              <CardDescription>
+                Recruiters can set weighting per skill (mock, not saved)
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-3">
                 {analysisResult?.skill_assessments?.map((sa, idx) => (
-                  <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-                    <div className="md:col-span-3 text-sm font-medium">{sa.skill}</div>
+                  <div
+                    key={idx}
+                    className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center"
+                  >
+                    <div className="md:col-span-3 text-sm font-medium">
+                      {sa.skill}
+                    </div>
                     <div className="md:col-span-3 flex items-center gap-2">
-                      <Progress value={sa.confidence_score} className="flex-1" />
-                      <span className={`text-sm ${getScoreColor(sa.confidence_score)}`}>{sa.confidence_score}%</span>
+                      <Progress
+                        value={sa.confidence_score}
+                        className="flex-1"
+                      />
+                      <span
+                        className={`text-sm ${getScoreColor(
+                          sa.confidence_score
+                        )}`}
+                      >
+                        {sa.confidence_score}%
+                      </span>
                     </div>
                     <div className="md:col-span-4 flex items-center gap-3">
                       <input
@@ -665,17 +814,38 @@ function AnalysisContent() {
                         }}
                         className="w-full"
                       />
-                      <span className="text-xs w-12 text-right">{Math.round(((skillWeights?.[sa.skill] ?? 0) / (Object.values(skillWeights || {}).reduce((s,v)=>s+v,0)||1)) * 100)}%</span>
+                      <span className="text-xs w-12 text-right">
+                        {Math.round(
+                          ((skillWeights?.[sa.skill] ?? 0) /
+                            (Object.values(skillWeights || {}).reduce(
+                              (s, v) => s + v,
+                              0
+                            ) || 1)) *
+                            100
+                        )}
+                        %
+                      </span>
                     </div>
                     <div className="md:col-span-2 text-right text-sm">
-                      {(computedWeighted.find(c => c.skill === sa.skill)?.weighted || 0).toFixed(1)} pts
+                      {(
+                        computedWeighted.find((c) => c.skill === sa.skill)
+                          ?.weighted || 0
+                      ).toFixed(1)}{" "}
+                      pts
                     </div>
                   </div>
                 ))}
               </div>
               <div className="flex justify-between items-center pt-2 border-t">
-                <div className="text-sm text-gray-600">Overall Weighted Score</div>
-                <div className="text-lg font-semibold">{(analysisResult?.evaluation_overview?.overall_weighted_score ?? computedOverallWeighted).toFixed(1)}</div>
+                <div className="text-sm text-gray-600">
+                  Overall Weighted Score
+                </div>
+                <div className="text-lg font-semibold">
+                  {(
+                    analysisResult?.evaluation_overview
+                      ?.overall_weighted_score ?? computedOverallWeighted
+                  ).toFixed(1)}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -684,7 +854,9 @@ function AnalysisContent() {
           <Card>
             <CardHeader>
               <CardTitle>Key Moments</CardTitle>
-              <CardDescription>Important points to review quickly</CardDescription>
+              <CardDescription>
+                Important points to review quickly
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -692,20 +864,36 @@ function AnalysisContent() {
                   <Card key={i} className="border hover:shadow-sm">
                     <CardHeader className="pb-2">
                       <div className="flex items-center justify-between">
-                        <Badge className={m.type === 'critical_skill' ? 'bg-green-600' : m.type === 'struggle' ? 'bg-red-600' : 'bg-blue-600'}>
-                          {m.type.replace('_', ' ')}
+                        <Badge
+                          className={
+                            m.type === "critical_skill"
+                              ? "bg-green-600"
+                              : m.type === "struggle"
+                              ? "bg-red-600"
+                              : "bg-blue-600"
+                          }
+                        >
+                          {m.type.replace("_", " ")}
                         </Badge>
                         {m.score !== undefined && (
-                          <span className={`text-xs ${getScoreColor(m.score)}`}>{m.score}</span>
+                          <span className={`text-xs ${getScoreColor(m.score)}`}>
+                            {m.score}
+                          </span>
                         )}
                       </div>
-                      <CardTitle className="text-base mt-2">{m.title}</CardTitle>
+                      <CardTitle className="text-base mt-2">
+                        {m.title}
+                      </CardTitle>
                     </CardHeader>
                     <CardContent>
                       <p className="text-sm text-gray-700 mb-2">{m.excerpt}</p>
                       <div className="flex items-center justify-between text-xs text-gray-500">
-                        <span>{m.related_skill || 'General'}</span>
-                        {m.timestamp && <span>{new Date(m.timestamp).toLocaleTimeString()}</span>}
+                        <span>{m.related_skill || "General"}</span>
+                        {m.timestamp && (
+                          <span>
+                            {new Date(m.timestamp).toLocaleTimeString()}
+                          </span>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -720,19 +908,32 @@ function AnalysisContent() {
               <CardTitle>Subjective Evaluation (Rubrics)</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {(analysisResult?.subjective_rubric?.criteria || []).map((c, idx) => (
-                <div key={idx} className="space-y-1">
-                  <div className="flex justify-between text-sm">
-                    <span>{c.name} <span className="text-xs text-gray-500">(wt {Math.round(c.weight * 100)}%)</span></span>
-                    <span className="font-medium">{c.score_out_of_5} / 5</span>
+              {(analysisResult?.subjective_rubric?.criteria || []).map(
+                (c, idx) => (
+                  <div key={idx} className="space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <span>
+                        {c.name}{" "}
+                        <span className="text-xs text-gray-500">
+                          (wt {Math.round(c.weight * 100)}%)
+                        </span>
+                      </span>
+                      <span className="font-medium">
+                        {c.score_out_of_5} / 5
+                      </span>
+                    </div>
+                    <Progress value={(c.score_out_of_5 / 5) * 100} />
+                    {c.evidence && (
+                      <div className="text-xs text-gray-500">{c.evidence}</div>
+                    )}
                   </div>
-                  <Progress value={(c.score_out_of_5 / 5) * 100} />
-                  {c.evidence && <div className="text-xs text-gray-500">{c.evidence}</div>}
-                </div>
-              ))}
+                )
+              )}
               <div className="flex justify-between items-center pt-2 border-t">
                 <div className="text-sm text-gray-600">Rubric Total</div>
-                <div className="text-lg font-semibold">{analysisResult?.subjective_rubric?.total_percentage || 0}%</div>
+                <div className="text-lg font-semibold">
+                  {analysisResult?.subjective_rubric?.total_percentage || 0}%
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -751,7 +952,11 @@ function AnalysisContent() {
                   value={feedbackRating}
                   onChange={(e) => setFeedbackRating(Number(e.target.value))}
                 >
-                  {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
                 </select>
               </div>
               <textarea
@@ -765,8 +970,11 @@ function AnalysisContent() {
                 <Button
                   variant="outline"
                   onClick={() => {
-                    console.log('Recruiter feedback (mock):', { rating: feedbackRating, feedbackText });
-                    setSuccess('Feedback submitted (mock). Thank you!');
+                    console.log("Recruiter feedback (mock):", {
+                      rating: feedbackRating,
+                      feedbackText,
+                    });
+                    setSuccess("Feedback submitted (mock). Thank you!");
                   }}
                 >
                   Submit Feedback
@@ -790,11 +998,15 @@ function AnalysisContent() {
                     <div className="flex items-center text-sm">
                       <User className="mr-2 h-4 w-4 text-muted-foreground" />
                       <span className="font-medium">Candidate:</span>
-                      <span className="ml-2">{interviewData.candidateName || 'Unknown'}</span>
+                      <span className="ml-2">
+                        {interviewData.candidateName || "Unknown"}
+                      </span>
                     </div>
                     <div className="flex items-center text-sm">
                       <span className="font-medium">Position:</span>
-                      <span className="ml-2">{interviewData.interview?.jobTitle || 'Unknown'}</span>
+                      <span className="ml-2">
+                        {interviewData.interview?.jobTitle || "Unknown"}
+                      </span>
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -802,26 +1014,39 @@ function AnalysisContent() {
                       <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
                       <span className="font-medium">Date:</span>
                       <span className="ml-2">
-                        {interviewData.startTime ? new Date(interviewData.startTime).toLocaleDateString() : 'Unknown'}
+                        {interviewData.startTime
+                          ? new Date(
+                              interviewData.startTime
+                            ).toLocaleDateString()
+                          : "Unknown"}
                       </span>
                     </div>
                     <div className="flex items-center text-sm">
                       <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
                       <span className="font-medium">Duration:</span>
-                      <span className="ml-2">{interviewData.duration} minutes</span>
+                      <span className="ml-2">
+                        {interviewData.duration} minutes
+                      </span>
                     </div>
                   </div>
                   <div className="flex items-center justify-center">
-                    <Badge 
+                    <Badge
                       className={
-                        analysisResult.interview_insights?.overall_performance_score >= 80
+                        analysisResult.interview_insights
+                          ?.overall_performance_score >= 80
                           ? "bg-green-500"
-                          : analysisResult.interview_insights?.overall_performance_score >= 60
+                          : analysisResult.interview_insights
+                              ?.overall_performance_score >= 60
                           ? "bg-yellow-500"
                           : "bg-red-500"
                       }
                     >
-                      Overall Score: {analysisResult.interview_insights?.overall_performance_score}/100
+                      Overall Score:{" "}
+                      {
+                        analysisResult.interview_insights
+                          ?.overall_performance_score
+                      }
+                      /100
                     </Badge>
                   </div>
                 </div>
@@ -839,7 +1064,9 @@ function AnalysisContent() {
             </CardHeader>
             <CardContent className="p-6">
               <div className="prose max-w-none text-lg leading-relaxed">
-                <p className="whitespace-pre-wrap">{analysisResult.analysis_summary}</p>
+                <p className="whitespace-pre-wrap">
+                  {analysisResult.analysis_summary}
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -875,7 +1102,10 @@ function AnalysisContent() {
                 <Card>
                   <CardContent className="p-4 text-center">
                     <div className="text-2xl font-bold text-blue-600">
-                      {analysisResult.interview_insights?.overall_performance_score}
+                      {
+                        analysisResult.interview_insights
+                          ?.overall_performance_score
+                      }
                     </div>
                     <div className="text-sm text-gray-600">Overall Score</div>
                   </CardContent>
@@ -899,7 +1129,10 @@ function AnalysisContent() {
                 <Card>
                   <CardContent className="p-4 text-center">
                     <div className="text-2xl font-bold text-orange-600">
-                      {analysisResult.interview_insights?.problem_solving_ability}
+                      {
+                        analysisResult.interview_insights
+                          ?.problem_solving_ability
+                      }
                     </div>
                     <div className="text-sm text-gray-600">Problem Solving</div>
                   </CardContent>
@@ -927,10 +1160,7 @@ function AnalysisContent() {
                     <ul className="space-y-1">
                       {analysisResult.interview_insights?.next_steps.map(
                         (step, index) => (
-                          <li
-                            key={index}
-                            className="flex items-start gap-2"
-                          >
+                          <li key={index} className="flex items-start gap-2">
                             <span className="text-blue-500">•</span>
                             {step}
                           </li>
@@ -947,13 +1177,20 @@ function AnalysisContent() {
               <ScrollArea className="h-[600px] px-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {analysisResult.skill_assessments?.map((skill, index) => (
-                    <Card key={index} className="border-2 hover:shadow-lg transition-all duration-300">
+                    <Card
+                      key={index}
+                      className="border-2 hover:shadow-lg transition-all duration-300"
+                    >
                       <CardHeader className="pb-2">
                         <div className="flex items-center justify-between">
                           <CardTitle className="text-lg font-semibold">
                             {skill.skill}
                           </CardTitle>
-                          <Badge className={`${getSkillLevelColor(skill.level)} px-3 py-1`}>
+                          <Badge
+                            className={`${getSkillLevelColor(
+                              skill.level
+                            )} px-3 py-1`}
+                          >
                             {skill.level}
                           </Badge>
                         </div>
@@ -962,7 +1199,11 @@ function AnalysisContent() {
                             value={skill.confidence_score}
                             className="flex-1"
                           />
-                          <span className={`text-sm font-medium ${getScoreColor(skill.confidence_score)}`}>
+                          <span
+                            className={`text-sm font-medium ${getScoreColor(
+                              skill.confidence_score
+                            )}`}
+                          >
                             {skill.confidence_score}%
                           </span>
                         </div>
@@ -998,7 +1239,10 @@ function AnalysisContent() {
               <ScrollArea className="h-[600px] px-4">
                 <div className="space-y-6">
                   {analysisResult.questions_and_answers?.map((qa, index) => (
-                    <Card key={index} className="border-2 hover:shadow-lg transition-all duration-300">
+                    <Card
+                      key={index}
+                      className="border-2 hover:shadow-lg transition-all duration-300"
+                    >
                       <CardHeader>
                         <div className="space-y-4">
                           <div className="flex items-start justify-between gap-4">
@@ -1010,15 +1254,16 @@ function AnalysisContent() {
                               <Badge className={getGradeColor(qa.grade)}>
                                 {qa.grade}
                               </Badge>
-                              <span className={`text-sm font-medium ${getScoreColor(qa.score)}`}>
+                              <span
+                                className={`text-sm font-medium ${getScoreColor(
+                                  qa.score
+                                )}`}
+                              >
                                 {qa.score}/100
                               </span>
                             </div>
                           </div>
-                          <Progress
-                            value={qa.score}
-                            className="w-full"
-                          />
+                          <Progress value={qa.score} className="w-full" />
                         </div>
                       </CardHeader>
                       <CardContent className="space-y-4">
@@ -1053,9 +1298,7 @@ function AnalysisContent() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-green-600">
-                      Strengths
-                    </CardTitle>
+                    <CardTitle className="text-green-600">Strengths</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <ul className="space-y-2">
@@ -1092,28 +1335,26 @@ function AnalysisContent() {
                 </Card>
               </div>
 
-              {analysisResult.interview_insights?.red_flags && 
-               analysisResult.interview_insights?.red_flags.length > 0 && (
-                <Card className="mt-6">
-                  <CardHeader>
-                    <CardTitle className="text-red-600">
-                      Red Flags
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-2">
-                      {analysisResult.interview_insights.red_flags.map(
-                        (flag, index) => (
-                          <li key={index} className="flex items-start gap-2">
-                            <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-                            <span>{flag}</span>
-                          </li>
-                        )
-                      )}
-                    </ul>
-                  </CardContent>
-                </Card>
-              )}
+              {analysisResult.interview_insights?.red_flags &&
+                analysisResult.interview_insights?.red_flags.length > 0 && (
+                  <Card className="mt-6">
+                    <CardHeader>
+                      <CardTitle className="text-red-600">Red Flags</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-2">
+                        {analysisResult.interview_insights.red_flags.map(
+                          (flag, index) => (
+                            <li key={index} className="flex items-start gap-2">
+                              <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                              <span>{flag}</span>
+                            </li>
+                          )
+                        )}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                )}
             </TabsContent>
 
             {/* Transcript Tab */}
@@ -1127,27 +1368,35 @@ function AnalysisContent() {
                     <div className="space-y-4">
                       {(() => {
                         try {
-                          const transcriptEntries = JSON.parse(interviewData.transcript);
-                          return transcriptEntries.map((entry: any, index: number) => (
-                            <div 
-                              key={index}
-                              className={`p-3 rounded-lg ${
-                                entry.speaker === 'interviewer' 
-                                  ? 'bg-blue-50 border-l-4 border-blue-400' 
-                                  : 'bg-green-50 border-l-4 border-green-400'
-                              }`}
-                            >
-                              <div className="flex justify-between mb-1">
-                                <div className="font-medium capitalize">
-                                  {entry.speaker === 'interviewer' ? 'Interviewer' : 'Candidate'}
+                          const transcriptEntries = JSON.parse(
+                            interviewData.transcript
+                          );
+                          return transcriptEntries.map(
+                            (entry: any, index: number) => (
+                              <div
+                                key={index}
+                                className={`p-3 rounded-lg ${
+                                  entry.speaker === "interviewer"
+                                    ? "bg-blue-50 border-l-4 border-blue-400"
+                                    : "bg-green-50 border-l-4 border-green-400"
+                                }`}
+                              >
+                                <div className="flex justify-between mb-1">
+                                  <div className="font-medium capitalize">
+                                    {entry.speaker === "interviewer"
+                                      ? "Interviewer"
+                                      : "Candidate"}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    {new Date(
+                                      entry.timestamp
+                                    ).toLocaleTimeString()}
+                                  </div>
                                 </div>
-                                <div className="text-xs text-gray-500">
-                                  {new Date(entry.timestamp).toLocaleTimeString()}
-                                </div>
+                                <div>{entry.text}</div>
                               </div>
-                              <div>{entry.text}</div>
-                            </div>
-                          ));
+                            )
+                          );
                         } catch (e) {
                           return (
                             <div className="prose max-w-none">
@@ -1173,15 +1422,17 @@ function AnalysisContent() {
 // Main page component
 export default function AnalysisResultPage() {
   return (
-    <Suspense fallback={
-      <div className="container mx-auto p-6 flex items-center justify-center min-h-[50vh]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4">Loading analysis...</p>
+    <Suspense
+      fallback={
+        <div className="container mx-auto p-6 flex items-center justify-center min-h-[50vh]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4">Loading analysis...</p>
+          </div>
         </div>
-      </div>
-    }>
+      }
+    >
       <AnalysisContent />
     </Suspense>
   );
-} 
+}
