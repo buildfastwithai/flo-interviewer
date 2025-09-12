@@ -14,6 +14,7 @@ export async function POST(req: NextRequest) {
       analysis = {},
       aiEvaluation = {},
       questionAnswers = {},
+      videoUrl,
       updateIfExists = false, // Changed default to false to prefer creating new records
       id = null // Added to support direct updates to a specific record
     } = data;
@@ -54,6 +55,9 @@ export async function POST(req: NextRequest) {
     
     if (candidateName) {
       dataToSave.candidateName = candidateName;
+    }
+    if (videoUrl) {
+      dataToSave.videoUrl = videoUrl;
     }
 
     let result;

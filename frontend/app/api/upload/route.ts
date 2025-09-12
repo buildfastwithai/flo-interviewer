@@ -21,14 +21,24 @@ const s3Client = new S3Client({
 export async function POST(request: Request) {
   const formData = await request.formData();
   const file = formData.get("file") as File | null;
-  console.log("formData", formData);
+  const folderField = (formData.get("folder") as string) || "recordings";
+  try {
+    console.log("[Upload API] Incoming form-data keys:", Array.from(formData.keys()));
+  } catch {}
 
   if (!file) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
-  console.log("file", file);
+  console.log("[Upload API] File received", {
+    name: file.name,
+    type: file.type,
+    size: (file as any).size,
+    folder: folderField,
+    bucket: BUCKET_NAME,
+    endpoint: ENDPOINT,
+  });
 
-  const { url } = await uploadFile(file, "misc");
+  const { url } = await uploadFile(file, folderField);
 
   return NextResponse.json({ file: { url } });
 }
@@ -44,6 +54,11 @@ async function uploadFile(
 
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
+  console.log("[Upload API] Uploading to Spaces", {
+    key: fileName,
+    bytes: buffer.length,
+    contentType: file.type,
+  });
 
   const command = new PutObjectCommand({
     Bucket: BUCKET_NAME,
@@ -54,8 +69,10 @@ async function uploadFile(
   });
 
   try {
-    await s3Client.send(command);
+    const res = await s3Client.send(command);
+    console.log("[Upload API] PutObject result", { $metadata: (res as any)?.$metadata });
     const url = `https://${BUCKET_NAME}.${ENDPOINT}/${fileName}`;
+    console.log("[Upload API] Public URL", url);
     return { url };
   } catch (error) {
     console.error("Error uploading file to DigitalOcean Spaces:", error);

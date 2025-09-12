@@ -50,6 +50,80 @@ import Webcam from "react-webcam";
 import { useFaceDetection } from "@/hooks/useFaceDetectionSimple.js";
 import { AlertCircle, UserCheck, Users, Eye, Shield } from "lucide-react";
 
+// Lightweight IndexedDB helpers for resilient recording persistence
+const RECORDING_DB_NAME = "interviewRecordingDB";
+const RECORDING_STORE = "recordings";
+
+type RecordingStatus = "recording" | "finalized" | "uploaded";
+type StoredRecording = {
+  key: string;
+  interviewId?: string;
+  interviewDataId?: string | null;
+  candidateName?: string;
+  startTime?: string;
+  mimeType?: string;
+  chunks: Blob[];
+  status: RecordingStatus;
+};
+
+function openRecordingDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(RECORDING_DB_NAME, 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(RECORDING_STORE)) {
+        db.createObjectStore(RECORDING_STORE, { keyPath: "key" });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbGet(key: string): Promise<StoredRecording | undefined> {
+  const db = await openRecordingDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(RECORDING_STORE, "readonly");
+    const store = tx.objectStore(RECORDING_STORE);
+    const getReq = store.get(key);
+    getReq.onsuccess = () => resolve(getReq.result as StoredRecording | undefined);
+    getReq.onerror = () => reject(getReq.error);
+  });
+}
+
+async function idbPut(record: StoredRecording): Promise<void> {
+  const db = await openRecordingDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(RECORDING_STORE, "readwrite");
+    const store = tx.objectStore(RECORDING_STORE);
+    const putReq = store.put(record);
+    putReq.onsuccess = () => resolve();
+    putReq.onerror = () => reject(putReq.error);
+  });
+}
+
+async function idbDelete(key: string): Promise<void> {
+  const db = await openRecordingDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(RECORDING_STORE, "readwrite");
+    const store = tx.objectStore(RECORDING_STORE);
+    const delReq = store.delete(key);
+    delReq.onsuccess = () => resolve();
+    delReq.onerror = () => reject(delReq.error);
+  });
+}
+
+async function idbGetAll(): Promise<StoredRecording[]> {
+  const db = await openRecordingDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(RECORDING_STORE, "readonly");
+    const store = tx.objectStore(RECORDING_STORE);
+    const allReq = (store as any).getAll();
+    allReq.onsuccess = () => resolve((allReq.result || []) as StoredRecording[]);
+    allReq.onerror = () => reject(allReq.error);
+  });
+}
+
 interface UserFormData {
   name: string;
   accessCode: string;
@@ -112,9 +186,18 @@ export default function InterviewPage() {
   const [proctoringStats, setProctoringStats] = useState({
     noFaceCount: 0,
     multipleFaceCount: 0,
-    tabSwitchCount: 0,
+    tabSwitchCount: -2,
     copyPasteCount: 0,
   });
+  // Recording refs/state
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const displayStreamRef = useRef<MediaStream | null>(null);
+  const micStreamRef = useRef<MediaStream | null>(null);
+  const mixedStreamRef = useRef<MediaStream | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const recordingKeyRef = useRef<string | null>(null);
+  const [isRecordingVideo, setIsRecordingVideo] = useState(false);
+  const connectedAudioElsRef = useRef<WeakSet<HTMLMediaElement>>(new WeakSet());
   
   const proctoringRef = useRef<{
     events: Array<{
@@ -164,6 +247,321 @@ export default function InterviewPage() {
       "Webcam preview enabled via react-webcam"
     );
   }, [webcamProctoringEnabled, recordProctorEvent]);
+
+  // -------- Screen Recording Helpers --------
+  const pickSupportedMimeType = () => {
+    const candidates = [
+      "video/webm;codecs=vp9,opus",
+      "video/webm;codecs=vp8,opus",
+      "video/webm",
+    ];
+    for (const type of candidates) {
+      if ((window as any).MediaRecorder && MediaRecorder.isTypeSupported(type)) {
+        console.log("[Recording] Using supported mimeType:", type);
+        return type;
+      }
+    }
+    console.warn("[Recording] No preferred mimeType supported; falling back to video/webm");
+    return "video/webm";
+  };
+
+  const appendRecordingChunk = async (key: string, chunk: Blob) => {
+    try {
+      const existing = (await idbGet(key)) as StoredRecording | undefined;
+      if (existing) {
+        console.log(
+          "[Recording] Appending chunk",
+          { key, newChunkBytes: chunk.size, prevChunks: existing.chunks.length }
+        );
+        existing.chunks.push(chunk);
+        await idbPut(existing);
+      } else {
+        console.log("[Recording] Creating new recording bucket for key", key);
+        await idbPut({ key, chunks: [chunk], status: "recording" });
+      }
+    } catch (e) {
+      console.warn("[Recording] Failed to persist recording chunk", e);
+    }
+  };
+
+  const startInterviewRecording = useCallback(
+    async (
+      meta: { interviewId: string; candidateName: string; startTime: string; practiceMode?: boolean }
+    ) => {
+      try {
+        if (meta.practiceMode) {
+          console.log("[Recording] Practice mode — recording disabled");
+          return; // skip recording in practice mode
+        }
+
+        const key = `${meta.interviewId}::${meta.startTime}`;
+        recordingKeyRef.current = key;
+        console.log("[Recording] Start with key", key, "meta:", meta);
+
+        const mimeType = pickSupportedMimeType();
+
+        // Initialize record in IDB
+        await idbPut({
+          key,
+          interviewId: meta.interviewId,
+          candidateName: meta.candidateName,
+          startTime: meta.startTime,
+          mimeType,
+          chunks: [],
+          status: "recording",
+        });
+
+        // Display media (tab/window) with system audio if selected
+        console.log("[Recording] Requesting display media (with audio)");
+        const displayStream = await navigator.mediaDevices.getDisplayMedia({
+          video: { frameRate: 15 },
+          audio: true,
+        });
+        console.log(
+          "[Recording] Obtained display stream",
+          {
+            videoTracks: displayStream.getVideoTracks().length,
+            audioTracks: displayStream.getAudioTracks().length,
+          }
+        );
+        displayStreamRef.current = displayStream;
+
+        // Microphone stream (optional)
+        let micStream: MediaStream | null = null;
+        try {
+          console.log("[Recording] Requesting microphone stream");
+          micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          console.log(
+            "[Recording] Obtained microphone stream",
+            { audioTracks: micStream.getAudioTracks().length }
+          );
+        } catch {
+          console.warn("[Recording] Microphone stream not available");
+          micStream = null;
+        }
+        micStreamRef.current = micStream;
+
+        // Mix audio tracks (display + mic)
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        audioContextRef.current = audioContext as AudioContext;
+        const destination = audioContext.createMediaStreamDestination();
+        const addAudioTracks = (stream: MediaStream | null) => {
+          if (!stream) return;
+          const hasAudio = stream.getAudioTracks().length > 0;
+          if (!hasAudio) return;
+          try {
+            const source = audioContext.createMediaStreamSource(stream);
+            source.connect(destination);
+          } catch {}
+        };
+        addAudioTracks(displayStream);
+        addAudioTracks(micStream);
+        console.log(
+          "[Recording] Mixed audio tracks",
+          { mixedAudioTracks: destination.stream.getAudioTracks().length }
+        );
+
+        // Try to include LiveKit remote audio directly (agent voice)
+        try {
+          let remoteAudioTracksAdded = 0;
+          room.remoteParticipants.forEach((p) => {
+            p.audioTrackPublications.forEach((pub: any) => {
+              const track: any = pub?.track;
+              try {
+                const mediaStreamTrack: MediaStreamTrack | undefined = (track?.mediaStreamTrack as MediaStreamTrack) || track?.mediaStream?.getAudioTracks?.()[0];
+                if (mediaStreamTrack) {
+                  const s = new MediaStream([mediaStreamTrack]);
+                  const src = audioContext.createMediaStreamSource(s);
+                  src.connect(destination);
+                  remoteAudioTracksAdded += 1;
+                }
+              } catch (e) {
+                console.warn("[Recording] Failed to attach remote audio track", e);
+              }
+            });
+          });
+          console.log("[Recording] Attached remote LiveKit audio tracks", { count: remoteAudioTracksAdded });
+        } catch (e) {
+          console.warn("[Recording] Error while attaching remote LiveKit audio", e);
+        }
+
+        // Fallback: try to capture audio from existing <audio> elements (RoomAudioRenderer)
+        try {
+          const audioEls = Array.from(document.querySelectorAll('audio')) as HTMLAudioElement[];
+          let connected = 0;
+          for (const el of audioEls) {
+            if (connectedAudioElsRef.current.has(el)) continue;
+            try {
+              const src = audioContext.createMediaElementSource(el);
+              src.connect(destination);
+              connectedAudioElsRef.current.add(el);
+              connected += 1;
+            } catch (e) {
+              // createMediaElementSource can only be called once per element; ignore
+            }
+          }
+          if (connected > 0) {
+            console.log("[Recording] Connected HTMLAudioElements to mix", { connected });
+          }
+        } catch (e) {
+          console.warn("[Recording] Error while connecting HTMLAudioElements", e);
+        }
+
+        const videoTrack = displayStream.getVideoTracks()[0];
+        const mixedStream = new MediaStream([videoTrack, ...destination.stream.getAudioTracks()]);
+        mixedStreamRef.current = mixedStream;
+        console.log(
+          "[Recording] Mixed stream ready",
+          {
+            videoTracks: mixedStream.getVideoTracks().length,
+            audioTracks: mixedStream.getAudioTracks().length,
+          }
+        );
+
+        const recorder = new MediaRecorder(mixedStream, { mimeType });
+        mediaRecorderRef.current = recorder;
+        recorder.ondataavailable = (e: BlobEvent) => {
+          console.log("[Recording] ondataavailable", { size: e.data?.size });
+          if (e.data && e.data.size > 0 && recordingKeyRef.current) {
+            appendRecordingChunk(recordingKeyRef.current, e.data);
+          }
+        };
+        recorder.onstop = async () => {
+          console.log("[Recording] MediaRecorder stopped");
+          if (!recordingKeyRef.current) return;
+          try {
+            const rec = (await idbGet(recordingKeyRef.current)) as StoredRecording | undefined;
+            if (rec) {
+              rec.status = "finalized";
+              await idbPut(rec);
+              console.log("[Recording] Marked as finalized in IDB", { key: rec.key });
+            }
+          } catch {}
+          setIsRecordingVideo(false);
+        };
+
+        console.log("[Recording] Starting MediaRecorder");
+        recorder.start(5000); // gather chunks every 5s to persist progressively
+        setIsRecordingVideo(true);
+        console.log("[Recording] MediaRecorder state:", recorder.state);
+      } catch (e) {
+        console.warn("[Recording] Failed to start screen recording", e);
+      }
+    },
+    []
+  );
+
+  const stopInterviewRecording = useCallback(async () => {
+    console.log("[Recording] stopInterviewRecording invoked");
+    try {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+        console.log("[Recording] Stopping MediaRecorder");
+        mediaRecorderRef.current.stop();
+      }
+    } catch {}
+    try {
+      console.log("[Recording] Stopping display/mic/mixed tracks");
+      displayStreamRef.current?.getTracks().forEach((t) => t.stop());
+      micStreamRef.current?.getTracks().forEach((t) => t.stop());
+      mixedStreamRef.current?.getTracks().forEach((t) => t.stop());
+    } catch {}
+    try {
+      console.log("[Recording] Closing AudioContext");
+      audioContextRef.current?.close();
+    } catch {}
+    displayStreamRef.current = null;
+    micStreamRef.current = null;
+    mixedStreamRef.current = null;
+    mediaRecorderRef.current = null;
+  }, []);
+
+  const uploadRecordingByKey = useCallback(
+    async (key: string) => {
+      try {
+        console.log("[Upload] Attempting upload for key", key);
+        const rec = await idbGet(key);
+        if (!rec || !rec.chunks || rec.chunks.length === 0) return;
+        if (rec.status === "uploaded") return;
+
+        console.log("[Upload] Found recording", {
+          chunks: rec.chunks.length,
+          mimeType: rec.mimeType,
+          status: rec.status,
+        });
+        const blob = new Blob(rec.chunks, { type: rec.mimeType || "video/webm" });
+        console.log("[Upload] Blob size(bytes)", blob.size);
+        const fileName = `interview-${rec.interviewId || "unknown"}-${(rec.startTime || "").replace(/[:.]/g, "-")}.webm`;
+        const file = new File([blob], fileName, { type: blob.type });
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("folder", "recordings");
+
+        console.log("[Upload] Posting to /api/upload", { fileName, type: file.type });
+        const uploadResp = await fetch("/api/upload", { method: "POST", body: formData });
+        console.log("[Upload] Response status", uploadResp.status);
+        if (!uploadResp.ok) throw new Error("Upload failed");
+        const uploadJson = await uploadResp.json();
+        console.log("[Upload] Response json", uploadJson);
+        const videoUrl: string | undefined = uploadJson?.file?.url;
+        if (!videoUrl) throw new Error("No URL from upload");
+        console.log("[Upload] Uploaded URL", videoUrl);
+
+        // Update InterviewData with videoUrl if possible
+        try {
+          const payload: any = {
+            interviewId: rec.interviewId || interviewData?.interviewId,
+            startTime: rec.startTime || startTimeRef.current,
+            endTime: undefined,
+            duration: calculateDuration(rec.startTime || startTimeRef.current),
+            analysis: {},
+            questionAnswers: [],
+            candidateName: rec.candidateName || userData?.name || "",
+            videoUrl,
+            updateIfExists: true,
+          };
+          if (rec.interviewDataId || interviewDataId) {
+            payload.id = rec.interviewDataId || interviewDataId;
+          }
+          console.log("[Upload] Updating interview data with videoUrl", {
+            interviewId: payload.interviewId,
+            id: payload.id,
+          });
+          const resp = await fetch("/api/interview-data", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          console.log("[Upload] /api/interview-data status", resp.status);
+          if (!resp.ok) throw new Error("Failed to update interview data with videoUrl");
+        } catch (e) {
+          console.warn("[Upload] Failed to update interview data with videoUrl", e);
+        }
+
+        // Mark uploaded and remove stored chunks to free space
+        rec.status = "uploaded";
+        rec.chunks = [];
+        await idbPut(rec);
+        console.log("[Upload] Marked recording as uploaded and cleared chunks", { key });
+        await idbDelete(key);
+        console.log("[Upload] Deleted recording entry from IDB", { key });
+      } catch (e) {
+        console.warn("[Upload] Deferred upload failed; will retry next load", e);
+      }
+    },
+    [interviewData?.interviewId, interviewDataId, userData]
+  );
+
+  const uploadAnyPendingRecordings = useCallback(async () => {
+    try {
+      const all = await idbGetAll();
+      console.log("[Upload] Pending recordings in IDB:", all.map((r) => ({ key: r.key, status: r.status, chunks: r.chunks?.length })));
+      for (const rec of all) {
+        if (rec.status === "finalized" && rec.key) {
+          await uploadRecordingByKey(rec.key);
+        }
+      }
+    } catch {}
+  }, [uploadRecordingByKey]);
 
   const onJoinInterview = useCallback(
     async (formData: UserFormData) => {
@@ -307,6 +705,17 @@ export default function InterviewPage() {
         if (formData.webcamProctoring) {
           startWebcamProctoring();
         }
+
+        // Start screen recording for real interview (not practice)
+        try {
+          console.log("[Recording] Initiating recording post-join");
+          await startInterviewRecording({
+            interviewId: connectionDetails.interviewId,
+            candidateName: formData.name,
+            startTime: startTimeRef.current,
+            practiceMode: !!connectionDetails.practiceMode,
+          });
+        } catch {}
       } catch (error) {
         console.error("Error joining interview:", error);
         let errorMessage = "Failed to join interview. Please try again.";
@@ -369,6 +778,25 @@ export default function InterviewPage() {
       } catch {}
     };
   }, [room]);
+
+  // Attempt to upload any pending finalized recordings on load
+  useEffect(() => {
+    uploadAnyPendingRecordings();
+  }, [uploadAnyPendingRecordings]);
+
+  // Ensure recording is gracefully finalized on tab close/refresh
+  useEffect(() => {
+    const onBeforeUnload = () => {
+      console.log("[Recording] beforeunload — attempting to stop recorder");
+      try {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+          mediaRecorderRef.current.stop();
+        }
+      } catch {}
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, []);
 
   // Basic page visibility/focus events for proctoring (no DB, just JSON via API)
   useEffect(() => {
@@ -479,6 +907,16 @@ export default function InterviewPage() {
       // Store the ID of the created interview data record for future updates
       if (result?.data?.id) {
         setInterviewDataId(result.data.id);
+        // Persist interviewDataId in recording metadata for reliable post-refresh uploads
+        try {
+          if (recordingKeyRef.current) {
+            const rec = (await idbGet(recordingKeyRef.current)) as StoredRecording | undefined;
+            if (rec) {
+              rec.interviewDataId = result.data.id;
+              await idbPut(rec);
+            }
+          }
+        } catch {}
       }
 
       return result;
@@ -525,6 +963,16 @@ export default function InterviewPage() {
       // If we didn't have an ID before and just created a new record, store its ID
       if (!interviewDataId && result?.data?.id) {
         setInterviewDataId(result.data.id);
+        // Persist to recording metadata as well
+        try {
+          if (recordingKeyRef.current) {
+            const rec = (await idbGet(recordingKeyRef.current)) as StoredRecording | undefined;
+            if (rec) {
+              rec.interviewDataId = result.data.id;
+              await idbPut(rec);
+            }
+          }
+        } catch {}
       }
 
       return result;
@@ -613,6 +1061,12 @@ export default function InterviewPage() {
     if (interviewData) {
       const endTime = new Date().toISOString();
       try {
+        // Stop and finalize recording first
+        try {
+          console.log("[Recording] Stopping recording due to disconnect");
+          await stopInterviewRecording();
+        } catch {}
+
         const updateResponse = await updateInterviewData({
           interviewId: interviewData.interviewId,
           transcript: JSON.stringify(transcriptions),
@@ -625,6 +1079,27 @@ export default function InterviewPage() {
         });
 
         console.log("Successfully saved interview data on disconnect");
+
+        // Ensure recording metadata has interviewDataId for reliable upload
+        try {
+          const idFromResp = updateResponse?.data?.id;
+          if (idFromResp && recordingKeyRef.current) {
+            const rec = (await idbGet(recordingKeyRef.current)) as StoredRecording | undefined;
+            if (rec) {
+              rec.interviewDataId = idFromResp;
+              await idbPut(rec);
+              console.log("[Recording] Stored interviewDataId in recording metadata", { key: rec.key, id: idFromResp });
+            }
+          }
+        } catch {}
+
+        // Attempt immediate upload; will resume on next load if interrupted
+        try {
+          if (recordingKeyRef.current) {
+            console.log("[Upload] Attempting immediate upload after disconnect");
+            await uploadRecordingByKey(recordingKeyRef.current);
+          }
+        } catch {}
 
         // Generate feedback after saving interview data
         if (updateResponse?.data?.id) {
