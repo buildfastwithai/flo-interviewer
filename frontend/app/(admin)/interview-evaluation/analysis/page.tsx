@@ -1012,6 +1012,7 @@ function AnalysisContent() {
                             min={0}
                             max={100}
                             value={(skillWeights?.[sa.skill] ?? 0) * 100}
+                            disabled
                             onChange={(e) => {
                               const next = { ...(skillWeights || {}) } as Record<string, number>;
                               next[sa.skill] = Number(e.target.value) / 100;
