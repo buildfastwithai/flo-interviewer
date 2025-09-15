@@ -114,7 +114,8 @@ class InterviewAgent(Agent):
                  practice_mode: bool = False,
                  questions_count:int =0,
                  template_skills_info: Optional[List[Dict]] = None,
-                 total_duration_minutes: Optional[int] = None) -> None:
+                 total_duration_minutes: Optional[int] = None,
+                 resume_text: Optional[str] = None) -> None:
         
         # Capture interview start time for time-aware responses
         start_time_dt = datetime.now()
@@ -303,6 +304,28 @@ Remember: You're having a genuine conversation with a real person. Be authentic,
                 f"If the candidate is silent for ~8–10 seconds after you ask something, gently prompt them to continue or offer to repeat the question; if silence continues, briefly repeat the question once and wait again."
             )
         
+        # If resume text is provided (and not practice mode), augment instructions to include resume-driven questions
+        if (resume_text or "") and not practice_mode:
+            try:
+                clipped_resume = (resume_text or "")[:8000]
+            except Exception:
+                clipped_resume = resume_text or ""
+            resume_block = f"""
+
+RESUME CONTEXT:
+Below is the candidate's resume text. Use it to ask 3–4 targeted questions about their experience, projects, responsibilities, and claimed skills. Interleave these with the planned questions from the record while maintaining flow and timing. Avoid trivia; focus on depth and authenticity.
+
+RESUME (TEXT):
+{clipped_resume}
+
+RESUME QUESTION POLICY:
+- Ask 3–4 resume-based questions across the interview.
+- Keep them relevant to the resume and the role.
+- Use polite prompts ("Could you please explain...", "Could you walk me through...").
+- Do not disclose answers or provide hints unless the candidate explicitly asks or says they don't know (then one short, non‑leading hint max).
+"""
+            full_instructions = full_instructions + resume_block
+
         # Pass FULL instructions to parent class
         # Configure turn detection via env flag with safe fallback.
         # Default is multimodal (if available), then basic, else none.
@@ -370,6 +393,7 @@ Remember: You're having a genuine conversation with a real person. Be authentic,
         self.candidate_name = candidate_name
         self.skill_level = skill_level
         self.practice_mode = practice_mode
+        self.resume_text = resume_text
         self.record_id = record_id
         self.room_name = room_name
         self.room_id = room_id
@@ -793,6 +817,7 @@ async def entrypoint(ctx: JobContext):
     room_id = None
     interview_id = None
     practice_mode = False
+    resume_text = None
     
     if participant.metadata:
         try:
@@ -808,6 +833,12 @@ async def entrypoint(ctx: JobContext):
                 practice_mode = pm
             elif isinstance(pm, str):
                 practice_mode = pm.lower() in ("1", "true", "yes", "y")
+            try:
+                rt = metadata.get('resumeText')
+                if isinstance(rt, str) and rt:
+                    resume_text = rt
+            except Exception:
+                resume_text = None
             log_info(f"Using metadata - Role: {role}, Skill: {skill_level}, Record ID: {record_id}, Room ID: {room_id}, Interview ID: {interview_id}")
         except json.JSONDecodeError:
             log_warning("Failed to parse participant metadata")
@@ -870,7 +901,8 @@ async def entrypoint(ctx: JobContext):
         questions_list=questions_list,
         practice_mode=practice_mode,
         template_skills_info=(skills_info if record_id else None),
-        total_duration_minutes=(total_duration_minutes if record_id else None)
+        total_duration_minutes=(total_duration_minutes if record_id else None),
+        resume_text=resume_text,
     )
 
     try:

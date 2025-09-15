@@ -114,3 +114,69 @@ export async function POST(
     );
   }
 }
+
+// PATCH partial analysis: upsert recruiter_feedback into analysis JSON
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const body = await request.json();
+
+    // Accept either top-level rating/comment or nested recruiterFeedback
+    const recruiterFeedback = body.recruiterFeedback || {
+      rating: body.rating,
+      comment: body.comment,
+    };
+
+    if (
+      !recruiterFeedback ||
+      typeof recruiterFeedback.rating !== "number" ||
+      recruiterFeedback.rating < 1 ||
+      recruiterFeedback.rating > 5
+    ) {
+      return NextResponse.json(
+        { success: false, error: "Valid recruiter feedback rating (1-5) is required" },
+        { status: 400 }
+      );
+    }
+
+    const interviewData = await prisma.interviewData.findUnique({
+      where: { id },
+    });
+
+    if (!interviewData) {
+      return NextResponse.json(
+        { success: false, error: "Interview data not found" },
+        { status: 404 }
+      );
+    }
+
+    const existingAnalysis: any = interviewData.analysis || {};
+    const updatedAnalysis = {
+      ...existingAnalysis,
+      recruiter_feedback: {
+        rating: recruiterFeedback.rating,
+        comment: recruiterFeedback.comment || "",
+        updatedAt: new Date().toISOString(),
+      },
+    };
+
+    const updated = await prisma.interviewData.update({
+      where: { id },
+      data: { analysis: updatedAnalysis },
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: updated.analysis,
+    });
+  } catch (error) {
+    console.error("Error updating recruiter feedback:", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to update recruiter feedback" },
+      { status: 500 }
+    );
+  }
+}

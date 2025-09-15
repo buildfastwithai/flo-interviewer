@@ -176,6 +176,109 @@ export async function GET(request: NextRequest) {
   }
 }
 
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json().catch(() => ({}));
+    const name: string = body?.name || "Anonymous";
+    const skillLevel: string | undefined = body?.skillLevel;
+    const role: string | undefined = body?.role;
+    const accessCode: string | undefined = body?.accessCode;
+    const resumeText: string | undefined = body?.resumeText;
+    const practiceMode: boolean = !!(body?.practice === true || body?.practiceMode === true);
+
+    if (LIVEKIT_URL === undefined) {
+      return NextResponse.json(
+        { error: "Server configuration error: LIVEKIT_URL is not defined" },
+        { status: 500 }
+      );
+    }
+    if (API_KEY === undefined) {
+      return NextResponse.json(
+        { error: "Server configuration error: LIVEKIT_API_KEY is not defined" },
+        { status: 500 }
+      );
+    }
+    if (API_SECRET === undefined) {
+      return NextResponse.json(
+        { error: "Server configuration error: LIVEKIT_API_SECRET is not defined" },
+        { status: 500 }
+      );
+    }
+
+    let roomName: string | null = body?.room || null;
+    let metadata: Record<string, any> = {};
+    let isDemoMode = false;
+
+    if (accessCode) {
+      try {
+        const interview = await prisma.interview.findUnique({
+          where: { accessCode },
+          include: { record: true },
+        });
+        if (!interview) {
+          return NextResponse.json(
+            { error: "Invalid access code or interview not found" },
+            { status: 404 }
+          );
+        }
+        roomName = interview.roomId;
+        roomName += "-" + Math.random().toString(36).substring(2, 15);
+        metadata = {
+          role: interview.record?.jobTitle || (role || "Software Engineer"),
+          candidateName: name,
+          recordId: interview.recordId,
+          skill: skillLevel || "mid",
+          interviewId: interview.id,
+          roomId: roomName,
+          practiceMode,
+          resumeText: resumeText ? String(resumeText).slice(0, 12000) : undefined,
+        };
+      } catch (dbError) {
+        return NextResponse.json(
+          { error: "Failed to retrieve interview information" },
+          { status: 500 }
+        );
+      }
+    } else {
+      if (!roomName) {
+        roomName = `interview-${name.replace(/\s+/g, "_")}-${skillLevel || "mid"}-${Date.now()}`;
+      }
+      metadata = {
+        role: role || "Software Engineer",
+        skill: skillLevel || "mid",
+        practiceMode,
+        resumeText: resumeText ? String(resumeText).slice(0, 12000) : undefined,
+      };
+    }
+
+    const participantToken = await createParticipantToken(
+      {
+        identity: name,
+        metadata: JSON.stringify(metadata),
+        ttl: "15m",
+      },
+      roomName!
+    );
+
+    const data: ConnectionDetails = {
+      serverUrl: LIVEKIT_URL!,
+      roomName: roomName!,
+      participantToken,
+      participantName: name,
+      demoMode: isDemoMode,
+      practiceMode,
+      interviewId: metadata.interviewId,
+      roomId: metadata.roomId,
+    };
+    return NextResponse.json(data, { headers: new Headers({ "Cache-Control": "no-store" }) });
+  } catch (error) {
+    return NextResponse.json(
+      { error: "Internal server error", message: error instanceof Error ? error.message : "Unknown error" },
+      { status: 500 }
+    );
+  }
+}
+
 // Helper function to create a participant token
 function createParticipantToken(userInfo: AccessTokenOptions, roomName: string) {
   const at = new AccessToken(API_KEY, API_SECRET, userInfo);

@@ -46,6 +46,14 @@ const styles = StyleSheet.create({
     padding: 30,
     fontFamily: 'Helvetica',
   },
+  pill: {
+    fontSize: 10,
+    padding: '4 8',
+    borderRadius: 9999,
+    backgroundColor: COLORS.gray[100],
+    color: COLORS.gray[700],
+    fontWeight: 'bold',
+  },
   header: {
     marginBottom: 20,
     borderBottom: `1 solid ${COLORS.gray[200]}`,
@@ -306,6 +314,25 @@ const getGradeColor = (grade: string) => {
   }
 };
 
+const getSeverityColor = (severity: string) => {
+  switch ((severity || '').toLowerCase()) {
+    case 'high':
+      return COLORS.danger;
+    case 'medium':
+      return COLORS.warning;
+    case 'low':
+      return COLORS.gray[600];
+    default:
+      return COLORS.gray[600];
+  }
+};
+
+const toPercent = (value: number | undefined | null) => {
+  if (value == null || Number.isNaN(value)) return '—';
+  const v = Math.max(0, Math.min(100, Math.round(value)));
+  return `${v}%`;
+};
+
 // Define interface for PDF component props
 interface InterviewPdfProps {
   data: AnalysisResponse;
@@ -477,6 +504,259 @@ const InterviewAnalysisPdf: React.FC<InterviewPdfProps> = ({ data, options = {} 
           <Text>Generated on {new Date().toLocaleString()}</Text>
         </View>
       </Page>
+
+      {/* Evaluation Overview Page (new) */}
+      {(((data as any).evaluation_overview) || ((data as any).objective_scores) || ((data as any).weighted_skill_scores) || ((data as any).subjective_rubric)) && (
+        <Page size="A4" style={styles.page}>
+          <Text style={styles.sectionTitle}>Evaluation Overview</Text>
+
+          {/* Top KPIs */}
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+            <View style={styles.gridItem}>
+              <Text style={[styles.metricValue, { color: getScoreColor(((data as any).evaluation_overview?.overall_weighted_score ?? data.interview_insights?.overall_performance_score) || 0) }]}>
+                {Math.round(((data as any).evaluation_overview?.overall_weighted_score ?? data.interview_insights?.overall_performance_score) || 0)}
+              </Text>
+              <Text style={styles.metricLabel}>Weighted Score</Text>
+            </View>
+            <View style={styles.gridItem}>
+              <Text style={[styles.metricValue, { color: getScoreColor((data as any).objective_scores?.overall_score || 0) }]}>
+                {Math.round((data as any).objective_scores?.overall_score || 0)}
+              </Text>
+              <Text style={styles.metricLabel}>Objective Score</Text>
+            </View>
+            <View style={styles.gridItem}>
+              <Text style={[styles.metricValue, { color: getScoreColor(((data as any).evaluation_overview?.confidence_score ?? data.interview_insights?.confidence_level) || 0) }]}>
+                {Math.round(((data as any).evaluation_overview?.confidence_score ?? data.interview_insights?.confidence_level) || 0)}
+              </Text>
+              <Text style={styles.metricLabel}>Confidence</Text>
+            </View>
+            <View style={styles.gridItem}>
+              <Text style={[styles.metricValue, { color: getScoreColor(((data as any).proctoring_analysis?.overall_risk_score) || 0) }]}>
+                {Math.round(((data as any).proctoring_analysis?.overall_risk_score) || 0)}
+              </Text>
+              <Text style={styles.metricLabel}>Proctoring Risk</Text>
+            </View>
+          </View>
+
+          {/* Recommendation */}
+          {!!(data as any).evaluation_overview?.overall_recommendation && (
+            <View style={[styles.card, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
+              <Text style={styles.subheading}>Recommendation</Text>
+              <Text
+                style={[
+                  styles.pill,
+                  {
+                    backgroundColor:
+                      ((data as any).evaluation_overview?.overall_recommendation === 'Select') ? COLORS.success :
+                      ((data as any).evaluation_overview?.overall_recommendation === 'Reject') ? COLORS.danger : COLORS.warning,
+                    color: '#ffffff',
+                  },
+                ]}
+              >
+                {(data as any).evaluation_overview?.overall_recommendation}
+              </Text>
+            </View>
+          )}
+
+          {/* Weighted Skill Scores */}
+          {Array.isArray((data as any).weighted_skill_scores) && (data as any).weighted_skill_scores.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Weighted Skill Scores</Text>
+              <View style={styles.table}>
+                <View style={styles.tableHeaderRow}>
+                  <View style={styles.tableCol}><Text style={styles.tableHeader}>Skill</Text></View>
+                  <View style={styles.tableColNarrow}><Text style={styles.tableHeader}>Weight</Text></View>
+                  <View style={styles.tableColNarrow}><Text style={styles.tableHeader}>Score</Text></View>
+                  <View style={styles.tableColNarrow}><Text style={styles.tableHeader}>Weighted</Text></View>
+                </View>
+                {(data as any).weighted_skill_scores.map((w: any, idx: number) => (
+                  <View key={`wskill-${idx}`} style={styles.tableRow}>
+                    <View style={styles.tableCol}><Text style={styles.tableCell}>{w.skill}</Text></View>
+                    <View style={styles.tableColNarrow}><Text style={styles.tableCell}>{toPercent((w.weight || 0) * 100)}</Text></View>
+                    <View style={styles.tableColNarrow}><Text style={styles.tableCell}>{Math.round(w.score || 0)}</Text></View>
+                    <View style={styles.tableColNarrow}><Text style={styles.tableCell}>{Math.round(w.weighted_score || 0)}</Text></View>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Subjective Rubric */}
+          {(data as any).subjective_rubric?.criteria && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Subjective Rubric</Text>
+              <View style={styles.table}>
+                <View style={styles.tableHeaderRow}>
+                  <View style={styles.tableCol}><Text style={styles.tableHeader}>Criteria</Text></View>
+                  <View style={styles.tableColNarrow}><Text style={styles.tableHeader}>Weight</Text></View>
+                  <View style={styles.tableColNarrow}><Text style={styles.tableHeader}>Score/5</Text></View>
+                  <View style={styles.tableColNarrow}><Text style={styles.tableHeader}>Weighted</Text></View>
+                </View>
+                {(data as any).subjective_rubric.criteria.map((c: any, idx: number) => (
+                  <View key={`rubric-${idx}`} style={styles.tableRow}>
+                    <View style={styles.tableCol}><Text style={styles.tableCell}>{c.name}</Text></View>
+                    <View style={styles.tableColNarrow}><Text style={styles.tableCell}>{toPercent((c.weight || 0) * 100)}</Text></View>
+                    <View style={styles.tableColNarrow}><Text style={styles.tableCell}>{c.score_out_of_5}</Text></View>
+                    <View style={styles.tableColNarrow}><Text style={styles.tableCell}>{Math.round(c.weighted_score || 0)}</Text></View>
+                  </View>
+                ))}
+              </View>
+              <Text style={styles.text}>Total: {(data as any).subjective_rubric?.total_score_out_of_5}/5 ({Math.round((data as any).subjective_rubric?.total_percentage || 0)}%)</Text>
+            </View>
+          )}
+
+          {/* Objective Scores */}
+          {(data as any).objective_scores && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Objective Scores</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                <View style={styles.gridItem}>
+                  <Text style={[styles.metricValue, { color: COLORS.primary }]}>{Math.round((data as any).objective_scores.overall_score || 0)}</Text>
+                  <Text style={styles.metricLabel}>Overall</Text>
+                </View>
+                <View style={styles.gridItem}>
+                  <Text style={[styles.metricValue, { color: COLORS.secondary }]}>{Math.round((data as any).objective_scores.mcq?.score || 0)}</Text>
+                  <Text style={styles.metricLabel}>MCQ ({(data as any).objective_scores.mcq?.correct || 0}/{(data as any).objective_scores.mcq?.total || 0})</Text>
+                </View>
+                <View style={styles.gridItem}>
+                  <Text style={[styles.metricValue, { color: COLORS.warning }]}>{Math.round((data as any).objective_scores.coding?.score || 0)}</Text>
+                  <Text style={styles.metricLabel}>Coding ({(data as any).objective_scores.coding?.tests_passed || 0}/{(data as any).objective_scores.coding?.tests_total || 0})</Text>
+                </View>
+              </View>
+            </View>
+          )}
+
+          <Text style={styles.pageNumber} render={({ pageNumber, totalPages }) => (
+            `${pageNumber} / ${totalPages}`
+          )} fixed />
+          <View style={styles.footer}>
+            <Text>Generated on {new Date().toLocaleString()}</Text>
+          </View>
+        </Page>
+      )}
+
+      {/* Proctoring Analysis Page (new) */}
+      {(data as any).proctoring_analysis && (
+        <Page size="A4" style={styles.page}>
+          <Text style={styles.sectionTitle}>Proctoring Analysis</Text>
+
+          {/* Summary */}
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+            <View style={styles.gridItem}>
+              <Text style={[styles.metricValue, { color: COLORS.primary }]}>{(data as any).proctoring_analysis?.summary?.total_events || 0}</Text>
+              <Text style={styles.metricLabel}>Total Events</Text>
+            </View>
+            <View style={styles.gridItem}>
+              <Text style={[styles.metricValue, { color: COLORS.success }]}>{toPercent((data as any).proctoring_analysis?.summary?.face_presence_percent)}</Text>
+              <Text style={styles.metricLabel}>Face Presence</Text>
+            </View>
+            <View style={styles.gridItem}>
+              <Text style={[styles.metricValue, { color: COLORS.warning }]}>{(data as any).proctoring_analysis?.summary?.focus_loss_events || 0}</Text>
+              <Text style={styles.metricLabel}>Focus Loss</Text>
+            </View>
+            <View style={styles.gridItem}>
+              <Text style={[styles.metricValue, { color: COLORS.secondary }]}>{Math.round(((data as any).proctoring_analysis?.summary?.hidden_ms || 0) / 1000)}s</Text>
+              <Text style={styles.metricLabel}>Hidden Duration</Text>
+            </View>
+            <View style={styles.gridItem}>
+              <Text style={[styles.metricValue, { color: COLORS.danger }]}>{(data as any).proctoring_analysis?.summary?.clipboard_copies || 0}</Text>
+              <Text style={styles.metricLabel}>Clipboard Copies</Text>
+            </View>
+            <View style={styles.gridItem}>
+              <Text style={[styles.metricValue, { color: COLORS.danger }]}>{(data as any).proctoring_analysis?.summary?.suspicious_count || 0}</Text>
+              <Text style={styles.metricLabel}>Suspicious</Text>
+            </View>
+          </View>
+
+          {/* Incidents */}
+          {Array.isArray((data as any).proctoring_analysis?.suspicious_incidents) && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Suspicious Incidents</Text>
+              <View style={styles.table}>
+                <View style={styles.tableHeaderRow}>
+                  <View style={styles.tableColNarrow}><Text style={styles.tableHeader}>Time</Text></View>
+                  <View style={styles.tableColNarrow}><Text style={styles.tableHeader}>Type</Text></View>
+                  <View style={styles.tableColNarrow}><Text style={styles.tableHeader}>Severity</Text></View>
+                  <View style={styles.tableCol}><Text style={styles.tableHeader}>Reason</Text></View>
+                  <View style={styles.tableCol}><Text style={styles.tableHeader}>Related Question</Text></View>
+                </View>
+                {(data as any).proctoring_analysis.suspicious_incidents.map((inc: any, idx: number) => (
+                  <View key={`inc-${idx}`} style={styles.tableRow}>
+                    <View style={styles.tableColNarrow}><Text style={styles.tableCell}>{inc.ts ? new Date(inc.ts).toLocaleTimeString() : '—'}</Text></View>
+                    <View style={styles.tableColNarrow}><Text style={styles.tableCell}>{inc.type || '—'}</Text></View>
+                    <View style={styles.tableColNarrow}><Text style={[styles.tableCell, { color: getSeverityColor(inc.severity) }]}>{inc.severity || '—'}</Text></View>
+                    <View style={styles.tableCol}><Text style={styles.tableCell}>{inc.reason || inc.description || '—'}</Text></View>
+                    <View style={styles.tableCol}><Text style={styles.tableCell}>{inc.related_question?.text || '—'}</Text></View>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          <Text style={styles.pageNumber} render={({ pageNumber, totalPages }) => (
+            `${pageNumber} / ${totalPages}`
+          )} fixed />
+          <View style={styles.footer}>
+            <Text>Generated on {new Date().toLocaleString()}</Text>
+          </View>
+        </Page>
+      )}
+
+      {/* Key Moments Page (new) */}
+      {Array.isArray((data as any).key_moments) && (data as any).key_moments.length > 0 && (
+        <Page size="A4" style={styles.page}>
+          <Text style={styles.sectionTitle}>Key Moments</Text>
+
+          {(data as any).key_moments.map((m: any, idx: number) => (
+            <View key={`km-${idx}`} style={styles.card}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text
+                  style={[
+                    styles.pill,
+                    {
+                      backgroundColor: m.type === 'critical_skill' ? COLORS.success : m.type === 'struggle' ? COLORS.danger : COLORS.primary,
+                      color: '#ffffff',
+                    },
+                  ]}
+                >
+                  {(m.type || 'general').toString().replace('_', ' ')}
+                </Text>
+                {typeof m.score === 'number' && (
+                  <Text style={[styles.metricValue, { color: getScoreColor(m.score) }]}>{Math.round(m.score)}</Text>
+                )}
+              </View>
+              <Text style={[styles.subheading, { marginTop: 8 }]}>{m.title}</Text>
+              {!!m.excerpt && <Text style={styles.text}>{m.excerpt}</Text>}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={styles.text}>Skill: {m.related_skill || 'General'}</Text>
+                <Text style={styles.text}>{m.timestamp ? new Date(m.timestamp).toLocaleTimeString() : ''}</Text>
+              </View>
+            </View>
+          ))}
+
+          <Text style={styles.pageNumber} render={({ pageNumber, totalPages }) => (
+            `${pageNumber} / ${totalPages}`
+          )} fixed />
+          <View style={styles.footer}>
+            <Text>Generated on {new Date().toLocaleString()}</Text>
+          </View>
+        </Page>
+      )}
+
+      {/* Transcript Page (optional) */}
+      {includeTranscript && (
+        <Page size="A4" style={styles.page}>
+          <Text style={styles.sectionTitle}>Transcript</Text>
+          <Text style={styles.transcript}>{(data as any).formatted_transcript || 'Transcript not available.'}</Text>
+
+          <Text style={styles.pageNumber} render={({ pageNumber, totalPages }) => (
+            `${pageNumber} / ${totalPages}`
+          )} fixed />
+          <View style={styles.footer}>
+            <Text>Generated on {new Date().toLocaleString()}</Text>
+          </View>
+        </Page>
+      )}
 
       {/* Skills Assessment Table Page */}
       <Page size="A4" style={styles.page}>

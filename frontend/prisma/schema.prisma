@@ -151,6 +151,8 @@ model InterviewData {
   feedback        Json?
   proctoring      Json?
   videoUrl        String?
+  resumeUrl       String?
+  resumeText      String?
   interview       Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
 
   @@index([interviewId])

@@ -4,18 +4,23 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
 interface FileUploadProps {
-  onFileUploaded?: (url: string) => void;
+  onFileUploaded?: (url: string, text?: string) => void;
   acceptedFileTypes?: string;
   label?: string;
+  parseToText?: boolean;
+  folder?: string;
 }
 
 export function FileUpload({
   onFileUploaded,
   acceptedFileTypes = ".pdf,.doc,.docx",
   label = "Upload File",
+  parseToText = false,
+  folder = "resumes",
 }: FileUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isParsing, setIsParsing] = useState(false);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -32,6 +37,7 @@ export function FileUpload({
 
       const formData = new FormData();
       formData.append("file", file);
+      formData.append("folder", folder);
 
       const response = await fetch("/api/upload", {
         method: "POST",
@@ -46,8 +52,31 @@ export function FileUpload({
       const data = await response.json();
       console.log(`File uploaded successfully: ${data.file.url}`);
 
+      let parsedText: string | undefined;
+      if (parseToText && file.type === "application/pdf") {
+        try {
+          setIsParsing(true);
+          const extractResp = await fetch("/api/pdf-extract", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ resumeUrl: data.file.url }),
+          });
+          const extractJson = await extractResp.json();
+          if (extractResp.ok && extractJson?.content) {
+            parsedText = extractJson.content as string;
+          } else {
+            throw new Error(extractJson?.error || "Failed to parse resume PDF");
+          }
+        } catch (e) {
+          console.error("Error parsing resume:", e);
+          setError(e instanceof Error ? e.message : "Failed to parse resume");
+        } finally {
+          setIsParsing(false);
+        }
+      }
+
       if (onFileUploaded) {
-        onFileUploaded(data.file.url);
+        onFileUploaded(data.file.url, parsedText);
       }
     } catch (err) {
       console.error("Error uploading file:", err);
@@ -100,6 +129,9 @@ export function FileUpload({
 
         {isUploading && (
           <div className="text-sm text-blue-500">Uploading...</div>
+        )}
+        {isParsing && (
+          <div className="text-sm text-blue-500">Parsing resume...</div>
         )}
 
         {error && <div className="text-sm text-red-500">{error}</div>}

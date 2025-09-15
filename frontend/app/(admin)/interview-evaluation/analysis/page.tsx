@@ -131,6 +131,7 @@ function AnalysisContent() {
   > | null>(null);
   const [feedbackText, setFeedbackText] = useState("");
   const [feedbackRating, setFeedbackRating] = useState<number>(5);
+  const [savingFeedback, setSavingFeedback] = useState(false);
 
   useEffect(() => {
     if (analysisResult?.recruiter_settings?.skill_weights) {
@@ -145,6 +146,17 @@ function AnalysisContent() {
       );
       setSkillWeights(uniform);
     }
+  }, [analysisResult]);
+
+  // Initialize recruiter feedback inputs from saved analysis
+  useEffect(() => {
+    try {
+      const rf: any = (analysisResult as any)?.recruiter_feedback;
+      if (rf) {
+        if (typeof rf.rating === "number") setFeedbackRating(rf.rating);
+        if (typeof rf.comment === "string") setFeedbackText(rf.comment);
+      }
+    } catch {}
   }, [analysisResult]);
 
   // NEW: Helpers for new evaluation tab
@@ -798,15 +810,26 @@ function AnalysisContent() {
   }
 
   return (
-    <div className="container mx-auto max-w-7xl px-6 py-6 space-y-6">
-      <div className="mb-2 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <Button asChild variant="outline" className="shadow-sm hover:shadow-md">
-          <Link href="/interview-evaluation">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Interviews
-          </Link>
-        </Button>
-
+    <div className="container mx-auto max-w-7xl px-6 py-6">
+      <div className="flex flex-col-reverse gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex items-start gap-3">
+          <Button asChild variant="outline" className="shadow-sm hover:shadow-md">
+            <Link href="/interview-evaluation">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-2xl font-extrabold tracking-tight text-[#1D244F]">
+              Interview Analysis
+            </h1>
+            <p className="text-sm text-[#5B5F79] mt-1">
+              {interviewData?.candidateName || "Candidate"}
+              {interviewData?.interview?.jobTitle ? ` • ${interviewData.interview.jobTitle}` : ""}
+              {interviewData?.startTime ? ` • ${new Date(interviewData.startTime).toLocaleDateString()}` : ""}
+            </p>
+          </div>
+        </div>
         <div className="flex gap-3">
           <Button
             variant="outline"
@@ -827,775 +850,200 @@ function AnalysisContent() {
         </div>
       </div>
 
-      {/* Success message */}
       {success && (
-        <Alert className="mb-6 bg-green-50 border-green-200 text-green-800">
+        <Alert className="mt-4 bg-green-50 border-green-200 text-green-800">
           <CheckCircle className="h-4 w-4" />
           <AlertDescription>{success}</AlertDescription>
         </Alert>
       )}
 
-      {/* Error message */}
       {error && error !== "No interview ID provided" && (
-        <Alert className="mb-6" variant="destructive">
+        <Alert className="mt-4" variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-      {/* NEW: Top-level tabs for New vs Old evaluation */}
-      <Tabs defaultValue="old-eval" className="mb-6">
-        <TabsList className="grid w-full grid-cols-1">
-          {/* <TabsTrigger value="new-eval">New Evaluation (Scorecard)</TabsTrigger>/ */}
-          <TabsTrigger value="old-eval">Evaluation</TabsTrigger>
-        </TabsList>
 
-        {/* NEW VERSION EVALUATION TAB */}
-        <TabsContent value="new-eval" className="mt-6 space-y-6">
-          {/* Header KPIs */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle>Recommendation</CardTitle>
-              </CardHeader>
-              <CardContent className="flex items-center justify-between">
+      <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Sidebar: KPI + Video (sticky) */}
+        <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-6 h-full self-start">
+          <Card className="border bg-white shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-[#1D244F]">Overview</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-[#5B5F79]">Recommendation</span>
                 <Badge
                   className={
-                    analysisResult?.evaluation_overview
-                      ?.overall_recommendation === "Select"
+                    analysisResult?.evaluation_overview?.overall_recommendation === "Select"
                       ? "bg-green-600"
-                      : analysisResult?.evaluation_overview
-                          ?.overall_recommendation === "Reject"
+                      : analysisResult?.evaluation_overview?.overall_recommendation === "Reject"
                       ? "bg-red-600"
                       : "bg-yellow-600"
                   }
                 >
-                  {analysisResult?.evaluation_overview
-                    ?.overall_recommendation || "Review"}
+                  {analysisResult?.evaluation_overview?.overall_recommendation || "Review"}
                 </Badge>
-                <span className="text-sm text-gray-500">Overall</span>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle>Weighted Score</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-3">
-                  <div className="text-2xl font-bold text-blue-600">
-                    {(
-                      analysisResult?.evaluation_overview
-                        ?.overall_weighted_score ?? computedOverallWeighted
-                    ).toFixed(0)}
-                  </div>
+              </div>
+              <div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-sm text-[#5B5F79]">Weighted Score</span>
+                  <span className="ml-auto text-2xl font-bold text-blue-600">
+                    {(analysisResult?.evaluation_overview?.overall_weighted_score ?? computedOverallWeighted).toFixed(0)}
+                  </span>
                   <span className="text-sm text-gray-500">/100</span>
                 </div>
                 <Progress
-                  value={
-                    analysisResult?.evaluation_overview
-                      ?.overall_weighted_score ?? computedOverallWeighted
-                  }
+                  value={analysisResult?.evaluation_overview?.overall_weighted_score ?? computedOverallWeighted}
                   className="mt-2"
                 />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle>Objective Score</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-3">
-                  <div className="text-2xl font-bold text-purple-600">
-                    {analysisResult?.objective_scores?.overall_score?.toFixed?.(
-                      0
-                    ) || 0}
-                  </div>
+              </div>
+              <div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-sm text-[#5B5F79]">Objective Score</span>
+                  <span className="ml-auto text-2xl font-bold text-purple-600">
+                    {analysisResult?.objective_scores?.overall_score?.toFixed?.(0) || 0}
+                  </span>
                   <span className="text-sm text-gray-500">/100</span>
                 </div>
-                <Progress
-                  value={analysisResult?.objective_scores?.overall_score || 0}
-                  className="mt-2"
-                />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle>Confidence & Proctoring</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
+                <Progress value={analysisResult?.objective_scores?.overall_score || 0} className="mt-2" />
+              </div>
+              <div>
                 <div className="flex items-center justify-between text-sm">
                   <span>Confidence</span>
                   <span className="font-medium">
-                    {analysisResult?.evaluation_overview?.confidence_score ||
-                      analysisResult?.interview_insights?.confidence_level ||
-                      0}
+                    {analysisResult?.evaluation_overview?.confidence_score || analysisResult?.interview_insights?.confidence_level || 0}
                   </span>
                 </div>
-                <Progress
-                  value={
-                    analysisResult?.evaluation_overview?.confidence_score ||
-                    analysisResult?.interview_insights?.confidence_level ||
-                    0
-                  }
-                />
-                <div className="flex items-center justify-between text-sm">
-                  <span>Proctoring</span>
-                  <span className="font-medium">
-                    {analysisResult?.proctoring_analysis?.overall_risk_score|| 0}
-                  </span>
-                </div>
-                <Progress
-                  value={
-                    analysisResult?.proctoring_analysis?.overall_risk_score || 0
-                  }
-                />
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Recruiter Weights & Skills */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Skill-wise Performance & Weights</CardTitle>
-              <CardDescription>
-                Recruiters can set weighting per skill (mock, not saved)
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-3">
-                {analysisResult?.skill_assessments?.map((sa, idx) => (
-                  <div
-                    key={idx}
-                    className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center"
-                  >
-                    <div className="md:col-span-3 text-sm font-medium">
-                      {sa.skill}
-                    </div>
-                    <div className="md:col-span-3 flex items-center gap-2">
-                      <Progress
-                        value={sa.confidence_score}
-                        className="flex-1"
-                      />
-                      <span
-                        className={`text-sm ${getScoreColor(
-                          sa.confidence_score
-                        )}`}
-                      >
-                        {sa.confidence_score}%
-                      </span>
-                    </div>
-                    <div className="md:col-span-4 flex items-center gap-3">
-                      <input
-                        type="range"
-                        min={0}
-                        max={100}
-                        value={(skillWeights?.[sa.skill] ?? 0) * 100}
-                        onChange={(e) => {
-                          const next = { ...(skillWeights || {}) };
-                          next[sa.skill] = Number(e.target.value) / 100;
-                          setSkillWeights(next);
-                        }}
-                        className="w-full"
-                      />
-                      <span className="text-xs w-12 text-right">
-                        {Math.round(
-                          ((skillWeights?.[sa.skill] ?? 0) /
-                            (Object.values(skillWeights || {}).reduce(
-                              (s, v) => s + v,
-                              0
-                            ) || 1)) *
-                            100
-                        )}
-                        %
-                      </span>
-                    </div>
-                    <div className="md:col-span-2 text-right text-sm">
-                      {(
-                        computedWeighted.find((c) => c.skill === sa.skill)
-                          ?.weighted || 0
-                      ).toFixed(1)}{" "}
-                      pts
-                    </div>
-                  </div>
-                ))}
+                <Progress value={analysisResult?.evaluation_overview?.confidence_score || analysisResult?.interview_insights?.confidence_level || 0} />
               </div>
-              <div className="flex justify-between items-center pt-2 border-t">
-                <div className="text-sm text-gray-600">
-                  Overall Weighted Score
-                </div>
-                <div className="text-lg font-semibold">
-                  {(
-                    analysisResult?.evaluation_overview
-                      ?.overall_weighted_score ?? computedOverallWeighted
-                  ).toFixed(1)}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Q&A Key Moments */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Key Moments</CardTitle>
-              <CardDescription>
-                Important points to review quickly
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {(analysisResult?.key_moments || []).map((m, i) => (
-                  <Card key={i} className="border hover:shadow-sm">
-                    <CardHeader className="pb-2">
-                      <div className="flex items-center justify-between">
-                        <Badge
-                          className={
-                            m.type === "critical_skill"
-                              ? "bg-green-600"
-                              : m.type === "struggle"
-                              ? "bg-red-600"
-                              : "bg-blue-600"
-                          }
-                        >
-                          {m.type.replace("_", " ")}
-                        </Badge>
-                        {m.score !== undefined && (
-                          <span className={`text-xs ${getScoreColor(m.score)}`}>
-                            {m.score}
-                          </span>
-                        )}
-                      </div>
-                      <CardTitle className="text-base mt-2">
-                        {m.title}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-gray-700 mb-2">{m.excerpt}</p>
-                      <div className="flex items-center justify-between text-xs text-gray-500">
-                        <span>{m.related_skill || "General"}</span>
-                        {m.timestamp && (
-                          <span>
-                            {new Date(m.timestamp).toLocaleTimeString()}
-                          </span>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Subjective Rubric */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Subjective Evaluation (Rubrics)</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {(analysisResult?.subjective_rubric?.criteria || []).map(
-                (c, idx) => (
-                  <div key={idx} className="space-y-1">
-                    <div className="flex justify-between text-sm">
-                      <span>
-                        {c.name}{" "}
-                        <span className="text-xs text-gray-500">
-                          (wt {Math.round(c.weight * 100)}%)
-                        </span>
-                      </span>
-                      <span className="font-medium">
-                        {c.score_out_of_5} / 5
-                      </span>
-                    </div>
-                    <Progress value={(c.score_out_of_5 / 5) * 100} />
-                    {c.evidence && (
-                      <div className="text-xs text-gray-500">{c.evidence}</div>
-                    )}
-                  </div>
-                )
-              )}
-              <div className="flex justify-between items-center pt-2 border-t">
-                <div className="text-sm text-gray-600">Rubric Total</div>
-                <div className="text-lg font-semibold">
-                  {analysisResult?.subjective_rubric?.total_percentage || 0}%
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Recruiter Feedback (Post-MVP, mock only) */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Recruiter Feedback (calibrate AI)</CardTitle>
-              <CardDescription>Mock form; not saved</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center gap-3">
-                <span className="text-sm">Rating</span>
-                <select
-                  className="border rounded px-2 py-1 text-sm"
-                  value={feedbackRating}
-                  onChange={(e) => setFeedbackRating(Number(e.target.value))}
-                >
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <textarea
-                className="w-full border rounded p-2 text-sm"
-                rows={3}
-                placeholder="Share your feedback to calibrate AI (mock)"
-                value={feedbackText}
-                onChange={(e) => setFeedbackText(e.target.value)}
-              />
-              <div className="flex justify-end">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    console.log("Recruiter feedback (mock):", {
-                      rating: feedbackRating,
-                      feedbackText,
-                    });
-                    setSuccess("Feedback submitted (mock). Thank you!");
-                  }}
-                >
-                  Submit Feedback
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* COMBINED EVALUATION TAB (Old + New) */}
-        <TabsContent value="old-eval" className="mt-6 space-y-6">
-          {/* KPI Header (from New Evaluation) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="border bg-white shadow-sm hover:shadow-md transition">
-              <CardHeader className="pb-2">
-                <CardTitle>Recommendation</CardTitle>
-              </CardHeader>
-              <CardContent className="flex items-center justify-between">
-                <Badge
-                  className={
-                    analysisResult?.evaluation_overview
-                      ?.overall_recommendation === "Select"
-                      ? "bg-green-600"
-                      : analysisResult?.evaluation_overview
-                          ?.overall_recommendation === "Reject"
-                      ? "bg-red-600"
-                      : "bg-yellow-600"
-                  }
-                >
-                  {analysisResult?.evaluation_overview
-                    ?.overall_recommendation || "Review"}
-                </Badge>
-                <span className="text-sm text-gray-500">Overall</span>
-              </CardContent>
-            </Card>
-            <Card className="border bg-white shadow-sm hover:shadow-md transition">
-              <CardHeader className="pb-2">
-                <CardTitle>Weighted Score</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-3">
-                  <div className="text-2xl font-bold text-blue-600">
-                    {(
-                      analysisResult?.evaluation_overview
-                        ?.overall_weighted_score ?? computedOverallWeighted
-                    ).toFixed(0)}
-                  </div>
-                  <span className="text-sm text-gray-500">/100</span>
-                </div>
-                <Progress
-                  value={
-                    analysisResult?.evaluation_overview
-                      ?.overall_weighted_score ?? computedOverallWeighted
-                  }
-                  className="mt-2"
-                />
-              </CardContent>
-            </Card>
-            <Card className="border bg-white shadow-sm hover:shadow-md transition">
-              <CardHeader className="pb-2">
-                <CardTitle>Objective Score</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-3">
-                  <div className="text-2xl font-bold text-purple-600">
-                    {analysisResult?.objective_scores?.overall_score?.toFixed?.(
-                      0
-                    ) || 0}
-                  </div>
-                  <span className="text-sm text-gray-500">/100</span>
-                </div>
-                <Progress
-                  value={analysisResult?.objective_scores?.overall_score || 0}
-                  className="mt-2"
-                />
-              </CardContent>
-            </Card>
-            <Card className="border bg-white shadow-sm hover:shadow-md transition">
-              <CardHeader className="pb-2">
-                <CardTitle>Confidence & Proctoring</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span>Confidence</span>
-                  <span className="font-medium">
-                    {analysisResult?.evaluation_overview?.confidence_score ||
-                      analysisResult?.interview_insights?.confidence_level ||
-                      0}
-                  </span>
-                </div>
-                <Progress
-                  value={
-                    analysisResult?.evaluation_overview?.confidence_score ||
-                    analysisResult?.interview_insights?.confidence_level ||
-                    0
-                  }
-                />
+              <div>
                 <div className="flex items-center justify-between text-sm">
                   <span>Proctoring</span>
                   <span className="font-medium">
                     {analysisResult?.proctoring_analysis?.overall_risk_score || 0}
                   </span>
                 </div>
-                <Progress
-                  value={
-                    analysisResult?.proctoring_analysis?.overall_risk_score || 0
-                  }
-                />
-              </CardContent>
-            </Card>
-          </div>
-          {/* Interview Info Card */}
-          {interviewData && (
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle>Interview Details</CardTitle>
+                <Progress value={analysisResult?.proctoring_analysis?.overall_risk_score || 0} />
+              </div>
+            </CardContent>
+          </Card>
+
+          {interviewData?.videoUrl && (
+            <Card className="border bg-white shadow-sm">
+              <CardHeader className="flex flex-col gap-2">
+                <CardTitle className="text-[#1D244F]">Interview Recording</CardTitle>
+                <Button asChild variant="outline" className="w-max gap-2">
+                  <a
+                    href={`/api/download?url=${encodeURIComponent(interviewData.videoUrl)}&filename=${encodeURIComponent("interview.mp4")}`}
+                    download
+                  >
+                    <Download className="h-4 w-4" /> Download Video
+                  </a>
+                </Button>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="space-y-2">
-                    <div className="flex items-center text-sm">
-                      <User className="mr-2 h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">Candidate:</span>
-                      <span className="ml-2">
-                        {interviewData.candidateName || "Unknown"}
-                      </span>
-                    </div>
-                    <div className="flex items-center text-sm">
-                      <span className="font-medium">Position:</span>
-                      <span className="ml-2">
-                        {interviewData.interview?.jobTitle || "Unknown"}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center text-sm">
-                      <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">Date:</span>
-                      <span className="ml-2">
-                        {interviewData.startTime
-                          ? new Date(
-                              interviewData.startTime
-                            ).toLocaleDateString()
-                          : "Unknown"}
-                      </span>
-                    </div>
-                    <div className="flex items-center text-sm">
-                      <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">Duration:</span>
-                      <span className="ml-2">
-                        {interviewData.duration} minutes
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-center">
-                    <Badge
-                      className={
-                        analysisResult.interview_insights
-                          ?.overall_performance_score >= 80
-                          ? "bg-green-500"
-                          : analysisResult.interview_insights
-                              ?.overall_performance_score >= 60
-                          ? "bg-yellow-500"
-                          : "bg-red-500"
-                      }
-                    >
-                      Overall Score:{" "}
-                      {
-                        analysisResult.interview_insights
-                          ?.overall_performance_score
-                      }
-                      /100
-                    </Badge>
-                  </div>
-                </div>
+                <video controls src={interviewData.videoUrl} className="w-full rounded-md border" />
               </CardContent>
             </Card>
           )}
 
-          {/* Analysis Summary */}
-          <Card className="mb-6 overflow-hidden bg-gradient-to-br from-white to-blue-50/30 border shadow-sm hover:shadow-md transition rounded-xl">
+          {interviewData?.resumeUrl && (
+            <Card className="border bg-white shadow-sm">
+              <CardHeader className="flex flex-col gap-2">
+                <CardTitle className="text-[#1D244F]">Resume</CardTitle>
+              </CardHeader>
+            <CardContent>
+              <iframe src={interviewData.resumeUrl} className="h-[400px] border-0"></iframe>
+            </CardContent>
+            </Card>
+          )}
+
+        </div>
+
+        {/* Main content */}
+        <div className="lg:col-span-8 space-y-6">
+          {/* Summary */}
+          <Card className="overflow-hidden bg-gradient-to-br from-white to-blue-50/30 border shadow-sm hover:shadow-md transition rounded-xl">
             <CardHeader className="border-b bg-gradient-to-r from-blue-50 to-purple-50 pb-4">
-              <CardTitle className="flex items-center gap-3 text-2xl">
-                <Star className="h-6 w-6 text-yellow-500" />
-                Executive Summary
+              <CardTitle className="flex items-center gap-3 text-2xl text-[#1D244F]">
+                <Star className="h-6 w-6 text-[#f7a828]" /> Executive Summary
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
-              <div className="prose max-w-none text-lg leading-relaxed text-[#1D244F]">
-                <p className="whitespace-pre-wrap">
-                  {analysisResult.analysis_summary}
-                </p>
+              <div className="prose max-w-none text-base leading-relaxed text-[#1D244F]">
+                <p className="whitespace-pre-wrap">{analysisResult.analysis_summary}</p>
               </div>
             </CardContent>
           </Card>
 
-          {/* Skill-wise Performance & Weights (from New Evaluation) */}
-          <Card className="border bg-white shadow-sm hover:shadow-md transition">
-            <CardHeader>
-              <CardTitle>Skill-wise Performance & Weights</CardTitle>
-              <CardDescription>
-                Recruiters can set weighting per skill (mock, not saved)
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-3">
-                {analysisResult?.skill_assessments?.map((sa, idx) => (
-                  <div
-                    key={idx}
-                    className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center p-2 rounded-md hover:bg-gray-50/60"
-                  >
-                    <div className="md:col-span-3 text-sm font-medium">
-                      {sa.skill}
-                    </div>
-                    <div className="md:col-span-3 flex items-center gap-2">
-                      <Progress value={sa.confidence_score} className="flex-1" />
-                      <span className={`text-sm ${getScoreColor(sa.confidence_score)}`}>
-                        {sa.confidence_score}%
-                      </span>
-                    </div>
-                    <div className="md:col-span-4 flex items-center gap-3">
-                      <input
-                        type="range"
-                        min={0}
-                        max={100}
-                        value={(skillWeights?.[sa.skill] ?? 0) * 100}
-                        onChange={(e) => {
-                          const next = { ...(skillWeights || {}) } as Record<string, number>;
-                          next[sa.skill] = Number(e.target.value) / 100;
-                          setSkillWeights(next);
-                        }}
-                        className="w-full"
-                      />
-                      <span className="text-xs w-12 text-right text-gray-600">
-                        {Math.round(
-                          ((skillWeights?.[sa.skill] ?? 0) /
-                            (Object.values(skillWeights || {}).reduce((s, v) => s + v, 0) || 1)) *
-                            100
-                        )}
-                        %
-                      </span>
-                    </div>
-                    <div className="md:col-span-2 text-right text-sm">
-                      {(
-                        computedWeighted.find((c) => c.skill === sa.skill)?.weighted || 0
-                      ).toFixed(1)}{" "}
-                      pts
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="flex justify-between items-center pt-2 border-t">
-                <div className="text-sm text-gray-600">Overall Weighted Score</div>
-                <div className="text-lg font-semibold">
-                  {(
-                    analysisResult?.evaluation_overview?.overall_weighted_score ??
-                    computedOverallWeighted
-                  ).toFixed(1)}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Tabs */}
+        
 
-          {/* Main Content (OLD) */}
-          <Tabs defaultValue="insights" className="mb-6">
-            <TabsList className="grid w-full grid-cols-3 lg:grid-cols-5">
-              <TabsTrigger value="insights">
-                <Brain className="mr-2 h-4 w-4" />
-                Insights
-              </TabsTrigger>
-              <TabsTrigger value="skills">
-                <Star className="mr-2 h-4 w-4" />
-                Skills
-              </TabsTrigger>
-              <TabsTrigger value="questions">
-                <MessageSquare className="mr-2 h-4 w-4" />
-                Q&A Analysis
-              </TabsTrigger>
-              <TabsTrigger value="strengths">
-                <CheckCircle className="mr-2 h-4 w-4" />
-                Strengths & Weaknesses
-              </TabsTrigger>
-              <TabsTrigger value="transcript">
-                <FileText className="mr-2 h-4 w-4" />
-                Transcript
-              </TabsTrigger>
-              <TabsTrigger value="proctoring">
-                <AlertCircle className="mr-2 h-4 w-4" />
-                Proctoring
-              </TabsTrigger>
+       
+          <Tabs defaultValue="skills">
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="skills"><Star className="mr-2 h-4 w-4" /> Skills</TabsTrigger>
+              <TabsTrigger value="questions"><MessageSquare className="mr-2 h-4 w-4" /> Q&A</TabsTrigger>
+              <TabsTrigger value="transcript"><FileText className="mr-2 h-4 w-4" /> Transcript</TabsTrigger>
+              <TabsTrigger value="proctoring"><AlertCircle className="mr-2 h-4 w-4" /> Proctoring</TabsTrigger>
+              <TabsTrigger value="moments"><Brain className="mr-2 h-4 w-4" /> Moments</TabsTrigger>
             </TabsList>
-
-            {/* Insights Tab */}
-            <TabsContent value="insights" className="mt-6 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                <Card>
-                  <CardContent className="p-4 text-center">
-                    <div className="text-2xl font-bold text-blue-600">
-                      {
-                        analysisResult.interview_insights
-                          ?.overall_performance_score
-                      }
-                    </div>
-                    <div className="text-sm text-gray-600">Overall Score</div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4 text-center">
-                    <div className="text-2xl font-bold text-green-600">
-                      {analysisResult.interview_insights?.communication_clarity}
-                    </div>
-                    <div className="text-sm text-gray-600">Communication</div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4 text-center">
-                    <div className="text-2xl font-bold text-purple-600">
-                      {analysisResult.interview_insights?.technical_depth}
-                    </div>
-                    <div className="text-sm text-gray-600">Technical Depth</div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4 text-center">
-                    <div className="text-2xl font-bold text-orange-600">
-                      {
-                        analysisResult.interview_insights
-                          ?.problem_solving_ability
-                      }
-                    </div>
-                    <div className="text-sm text-gray-600">Problem Solving</div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4 text-center">
-                    <div className="text-2xl font-bold text-teal-600">
-                      {analysisResult.interview_insights?.confidence_level}
-                    </div>
-                    <div className="text-sm text-gray-600">Confidence</div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <Card>
+            <ScrollArea type="always" className="h-[600px] overflow-y-auto">
+            <TabsContent value="skills" className="mt-6 space-y-6">
+              <Card className="border bg-white shadow-sm hover:shadow-md transition">
                 <CardHeader>
-                  <CardTitle>Hiring Recommendation</CardTitle>
+                  <CardTitle>Skill-wise Performance & Weights</CardTitle>
+                  <CardDescription>Adjust relative importance per skill (not saved)</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-lg mb-4">
-                    {analysisResult.interview_insights?.hiring_recommendation}
-                  </p>
-                  <div>
-                    <h4 className="font-medium mb-2">Next Steps:</h4>
-                    <ul className="space-y-1">
-                      {analysisResult.interview_insights?.next_steps.map(
-                        (step, index) => (
-                          <li key={index} className="flex items-start gap-2">
-                            <span className="text-blue-500">•</span>
-                            {step}
-                          </li>
-                        )
-                      )}
-                    </ul>
+                <CardContent className="space-y-4">
+                  <div className="space-y-3">
+                    {analysisResult?.skill_assessments?.map((sa, idx) => (
+                      <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center p-2 rounded-md hover:bg-gray-50/60">
+                        <div className="md:col-span-3 text-sm font-medium">{sa.skill}</div>
+                        <div className="md:col-span-3 flex items-center gap-2">
+                          <Progress value={sa.confidence_score} className="flex-1" />
+                          <span className={`text-sm ${getScoreColor(sa.confidence_score)}`}>{sa.confidence_score}%</span>
+                        </div>
+                        <div className="md:col-span-4 flex items-center gap-3">
+                          <input
+                            type="range"
+                            min={0}
+                            max={100}
+                            value={(skillWeights?.[sa.skill] ?? 0) * 100}
+                            onChange={(e) => {
+                              const next = { ...(skillWeights || {}) } as Record<string, number>;
+                              next[sa.skill] = Number(e.target.value) / 100;
+                              setSkillWeights(next);
+                            }}
+                            className="w-full"
+                          />
+                          <span className="text-xs w-12 text-right text-gray-600">
+                            {Math.round(((skillWeights?.[sa.skill] ?? 0) / (Object.values(skillWeights || {}).reduce((s, v) => s + v, 0) || 1)) * 100)}%
+                          </span>
+                        </div>
+                        <div className="md:col-span-2 text-right text-sm">
+                          {(computedWeighted.find((c) => c.skill === sa.skill)?.weighted || 0).toFixed(1)} pts
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex justify-between items-center pt-2 border-t">
+                    <div className="text-sm text-gray-600">Overall Weighted Score</div>
+                    <div className="text-lg font-semibold">
+                      {(analysisResult?.evaluation_overview?.overall_weighted_score ?? computedOverallWeighted).toFixed(1)}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
             </TabsContent>
 
-            {/* Skills Tab */}
-            <TabsContent value="skills" className="mt-6">
-              <ScrollArea className="h-[600px] px-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {analysisResult.skill_assessments?.map((skill, index) => (
-                    <Card
-                      key={index}
-                      className="border-2 hover:shadow-lg transition-all duration-300"
-                    >
-                      <CardHeader className="pb-2">
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-lg font-semibold">
-                            {skill.skill}
-                          </CardTitle>
-                          <Badge
-                            className={`${getSkillLevelColor(
-                              skill.level
-                            )} px-3 py-1`}
-                          >
-                            {skill.level}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center gap-2 mt-2">
-                          <Progress
-                            value={skill.confidence_score}
-                            className="flex-1"
-                          />
-                          <span
-                            className={`text-sm font-medium ${getScoreColor(
-                              skill.confidence_score
-                            )}`}
-                          >
-                            {skill.confidence_score}%
-                          </span>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div className="space-y-2">
-                          <h4 className="font-medium text-sm flex items-center gap-2">
-                            <CheckCircle className="h-4 w-4 text-green-500" />
-                            Evidence
-                          </h4>
-                          <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-md">
-                            {skill.evidence}
-                          </p>
-                        </div>
-                        <div className="space-y-2">
-                          <h4 className="font-medium text-sm flex items-center gap-2">
-                            <TrendingUp className="h-4 w-4 text-blue-500" />
-                            Recommendations
-                          </h4>
-                          <p className="text-sm text-gray-600 bg-blue-50 p-3 rounded-md">
-                            {skill.recommendations}
-                          </p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </ScrollArea>
-            </TabsContent>
-
-            {/* Q&A Analysis Tab */}
             <TabsContent value="questions" className="mt-6">
-              <ScrollArea className="h-[600px] px-4">
+              <ScrollArea type="always" className="h-[600px] px-1 overflow-y-auto">
                 <div className="space-y-6">
                   {analysisResult.questions_and_answers?.map((qa, index) => (
-                    <Card
-                      key={index}
-                      className="border hover:shadow-md transition-all duration-300"
-                    >
+                    <Card key={index} className="border hover:shadow-md transition-all duration-300">
                       <CardHeader>
                         <div className="space-y-4">
                           <div className="flex items-start justify-between gap-4">
@@ -1604,16 +1052,8 @@ function AnalysisContent() {
                               {qa.question}
                             </CardTitle>
                             <div className="flex items-center gap-2 flex-shrink-0">
-                              <Badge className={getGradeColor(qa.grade)}>
-                                {qa.grade}
-                              </Badge>
-                              <span
-                                className={`text-sm font-medium ${getScoreColor(
-                                  qa.score
-                                )}`}
-                              >
-                                {qa.score}/100
-                              </span>
+                              <Badge className={getGradeColor(qa.grade)}>{qa.grade}</Badge>
+                              <span className={`text-sm font-medium ${getScoreColor(qa.score)}`}>{qa.score}/100</span>
                             </div>
                           </div>
                           <Progress value={qa.score} className="w-full" />
@@ -1622,22 +1062,15 @@ function AnalysisContent() {
                       <CardContent className="space-y-4">
                         <div className="space-y-2">
                           <h4 className="font-medium text-sm flex items-center gap-2">
-                            <MessageSquare className="h-4 w-4 text-blue-500" />
-                            Answer
+                            <MessageSquare className="h-4 w-4 text-blue-500" /> Answer
                           </h4>
-                          <div className="bg-gray-50 p-4 rounded-md text-sm leading-relaxed">
-                            {qa.answer}
-                          </div>
+                          <div className="bg-gray-50 p-4 rounded-md text-sm leading-relaxed">{qa.answer}</div>
                         </div>
-
                         <div className="space-y-2">
                           <h4 className="font-medium text-sm flex items-center gap-2">
-                            <CheckCircle className="h-4 w-4 text-green-500" />
-                            Feedback
+                            <CheckCircle className="h-4 w-4 text-green-500" /> Feedback
                           </h4>
-                          <p className="text-sm text-gray-600 bg-green-50 p-3 rounded-md leading-relaxed">
-                            {qa.feedback}
-                          </p>
+                          <p className="text-sm text-gray-600 bg-green-50 p-3 rounded-md leading-relaxed">{qa.feedback}</p>
                         </div>
                       </CardContent>
                     </Card>
@@ -1646,114 +1079,51 @@ function AnalysisContent() {
               </ScrollArea>
             </TabsContent>
 
-            {/* Strengths & Weaknesses Tab */}
-            <TabsContent value="strengths" className="mt-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-green-600">Strengths</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-2">
-                      {analysisResult.interview_insights?.strengths.map(
-                        (strength, index) => (
-                          <li key={index} className="flex items-start gap-2">
-                            <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                            <span>{strength}</span>
-                          </li>
-                        )
-                      )}
-                    </ul>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-orange-600">
-                      Areas for Improvement
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-2">
-                      {analysisResult.interview_insights?.weaknesses.map(
-                        (weakness, index) => (
-                          <li key={index} className="flex items-start gap-2">
-                            <AlertCircle className="h-4 w-4 text-orange-500 mt-0.5 flex-shrink-0" />
-                            <span>{weakness}</span>
-                          </li>
-                        )
-                      )}
-                    </ul>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {analysisResult.interview_insights?.red_flags &&
-                analysisResult.interview_insights?.red_flags.length > 0 && (
-                  <Card className="mt-6">
-                    <CardHeader>
-                      <CardTitle className="text-red-600">Red Flags</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ul className="space-y-2">
-                        {analysisResult.interview_insights.red_flags.map(
-                          (flag, index) => (
-                            <li key={index} className="flex items-start gap-2">
-                              <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-                              <span>{flag}</span>
-                            </li>
-                          )
-                        )}
-                      </ul>
-                    </CardContent>
-                  </Card>
-                )}
-            </TabsContent>
-
-            {/* Transcript Tab */}
             <TabsContent value="transcript" className="mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Interview Transcript</CardTitle>
+              <Card className="bg-white border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 rounded-2xl overflow-hidden">
+                <CardHeader className="bg-gradient-to-r from-gray-50 to-blue-50/30 border-b border-gray-100">
+                  <CardTitle className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <FileText className="h-5 w-5 text-blue-600" />
+                    </div>
+                    Interview Transcript
+                  </CardTitle>
+                  <p className="text-sm text-gray-500 mt-1">Complete conversation record</p>
                 </CardHeader>
-                <CardContent>
-                  <ScrollArea className="h-[600px]">
+                <CardContent className="p-0">
+                  <ScrollArea type="always" className="h-[600px] p-6 overflow-y-auto">
                     <div className="space-y-4">
                       {(() => {
                         try {
-                          const transcriptEntries = JSON.parse(
-                            interviewData.transcript
-                          );
-                          return transcriptEntries.map(
-                            (entry: any, index: number) => (
-                              <div
-                                key={index}
-                                className={`p-3 rounded-lg ${
-                                  entry.speaker === "interviewer"
-                                    ? "bg-blue-50 border-l-4 border-blue-400"
-                                    : "bg-green-50 border-l-4 border-green-400"
-                                }`}
-                              >
-                                <div className="flex justify-between mb-1">
-                                  <div className="font-medium capitalize">
-                                    {entry.speaker === "interviewer"
-                                      ? "Interviewer"
-                                      : "Candidate"}
+                          const transcriptEntries = JSON.parse(interviewData.transcript);
+                          return transcriptEntries.map((entry: any, index: number) => (
+                            <div
+                              key={index}
+                              className={`p-4 rounded-xl transition-all duration-200 hover:shadow-md ${
+                                entry.speaker === "interviewer"
+                                  ? "bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-400"
+                                  : "bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-400"
+                              }`}
+                            >
+                              <div className="flex justify-between mb-2">
+                                <div className="font-semibold text-sm flex items-center gap-2">
+                                  <div className={`p-1.5 rounded-lg ${entry.speaker === "interviewer" ? "bg-blue-100" : "bg-green-100"}`}>
+                                    <User className={`h-3.5 w-3.5 ${entry.speaker === "interviewer" ? "text-blue-600" : "text-green-600"}`} />
                                   </div>
-                                  <div className="text-xs text-gray-500">
-                                    {new Date(
-                                      entry.timestamp
-                                    ).toLocaleTimeString()}
-                                  </div>
+                                  {entry.speaker === "interviewer" ? "Interviewer" : "Candidate"}
                                 </div>
-                                <div>{entry.text}</div>
+                                <div className="text-xs text-gray-500 flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  {new Date(entry.timestamp).toLocaleTimeString()}
+                                </div>
                               </div>
-                            )
-                          );
+                              <div className="text-gray-700 leading-relaxed">{entry.text}</div>
+                            </div>
+                          ));
                         } catch (e) {
                           return (
                             <div className="prose max-w-none">
-                              <pre className="whitespace-pre-wrap text-sm bg-gray-50 p-4 rounded">
+                              <pre className="whitespace-pre-wrap text-sm bg-gradient-to-r from-gray-50 to-white p-6 rounded-xl border border-gray-100">
                                 {analysisResult.formatted_transcript}
                               </pre>
                             </div>
@@ -1766,31 +1136,27 @@ function AnalysisContent() {
               </Card>
             </TabsContent>
 
-            {/* Proctoring Tab */}
             <TabsContent value="proctoring" className="mt-6 space-y-6">
               {(() => {
                 const data = analyzeProctoring();
                 const proctoring = getProctoringData();
                 if (!proctoring) {
                   return (
-                    <Alert className="bg-yellow-50 border-yellow-200 text-yellow-800">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertDescription>
-                        No proctoring data available for this interview.
-                      </AlertDescription>
+                    <Alert className="bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-200 rounded-xl">
+                      <AlertCircle className="h-4 w-4 text-yellow-600" />
+                      <AlertDescription className="text-yellow-800">No proctoring data available for this interview.</AlertDescription>
                     </Alert>
                   );
                 }
                 return (
                   <>
                     {analysisResult?.proctoring_analysis && (
-                      <Card className="border bg-white shadow-sm hover:shadow-md transition">
-                        <CardHeader>
-                          <CardTitle>AI Proctoring Analysis</CardTitle>
-                          <CardDescription>Correlates clipboard/focus events with questions to flag potential cheating</CardDescription>
+                      <Card className="bg-white border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 rounded-2xl overflow-hidden">
+                        <CardHeader className="bg-gradient-to-r from-red-50 to-orange-50 border-b border-gray-100">
+                          <CardTitle className="text-xl font-semibold text-gray-900">AI Proctoring Analysis</CardTitle>
+                          <CardDescription className="text-sm text-gray-500 mt-1">Correlates clipboard/focus events with questions to flag potential cheating</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                          
                           <div className="flex items-center justify-between">
                             <div className="text-sm text-gray-700">Overall Risk Score</div>
                             <div className="text-lg font-semibold text-red-600">{analysisResult.proctoring_analysis.overall_risk_score}/100</div>
@@ -1801,35 +1167,30 @@ function AnalysisContent() {
                                 const tsValid = s.ts && !Number.isNaN(Date.parse(s.ts));
                                 const timeStr = tsValid ? new Date(s.ts as any).toLocaleTimeString() : undefined;
                                 return (
-                                <div key={idx} className="border rounded p-3 hover:bg-gray-50/60 text-sm">
-                                  <div className="flex items-center justify-between">
-                                    <div className="font-medium">{s.reason}</div>
-                                    <div className="text-xs text-gray-500 flex items-center gap-2">
-                                      <Clock className="h-3 w-3" />
-                                      {timeStr || "—"}
+                                  <div key={idx} className="border rounded p-3 hover:bg-gray-50/60 text-sm">
+                                    <div className="flex items-center justify-between">
+                                      <div className="font-medium">{s.reason}</div>
+                                      <div className="text-xs text-gray-500 flex items-center gap-2">
+                                        <Clock className="h-3 w-3" />
+                                        {timeStr || "—"}
+                                      </div>
                                     </div>
-                                  </div>
-                                  <div className="text-xs text-gray-600 mt-1">
-                                    {typeDescriptions[s.type] || s.type.replace(/_/g, " ")}
-                                    {s.description ? ` — ${s.description}` : ""}
-                                  </div>
-                                  {s.related_question && (
-                                    <div className="mt-2 text-xs text-gray-600">
-                                      {(() => {
-                                        const rq = s.related_question as any;
-                                        const rqValid = rq?.timestamp && !Number.isNaN(Date.parse(rq.timestamp));
-                                        const rqTime = rqValid ? new Date(rq.timestamp).toLocaleTimeString() : undefined;
-                                        return (
-                                          <>
-                                            Related question{typeof rq?.index === 'number' ? ` #${rq.index + 1}` : ''}
-                                            {rqTime ? ` @ ${rqTime}` : ''}: {rq?.text}
-                                          </>
-                                        );
-                                      })()}
+                                    <div className="text-xs text-gray-600 mt-1">
+                                      {typeDescriptions[s.type] || s.type.replace(/_/g, " ")}
+                                      {s.description ? ` — ${s.description}` : ""}
                                     </div>
-                                  )}
-                                </div>
-                              );
+                                    {s.related_question && (
+                                      <div className="mt-2 text-xs text-gray-600">
+                                        {(() => {
+                                          const rq = s.related_question as any;
+                                          const rqValid = rq?.timestamp && !Number.isNaN(Date.parse(rq.timestamp));
+                                          const rqTime = rqValid ? new Date(rq.timestamp).toLocaleTimeString() : undefined;
+                                          return (<>{`Related question${typeof rq?.index === 'number' ? ` #${rq.index + 1}` : ''}${rqTime ? ` @ ${rqTime}` : ''}: ${rq?.text}`}</>);
+                                        })()}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
                               })}
                             </div>
                           ) : (
@@ -1840,41 +1201,23 @@ function AnalysisContent() {
                     )}
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                      <Card className="border bg-white shadow-sm hover:shadow-md transition lg:col-span-1">
-                        <CardHeader>
-                          <CardTitle>Proctoring Overview</CardTitle>
+                      <Card className="bg-white border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 rounded-2xl overflow-hidden lg:col-span-1">
+                        <CardHeader className="bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-gray-100">
+                          <CardTitle className="text-lg font-semibold text-gray-900">Proctoring Overview</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3 text-sm">
-                          <div className="flex items-center justify-between">
-                            <span>Total Events</span>
-                            <span className="font-medium">{data.summary.totalEvents}</span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span>Face Presence</span>
-                            <span className="font-medium">{data.summary.faceDetectedRatio}%</span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span>Focus Loss</span>
-                            <span className="font-medium">{data.summary.focusLoss}</span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span>Hidden Duration</span>
-                            <span className="font-medium">{Math.round(data.summary.hiddenMs / 1000)}s</span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span>Clipboard Copies</span>
-                            <span className="font-medium">{data.summary.clipboardCopies}</span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span>Suspicious Incidents</span>
-                            <span className="font-medium">{data.summary.suspiciousCount}</span>
-                          </div>
+                          <div className="flex items-center justify-between"><span>Total Events</span><span className="font-medium">{data.summary.totalEvents}</span></div>
+                          <div className="flex items-center justify-between"><span>Face Presence</span><span className="font-medium">{data.summary.faceDetectedRatio}%</span></div>
+                          <div className="flex items-center justify-between"><span>Focus Loss</span><span className="font-medium">{data.summary.focusLoss}</span></div>
+                          <div className="flex items-center justify-between"><span>Hidden Duration</span><span className="font-medium">{Math.round(data.summary.hiddenMs / 1000)}s</span></div>
+                          <div className="flex items-center justify-between"><span>Clipboard Copies</span><span className="font-medium">{data.summary.clipboardCopies}</span></div>
+                          <div className="flex items-center justify-between"><span>Suspicious Incidents</span><span className="font-medium">{data.summary.suspiciousCount}</span></div>
                         </CardContent>
                       </Card>
-                      <Card className="border bg-white shadow-sm hover:shadow-md transition lg:col-span-2">
-                        <CardHeader>
-                          <CardTitle>Suspicious Incidents (Heuristic)</CardTitle>
-                          <CardDescription>Potential cheating based on focus/copy during answer windows</CardDescription>
+                      <Card className="bg-white border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 rounded-2xl overflow-hidden lg:col-span-2">
+                        <CardHeader className="bg-gradient-to-r from-orange-50 to-red-50 border-b border-gray-100">
+                          <CardTitle className="text-lg font-semibold text-gray-900">Suspicious Incidents (Heuristic)</CardTitle>
+                          <CardDescription className="text-sm text-gray-500 mt-1">Potential cheating based on focus/copy during answer windows</CardDescription>
                         </CardHeader>
                         <CardContent>
                           {data.suspicious.length === 0 ? (
@@ -1884,18 +1227,11 @@ function AnalysisContent() {
                               {data.suspicious.map((s, idx) => (
                                 <div key={idx} className="border rounded p-3 hover:bg-gray-50/60">
                                   <div className="flex items-center justify-between">
-                                    <div className="text-sm font-medium">
-                                      {s.reason}
-                                    </div>
-                                    <div className="text-xs text-gray-500 flex items-center gap-2">
-                                      <Clock className="h-3 w-3" />
-                                      {new Date(s.event.ts).toLocaleTimeString()}
-                                    </div>
+                                    <div className="text-sm font-medium">{s.reason}</div>
+                                    <div className="text-xs text-gray-500 flex items-center gap-2"><Clock className="h-3 w-3" />{new Date(s.event.ts).toLocaleTimeString()}</div>
                                   </div>
                                   {s.relatedQuestion && (
-                                    <div className="mt-2 text-xs text-gray-600">
-                                      Related question @ {new Date(s.relatedQuestion.timestamp).toLocaleTimeString()}: {s.relatedQuestion.text}
-                                    </div>
+                                    <div className="mt-2 text-xs text-gray-600">Related question @ {new Date(s.relatedQuestion.timestamp).toLocaleTimeString()}: {s.relatedQuestion.text}</div>
                                   )}
                                 </div>
                               ))}
@@ -1904,29 +1240,23 @@ function AnalysisContent() {
                         </CardContent>
                       </Card>
                     </div>
-                    <Card className="border bg-white shadow-sm hover:shadow-md transition">
-                      <CardHeader>
-                        <CardTitle>Event Timeline</CardTitle>
-                        <CardDescription>All proctoring events with timestamps</CardDescription>
+                    <Card className="bg-white border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 rounded-2xl overflow-hidden">
+                      <CardHeader className="bg-gradient-to-r from-gray-50 to-blue-50 border-b border-gray-100">
+                        <CardTitle className="text-lg font-semibold text-gray-900">Event Timeline</CardTitle>
+                        <CardDescription className="text-sm text-gray-500 mt-1">All proctoring events with timestamps</CardDescription>
                       </CardHeader>
                       <CardContent>
-                        <ScrollArea className="h-[400px]">
+                        <ScrollArea type="always" className="h-[400px] overflow-y-auto p-2  ">
                           <div className="space-y-2">
                             {data.enrichedEvents.map((e, idx) => (
                               <div key={idx} className="flex items-start justify-between gap-4 border rounded p-2">
                                 <div className="text-sm">
                                   <div className="font-medium">{typeDescriptions[e.type] || e.type.replace(/_/g, " ")}</div>
                                   <div className="text-gray-600 text-xs">{e.description}</div>
-                                  {e.meta?.confidence != null && (
-                                    <div className="text-gray-500 text-xs mt-1">confidence: {Math.round(e.meta.confidence * 100)}%</div>
-                                  )}
-                                  {e.meta?.text && (
-                                    <div className="text-gray-500 text-xs mt-1 line-clamp-1">copied: {e.meta.text}</div>
-                                  )}
+                                  {e.meta?.confidence != null && (<div className="text-gray-500 text-xs mt-1">confidence: {Math.round(e.meta.confidence * 100)}%</div>)}
+                                  {e.meta?.text && (<div className="text-gray-500 text-xs mt-1 line-clamp-1">copied: {e.meta.text}</div>)}
                                 </div>
-                                <div className="text-xs text-gray-500 whitespace-nowrap">
-                                  {new Date(e.ts).toLocaleTimeString()}
-                                </div>
+                                <div className="text-xs text-gray-500 whitespace-nowrap">{new Date(e.ts).toLocaleTimeString()}</div>
                               </div>
                             ))}
                           </div>
@@ -1937,129 +1267,119 @@ function AnalysisContent() {
                 );
               })()}
             </TabsContent>
+
+            <TabsContent value="moments" className="mt-6">
+              <Card className="border bg-white shadow-sm hover:shadow-md transition overflow-y-auto">
+                <CardHeader>
+                  <CardTitle>Key Moments</CardTitle>
+                  <CardDescription>Important points to review quickly</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto">
+                    {(analysisResult?.key_moments || []).map((m, i) => {
+                      const ts = resolveMomentTimestamp(m);
+                      return (
+                        <Card key={i} className="border hover:shadow-md transition">
+                          <CardHeader className="pb-2">
+                            <div className="flex items-center justify-between">
+                              <Badge className={m.type === "critical_skill" ? "bg-green-600" : m.type === "struggle" ? "bg-red-600" : "bg-blue-600"}>
+                                {m.type.replace("_", " ")}
+                              </Badge>
+                              {m.score !== undefined && (
+                                <span className={`text-xs ${getScoreColor(m.score)}`}>{m.score}</span>
+                              )}
+                            </div>
+                            <CardTitle className="text-base mt-2">{m.title}</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <p className="text-sm text-gray-700 mb-2 leading-relaxed">{m.excerpt}</p>
+                            <div className="flex items-center justify-between text-xs text-gray-500">
+                              <span>{m.related_skill || "General"}</span>
+                              {ts && <span>{new Date(ts).toLocaleTimeString()}</span>}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </ScrollArea>
           </Tabs>
-        </TabsContent>
-      </Tabs>
 
-      {/* Key Moments (from New Evaluation) */}
-      <Card className="mt-6 border bg-white shadow-sm hover:shadow-md transition">
-        <CardHeader>
-          <CardTitle>Key Moments</CardTitle>
-          <CardDescription>Important points to review quickly</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {(analysisResult?.key_moments || []).map((m, i) => {
-              const ts = resolveMomentTimestamp(m);
-              return (
-                <Card key={i} className="border hover:shadow-md transition">
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <Badge
-                        className={
-                          m.type === "critical_skill"
-                            ? "bg-green-600"
-                            : m.type === "struggle"
-                            ? "bg-red-600"
-                            : "bg-blue-600"
-                        }
+          {/* Feedback */}
+          <Card className="bg-white border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 rounded-2xl overflow-y-auto">
+            <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-gray-100">
+              <CardTitle className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                <div className="p-2 bg-amber-100 rounded-lg">
+                  <MessageSquare className="h-5 w-5 text-amber-600" />
+                </div>
+                Recruiter Feedback
+              </CardTitle>
+              <CardDescription className="text-sm text-gray-500 mt-1">Saved into analysis JSON for this interview</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 pt-6">
+              <div className="p-4 bg-gradient-to-r from-amber-50 to-orange-50/30 rounded-xl">
+                <div className="flex items-center gap-4 mb-4">
+                  <span className="text-sm font-medium text-gray-700">Your Rating:</span>
+                  <div className="flex gap-2">
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <button
+                        key={n}
+                        onClick={() => setFeedbackRating(n)}
+                        className={`p-2 rounded-lg transition-all duration-200 ${feedbackRating >= n ? "bg-amber-500 text-white shadow-sm" : "bg-gray-100 text-gray-400 hover:bg-gray-200"}`}
                       >
-                        {m.type.replace("_", " ")}
-                      </Badge>
-                      {m.score !== undefined && (
-                        <span className={`text-xs ${getScoreColor(m.score)}`}>
-                          {m.score}
-                        </span>
-                      )}
-                    </div>
-                    <CardTitle className="text-base mt-2">{m.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-gray-700 mb-2 leading-relaxed">{m.excerpt}</p>
-                    <div className="flex items-center justify-between text-xs text-gray-500">
-                      <span>{m.related_skill || "General"}</span>
-                      {ts && <span>{new Date(ts).toLocaleTimeString()}</span>}
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Subjective Rubric (from New Evaluation) */}
-      <Card className="mt-6 border bg-white shadow-sm hover:shadow-md transition">
-        <CardHeader>
-          <CardTitle>Subjective Evaluation (Rubrics)</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {(analysisResult?.subjective_rubric?.criteria || []).map((c, idx) => (
-            <div key={idx} className="space-y-1">
-              <div className="flex justify-between text-sm">
-                <span>
-                  {c.name}{" "}
-                  <span className="text-xs text-gray-500">(wt {Math.round(c.weight * 100)}%)</span>
-                </span>
-                <span className="font-medium">{c.score_out_of_5} / 5</span>
+                        <Star className="h-5 w-5" fill={feedbackRating >= n ? "currentColor" : "none"} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
-              <Progress value={(c.score_out_of_5 / 5) * 100} />
-              {c.evidence && <div className="text-xs text-gray-500">{c.evidence}</div>}
-            </div>
-          ))}
-          <div className="flex justify-between items-center pt-2 border-t">
-            <div className="text-sm text-gray-600">Rubric Total</div>
-            <div className="text-lg font-semibold">
-              {analysisResult?.subjective_rubric?.total_percentage || 0}%
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Recruiter Feedback (mock) */}
-      <Card className="mt-6 border bg-white shadow-sm hover:shadow-md transition">
-        <CardHeader>
-          <CardTitle>Recruiter Feedback (calibrate AI)</CardTitle>
-          <CardDescription>Mock form; not saved</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center gap-3">
-            <span className="text-sm">Rating</span>
-            <select
-              className="border rounded px-2 py-1 text-sm"
-              value={feedbackRating}
-              onChange={(e) => setFeedbackRating(Number(e.target.value))}
-            >
-              {[1, 2, 3, 4, 5].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </div>
-          <textarea
-            className="w-full border rounded p-2 text-sm"
-            rows={3}
-            placeholder="Share your feedback to calibrate AI (mock)"
-            value={feedbackText}
-            onChange={(e) => setFeedbackText(e.target.value)}
-          />
-          <div className="flex justify-end">
-            <Button
-              variant="outline"
-              onClick={() => {
-                console.log("Recruiter feedback (mock):", {
-                  rating: feedbackRating,
-                  feedbackText,
-                });
-                setSuccess("Feedback submitted (mock). Thank you!");
-              }}
-            >
-              Submit Feedback
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+              <textarea
+                className="w-full border border-gray-200 rounded-xl p-4 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all duration-200 resize-none"
+                rows={4}
+                placeholder="Share your thoughts on this AI evaluation..."
+                value={feedbackText}
+                onChange={(e) => setFeedbackText(e.target.value)}
+              />
+              <div className="flex justify-end">
+                <Button
+                  className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl px-6 shadow-sm hover:shadow-lg transition-all duration-200"
+                  disabled={savingFeedback}
+                  onClick={async () => {
+                    if (!interviewId) return;
+                    setSavingFeedback(true);
+                    setError(null);
+                    setSuccess(null);
+                    try {
+                      const res = await fetch(`/api/interview-data/${interviewId}/analysis`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ recruiterFeedback: { rating: feedbackRating, comment: feedbackText } }),
+                      });
+                      if (!res.ok) {
+                        const text = await res.text();
+                        throw new Error(text || "Failed to save recruiter feedback");
+                      }
+                      const saved = await res.json();
+                      // Update local analysis result with returned analysis containing recruiter_feedback
+                      setAnalysisResult((prev) => ({ ...(prev || {}), ...(saved?.data || {}) } as any));
+                      setSuccess("Feedback saved");
+                    } catch (e) {
+                      setError(e instanceof Error ? e.message : "Failed to save recruiter feedback");
+                    } finally {
+                      setSavingFeedback(false);
+                    }
+                  }}
+                >
+                  {savingFeedback ? "Saving..." : "Submit Feedback"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }

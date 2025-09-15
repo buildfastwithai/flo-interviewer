@@ -49,6 +49,7 @@ import InterviewFeedback from "@/components/interview-feedback";
 import Webcam from "react-webcam";
 import { useFaceDetection } from "@/hooks/useFaceDetectionSimple.js";
 import { AlertCircle, UserCheck, Users, Eye, Shield } from "lucide-react";
+import { FileUpload } from "@/components/FileUpload";
 
 // Lightweight IndexedDB helpers for resilient recording persistence
 const RECORDING_DB_NAME = "interviewRecordingDB";
@@ -129,6 +130,9 @@ interface UserFormData {
   accessCode: string;
   practice?: boolean;
   webcamProctoring?: boolean;
+  useResume?: boolean;
+  resumeUrl?: string | null;
+  resumeText?: string | null;
 }
 
 interface InterviewData {
@@ -575,21 +579,32 @@ export default function InterviewPage() {
         );
 
         // Call API to get LiveKit connection details based on the access code
-        const url = new URL(
-          process.env.NEXT_PUBLIC_CONN_DETAILS_ENDPOINT ??
-            "/api/connection-details",
-          window.location.origin
-        );
+        const baseConnEndpoint =
+          process.env.NEXT_PUBLIC_CONN_DETAILS_ENDPOINT ?? "/api/connection-details";
 
-        // Add user info as query parameters
-        url.searchParams.set("name", formData.name);
-        url.searchParams.set("accessCode", formData.accessCode);
-        if (formData.practice) {
-          url.searchParams.set("practice", "true");
+        let response: Response;
+        if (formData.useResume && formData.resumeText) {
+          console.log("Fetching connection details via POST (with resumeText)");
+          response = await fetch(baseConnEndpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: formData.name,
+              accessCode: formData.accessCode,
+              practice: !!formData.practice,
+              resumeText: formData.resumeText,
+            }),
+          });
+        } else {
+          const url = new URL(baseConnEndpoint, window.location.origin);
+          url.searchParams.set("name", formData.name);
+          url.searchParams.set("accessCode", formData.accessCode);
+          if (formData.practice) {
+            url.searchParams.set("practice", "true");
+          }
+          console.log("Fetching connection details from:", url.toString());
+          response = await fetch(url.toString());
         }
-
-        console.log("Fetching connection details from:", url.toString());
-        const response = await fetch(url.toString());
 
         if (!response.ok) {
           const errorData = await response.json();
@@ -690,6 +705,8 @@ export default function InterviewPage() {
                 analysis: {},
                 questionAnswers: [],
                 candidateName: formData.name,
+                resumeUrl: formData.resumeUrl || undefined,
+                resumeText: formData.resumeText || undefined,
               });
               console.log("Created initial interview data");
             } catch (error) {
@@ -1076,6 +1093,8 @@ export default function InterviewPage() {
           analysis: {},
           questionAnswers: extractQuestionAnswers(transcriptions),
           candidateName: userData?.name || "", // Always include candidate name
+          resumeUrl: userData?.resumeUrl || undefined,
+          resumeText: userData?.resumeText || undefined,
         });
 
         console.log("Successfully saved interview data on disconnect");
@@ -1393,6 +1412,9 @@ function UserForm({
   const [name, setName] = useState("");
   const [accessCode, setAccessCode] = useState("");
   const [webcamProctoring, setWebcamProctoring] = useState(false);
+  const [useResume, setUseResume] = useState(false);
+  const [resumeUrl, setResumeUrl] = useState<string | null>(null);
+  const [resumeText, setResumeText] = useState<string | null>(null);
   const searchParams = useSearchParams();
 
   useEffect(() => {
@@ -1405,7 +1427,7 @@ function UserForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({ name, accessCode, webcamProctoring });
+    onSubmit({ name, accessCode, webcamProctoring, useResume, resumeUrl, resumeText });
   };
 
   return (
@@ -1493,6 +1515,45 @@ function UserForm({
                     className="border-[#F7F7FA] focus:border-[#2663FF] focus:ring-[#2663FF]/30 rounded-lg h-12"
                   />
                 </div>
+
+                {/* Resume Toggle */}
+                <div className="flex items-center justify-between py-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="useResume" className="text-[#1D244F] font-medium">
+                      Upload Resume
+                    </Label>
+                  </div>
+                  <input
+                    id="useResume"
+                    type="checkbox"
+                    className="h-5 w-5 accent-[#2663FF]"
+                    checked={useResume}
+                    onChange={(e) => setUseResume(e.target.checked)}
+                  />
+                </div>
+
+                {useResume && (
+                  <div className="space-y-2">
+                    <Label className="text-[#1D244F] font-medium">Resume (PDF)</Label>
+                    <FileUpload
+                      acceptedFileTypes=".pdf"
+                      label="Upload Resume"
+                      onFileUploaded={(url, text) => {
+                        setResumeUrl(url);
+                        setResumeText(text || "");
+                      }}
+                      parseToText
+                    />
+                    {resumeText ? (
+                      <div className="inline-flex items-center gap-2 text-xs px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 w-fit">
+                        <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
+                        Resume parsed. You can start the interview.
+                      </div>
+                    ) : (
+                      <p className="text-xs text-[#5B5F79]">Join Interview will be enabled after resume is parsed.</p>
+                    )}
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between py-2">
                   <div className="space-y-1">
@@ -1588,15 +1649,29 @@ function UserForm({
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.5, duration: 0.5 }}
               >
-                <InteractiveHoverButton
-                  className="group w-full bg-[#f7a828] hover:bg-[#f7a828]/90 rounded-lg px-8 py-4 text-lg font-medium transition-all duration-300 shadow-lg hover:shadow-[#f7a828]/30 transform hover:-translate-y-1 text-white"
-                  disabled={isSubmitting || !name || !accessCode}
-                >
-                  <span className="flex items-center justify-center gap-2">
-                    {isSubmitting ? "Connecting..." : "Join Interview"}
-                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                  </span>
-                </InteractiveHoverButton>
+                {(() => {
+                  const joinDisabled = isSubmitting || !name || !accessCode || (useResume && !resumeText);
+                  const baseCls = "group w-full rounded-lg px-8 py-4 text-lg font-medium transition-all duration-300 shadow-lg text-white";
+                  const enabledCls = "bg-[#f7a828] hover:bg-[#f7a828]/90 hover:shadow-[#f7a828]/30 transform hover:-translate-y-1";
+                  const disabledCls = "bg-[#f7a828]/60 opacity-60 cursor-not-allowed";
+                  const label = isSubmitting
+                    ? "Connecting..."
+                    : useResume
+                      ? (resumeText ? "Resume parsed — Start Interview" : "Waiting for resume parsing…")
+                      : "Join Interview";
+                  return (
+                    <button
+                      type="submit"
+                      className={[baseCls, joinDisabled ? disabledCls : enabledCls].join(" ")}
+                      disabled={joinDisabled}
+                    >
+                      <span className="flex items-center justify-center gap-2">
+                        {label}
+                        <ArrowRight className="w-5 h-5 transition-transform" />
+                      </span>
+                    </button>
+                  );
+                })()}
 
                 <div className="mt-3">
                   <Button
@@ -1610,6 +1685,9 @@ function UserForm({
                         accessCode,
                         practice: true,
                         webcamProctoring,
+                        useResume,
+                        resumeUrl,
+                        resumeText,
                       })
                     }
                   >

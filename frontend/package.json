@@ -86,6 +86,7 @@
     "react-dom": "^18",
     "react-hook-form": "^7.58.1",
     "react-pdf": "^9.2.1",
+    "react-player": "^3.3.2",
     "react-resizable-panels": "^3.0.3",
     "react-webcam": "^7.2.0",
     "recharts": "^3.0.0",

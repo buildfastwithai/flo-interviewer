@@ -15,6 +15,8 @@ export async function POST(req: NextRequest) {
       aiEvaluation = {},
       questionAnswers = {},
       videoUrl,
+      resumeUrl,
+      resumeText,
       updateIfExists = false, // Changed default to false to prefer creating new records
       id = null // Added to support direct updates to a specific record
     } = data;
@@ -58,6 +60,13 @@ export async function POST(req: NextRequest) {
     }
     if (videoUrl) {
       dataToSave.videoUrl = videoUrl;
+    }
+    if (resumeUrl) {
+      dataToSave.resumeUrl = resumeUrl;
+    }
+    if (typeof resumeText === 'string' && resumeText.length > 0) {
+      // Cap size to avoid oversized payloads stored
+      dataToSave.resumeText = resumeText.slice(0, 200000); // ~200 KB of text
     }
 
     let result;

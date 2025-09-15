@@ -156,6 +156,8 @@ model InterviewData {
   feedback        Json?     // Feedback from the interviewer to the candidate
   proctoring      Json?
   videoUrl        String?
+  resumeUrl       String?
+  resumeText      String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
