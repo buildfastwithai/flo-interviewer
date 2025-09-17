@@ -65,8 +65,8 @@ export default function ResumeQuestionsPage() {
   const [showAnswers, setShowAnswers] = useState<{ [key: string]: boolean }>(
     {}
   );
-  const [questionsPerSkill, setQuestionsPerSkill] = useState(2);
-  const [experienceQuestions, setExperienceQuestions] = useState(3);
+  const [questionsPerSkill, setQuestionsPerSkill] = useState(1);
+  const [experienceQuestions, setExperienceQuestions] = useState(4);
 
   const handleFileUploaded = (url: string) => {
     setResumeUrl(url);
@@ -199,7 +199,7 @@ export default function ResumeQuestionsPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
+    <div className="mx-auto px-4 py-8 max-w-7xl">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
           Resume-Based Interview Questions
@@ -285,12 +285,12 @@ export default function ResumeQuestionsPage() {
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium mb-2">
-                        Questions per skill (max 8 skills)
+                        Questions per skill (top 5-6 skills)
                       </label>
                       <input
                         type="number"
                         min="1"
-                        max="5"
+                        max="2"
                         value={questionsPerSkill}
                         onChange={(e) =>
                           setQuestionsPerSkill(parseInt(e.target.value))
@@ -300,12 +300,12 @@ export default function ResumeQuestionsPage() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-2">
-                        Experience-based questions
+                        Behavioral/Scenario questions
                       </label>
                       <input
                         type="number"
-                        min="1"
-                        max="10"
+                        min="2"
+                        max="8"
                         value={experienceQuestions}
                         onChange={(e) =>
                           setExperienceQuestions(parseInt(e.target.value))

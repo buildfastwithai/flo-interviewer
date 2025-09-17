@@ -83,7 +83,7 @@ async function structureResumeData(resumeText: string): Promise<ResumeData> {
     - name: Full name of the person
     - email: Email address
     - phone: Phone number (optional)
-    - skills: Array of technical skills, programming languages, frameworks, tools, etc.
+    - skills: Array of the top 5-6 most important technical skills, programming languages, frameworks, tools, etc. Focus on the most prominent and relevant skills only.
     - experience: Array of work experience objects with title, company, duration, and description
     - education: Array of education objects with degree, institution, and year
     - summary: Brief professional summary or objective (optional)
@@ -92,7 +92,7 @@ async function structureResumeData(resumeText: string): Promise<ResumeData> {
     Resume text:
     ${resumeText}
 
-    Please extract only factual information that is clearly present in the resume. For skills, focus on technical skills, programming languages, frameworks, databases, tools, and technologies. Return valid JSON only.
+    Please extract only factual information that is clearly present in the resume. For skills, focus on the top 5-6 most important technical skills, programming languages, frameworks, databases, tools, and technologies that are most prominent in their experience. Prioritize skills that appear most frequently or are central to their recent roles. Return valid JSON only.
   `;
 
   try {
@@ -127,7 +127,7 @@ async function structureResumeData(resumeText: string): Promise<ResumeData> {
     }
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4.1",
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",

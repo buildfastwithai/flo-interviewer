@@ -41,8 +41,8 @@ export async function POST(req: NextRequest) {
   try {
     const {
       resumeData,
-      questionsPerSkill = 2,
-      experienceQuestions = 3,
+      questionsPerSkill = 1,
+      experienceQuestions = 4,
     } = await req.json();
 
     if (!resumeData) {
@@ -110,8 +110,8 @@ async function generateSkillBasedQuestions(
 ): Promise<InterviewQuestion[]> {
   const questions: InterviewQuestion[] = [];
 
-  // Group similar skills and pick top skills for questions
-  const topSkills = skills.slice(0, Math.min(8, skills.length)); // Limit to prevent too many questions
+  // Take the top 5-6 main skills for questions
+  const topSkills = skills.slice(0, Math.min(6, skills.length));
 
   for (const skill of topSkills) {
     try {
@@ -132,14 +132,9 @@ async function generateQuestionsForSkill(
   skillName: string,
   numQuestions: number
 ): Promise<InterviewQuestion[]> {
-  const prompt = `Generate exactly ${numQuestions} interview questions for the skill "${skillName}".
+  const prompt = `Generate exactly ${numQuestions} open-ended interview question for the skill "${skillName}".
 
-For each question, randomly choose one of these question formats:
-1. "Open-ended" - Requires a descriptive answer testing understanding
-2. "Coding" - Candidate writes or debugs code
-3. "Scenario" - Presents a realistic situation to solve
-4. "Case Study" - In-depth problem analysis
-5. "Design" - Asks to architect a system or solution
+Create an "Open-ended" question that requires a descriptive answer to test practical understanding, real-world application, and communication skills. The question should assess how well the candidate understands the concepts, best practices, and practical usage of ${skillName}.
 
 Determine appropriate difficulty based on the skill:
 - Programming languages, frameworks: Medium to Hard
@@ -152,13 +147,13 @@ Format as JSON with 'questions' array, each having:
 - category: "TECHNICAL" for technical skills, "FUNCTIONAL" for tools/processes
 - difficulty: "Easy", "Medium", or "Hard"
 - skillName: "${skillName}"
-- questionFormat: One of the 6 formats above
-- coding: true if involves writing/debugging code, false otherwise
+- questionFormat: "Open-ended"
+- coding: false (these are open-ended discussion questions, not coding exercises)
 
 Skill: ${skillName}`;
 
   const completion = await openai.chat.completions.create({
-    model: "gpt-4.1",
+    model: "gpt-4o-mini",
     messages: [
       {
         role: "system",
@@ -214,15 +209,16 @@ async function generateExperienceBasedQuestions(
     )
     .join("\n\n");
 
-  const prompt = `Based on the following work experience, generate exactly ${numQuestions} behavioral and situational interview questions:
+  const prompt = `Based on the following work experience, generate exactly ${numQuestions} behavioral and scenario-based interview questions:
 
 ${experienceContext}
 
-Create questions that:
-1. Test problem-solving abilities demonstrated in past roles
-2. Explore specific achievements and challenges
-3. Assess leadership, teamwork, and communication skills
-4. Validate technical decisions and project outcomes
+Create open-ended questions that:
+1. Test problem-solving and decision-making in real situations
+2. Explore specific challenges and how they were overcome
+3. Assess leadership, teamwork, and communication skills through examples
+4. Use the STAR method approach (Situation, Task, Action, Result)
+5. Focus on behavioral scenarios that reveal character and work style
 
 Format as JSON with 'questions' array, each having:
 - question: The interview question
@@ -230,11 +226,11 @@ Format as JSON with 'questions' array, each having:
 - category: "BEHAVIORAL" or "FUNCTIONAL"
 - difficulty: "Easy" or "Medium"
 - skillName: The relevant competency being tested
-- questionFormat: "Scenario" or "Open-ended"
+- questionFormat: "Open-ended" (all questions should be open-ended behavioral/scenario questions)
 - coding: false (these are not coding questions)`;
 
   const completion = await openai.chat.completions.create({
-    model: "gpt-4.1",
+    model: "gpt-4o-mini",
     messages: [
       {
         role: "system",
@@ -298,7 +294,7 @@ Format as JSON with 'questions' array, each having:
 - coding: false`;
 
   const completion = await openai.chat.completions.create({
-    model: "gpt-4.1",
+    model: "gpt-4o-mini",
     messages: [
       {
         role: "system",
