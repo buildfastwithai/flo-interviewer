@@ -254,7 +254,7 @@ export default function HomePage() {
           </motion.div>
 
           <motion.div
-            className="grid md:grid-cols-3 gap-8"
+            className="grid md:grid-cols-2 lg:grid-cols-4 gap-8"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true }}
@@ -274,6 +274,17 @@ export default function HomePage() {
                 link: "https://jd-question-generator-app-k7rmd.ondigitalocean.app/",
                 launch: true,
                 self: false,
+              },
+              {
+                title: "Resume Question Generator",
+                description:
+                  "Upload a resume to automatically extract skills and experience, then generate personalized interview questions.",
+                icon: <Users className="w-8 h-8" />,
+                gradient: "from-[#f7a828] to-[#f7a828]/80",
+                bgGradient: "from-[#f7a828]/20 to-[#f7a828]/10",
+                link: "/resume-questions",
+                launch: true,
+                self: true,
               },
 
               {
