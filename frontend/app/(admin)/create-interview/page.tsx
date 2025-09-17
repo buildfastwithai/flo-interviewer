@@ -27,6 +27,16 @@ import { motion } from "framer-motion";
 import { Meteors } from "@/components/magicui/meteors";
 import { AnimatedGradientText } from "@/components/magicui/animated-gradient-text";
 import { MagicCard } from "@/components/magicui/magic-card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { FileUpload } from "@/components/FileUpload";
 
 interface Record {
   id: string;
@@ -59,6 +69,11 @@ export default function CreateInterviewPage() {
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState<string | null>(null);
+  const [uploadRecordId, setUploadRecordId] = useState<string | null>(null);
+  const [viewRecordId, setViewRecordId] = useState<string | null>(null);
+  const [viewLoading, setViewLoading] = useState(false);
+  const [viewQuestions, setViewQuestions] = useState<any[]>([]);
+  const [viewSortSource, setViewSortSource] = useState<"none" | "resumeFirst" | "jdFirst">("none");
   const router = useRouter();
 
   useEffect(() => {
@@ -66,9 +81,9 @@ export default function CreateInterviewPage() {
     fetchInterviews();
   }, []);
 
-  const fetchRecords = async () => {
+  const fetchRecords = async (opts?: { silent?: boolean }) => {
     try {
-      setLoading(true);
+      if (!opts?.silent) setLoading(true);
       console.log("Fetching records from API...");
       const response = await fetch("/api/records");
       
@@ -85,7 +100,7 @@ export default function CreateInterviewPage() {
       console.error("Error fetching records:", error);
       toast.error("Failed to load records. Please check console for details.");
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
   };
 
@@ -128,6 +143,50 @@ export default function CreateInterviewPage() {
   const copyAccessCode = (accessCode: string) => {
     navigator.clipboard.writeText(accessCode);
     toast.success("Access code copied to clipboard");
+  };
+
+  const handleResumeUploaded = async (recordId: string, _url: string, resumeText?: string | null) => {
+    try {
+      if (!resumeText || resumeText.trim().length < 50) {
+        toast.error("Resume parsing failed or too short. Please upload a valid PDF.");
+        return;
+      }
+      toast.info("Generating questions from resume...", {
+        duration: 10000,
+      });
+      const resp = await fetch(`/api/records/${recordId}/resume-questions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resumeText, count: 4 }),
+      });
+      if (!resp.ok) {
+        const j = await resp.json().catch(() => ({}));
+        throw new Error(j?.error || "Failed to generate questions from resume");
+      }
+      const j = await resp.json();
+      toast.success(`Created ${j?.created || 0} resume questions`);
+      setUploadRecordId(null);
+      fetchRecords({ silent: true });
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to generate questions from resume");
+    }
+  };
+
+  const openViewQuestions = async (recordId: string) => {
+    try {
+      setViewRecordId(recordId);
+      setViewLoading(true);
+      const resp = await fetch(`/api/records/${recordId}/questions`);
+      if (!resp.ok) throw new Error("Failed to fetch questions");
+      const j = await resp.json();
+      const questions = Array.isArray(j?.questions) ? j.questions : [];
+      setViewQuestions(questions);
+    } catch (e) {
+      toast.error("Failed to load questions");
+      setViewQuestions([]);
+    } finally {
+      setViewLoading(false);
+    }
   };
 
   if (loading) {
@@ -408,26 +467,44 @@ export default function CreateInterviewPage() {
                       {new Date(record.createdAt).toLocaleString()}
                     </TableCell>
                     <TableCell>
-                      <Button
-                        onClick={() => createInterview(record.id)}
-                        disabled={creating === record.id}
-                        className={`bg-[#f7a828] hover:bg-[#f7a828]/90 text-white shadow-md hover:shadow-lg hover:shadow-[#f7a828]/25 transform hover:-translate-y-0.5 transition-all duration-300 ${
-                          creating === record.id ? "opacity-70" : ""
-                        }`}
-                        size="sm"
-                      >
-                        {creating === record.id ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Creating...
-                          </>
-                        ) : (
-                          <>
-                            <Brain className="mr-2 h-4 w-4" />
-                            Create Interview
-                          </>
-                        )}
-                      </Button>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          onClick={() => setUploadRecordId(record.id)}
+                          variant="outline"
+                          size="sm"
+                          className="border-[#F7F7FA] text-[#2663FF] hover:bg-[#2663FF]/10 shadow-sm transition-all duration-200"
+                        >
+                          Upload Resume
+                        </Button>
+                        <Button
+                          onClick={() => openViewQuestions(record.id)}
+                          variant="outline"
+                          size="sm"
+                          className="border-[#F7F7FA] text-[#2663FF] hover:bg-[#2663FF]/10 shadow-sm transition-all duration-200"
+                        >
+                          View Questions
+                        </Button>
+                        <Button
+                          onClick={() => createInterview(record.id)}
+                          disabled={creating === record.id}
+                          className={`bg-[#f7a828] hover:bg-[#f7a828]/90 text-white shadow-md hover:shadow-lg hover:shadow-[#f7a828]/25 transform hover:-translate-y-0.5 transition-all duration-300 ${
+                            creating === record.id ? "opacity-70" : ""
+                          }`}
+                          size="sm"
+                        >
+                          {creating === record.id ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Creating...
+                            </>
+                          ) : (
+                            <>
+                              <Brain className="mr-2 h-4 w-4" />
+                              Create Interview
+                            </>
+                          )}
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -459,6 +536,163 @@ export default function CreateInterviewPage() {
           </div>
         </CardFooter>
       </Card>
+      {/* Upload Resume Dialog */}
+      <Dialog open={!!uploadRecordId} onOpenChange={(open) => !open && setUploadRecordId(null)}>
+        <DialogContent className="bg-white border-[#F7F7FA]">
+          <DialogHeader>
+            <DialogTitle className="text-[#1D244F]">Upload Resume (PDF)</DialogTitle>
+            <DialogDescription className="text-[#5B5F79]">
+              Upload a candidate resume to auto-generate 3–4 tailored questions for this record.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            {uploadRecordId && (
+              <FileUpload
+                acceptedFileTypes=".pdf"
+                label="Upload Resume"
+                parseToText
+                folder="resumes"
+                onFileUploaded={(url, text) => {
+                  try {
+                    toast.success("Resume parsed — generating questions…");
+                  } catch {}
+                  const rid = uploadRecordId;
+                  setUploadRecordId(null);
+                  if (rid) {
+                    handleResumeUploaded(rid, url, text);
+                  }
+                }}
+              />
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" className="border-[#2663FF]/30 text-[#2663FF] hover:bg-[#2663FF]/10" onClick={() => setUploadRecordId(null)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Questions Dialog */}
+      <Dialog open={!!viewRecordId} onOpenChange={(open) => !open && setViewRecordId(null)}>
+        <DialogContent className="bg-white border-[#F7F7FA] max-w-6xl max-h-[70vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle className="text-[#1D244F]">Questions</DialogTitle>
+            <DialogDescription className="text-[#5B5F79]">
+              Questions associated with this record. Resume-sourced questions are tagged.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-2">
+            {viewLoading ? (
+              <div className="flex items-center gap-2 text-[#5B5F79]"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-sm text-[#5B5F79]">Sort</div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant={viewSortSource === "none" ? "default" : "outline"}
+                      className={viewSortSource === "none" ? "bg-[#2663FF] text-black" : "border-[#2663FF]/30 text-[#2663FF] hover:bg-[#2663FF]/10 hover:shadow-sm"}
+                      size="sm"
+                      onClick={() => setViewSortSource("none")}
+                    >
+                      Default
+                    </Button>
+                    <Button
+                      variant={viewSortSource === "resumeFirst" ? "default" : "outline"}
+                      className={viewSortSource === "resumeFirst" ? "bg-[#2663FF] text-black" : "border-[#2663FF]/30 text-[#2663FF] hover:bg-[#2663FF]/10 hover:shadow-sm"}
+                      size="sm"
+                      onClick={() => setViewSortSource("resumeFirst")}
+                    >
+                      Resume first
+                    </Button>
+                    <Button
+                      variant={viewSortSource === "jdFirst" ? "default" : "outline"}
+                      className={viewSortSource === "jdFirst" ? "bg-[#2663FF] text-black" : "border-[#2663FF]/30 text-[#2663FF] hover:bg-[#2663FF]/10 hover:shadow-sm"}
+                      size="sm"
+                      onClick={() => setViewSortSource("jdFirst")}
+                    >
+                      JD first
+                    </Button>
+                  </div>
+                </div>
+                <ScrollArea className="h-[420px]">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Skill</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Format</TableHead>
+                      <TableHead>Coding</TableHead>
+                      <TableHead>Question</TableHead>
+                      <TableHead>Source</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {viewQuestions.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center text-[#5B5F79]">No questions yet</TableCell>
+                      </TableRow>
+                    ) : (
+                      [...viewQuestions]
+                        .sort((a: any, b: any) => {
+                          if (viewSortSource === "none") return 0;
+                          const getSource = (qq: any) => {
+                            try { const cc = JSON.parse(qq?.content || '{}');
+                              return cc?.source === 'resume' || (Array.isArray(cc?.tags) && cc.tags.includes('resume')) ? 'resume' : 'jd';
+                            } catch { return 'jd'; }
+                          };
+                          const sa = getSource(a);
+                          const sb = getSource(b);
+                          if (viewSortSource === "resumeFirst") {
+                            if (sa === sb) return 0; return sa === 'resume' ? -1 : 1;
+                          }
+                          if (sa === sb) return 0; return sa === 'jd' ? -1 : 1;
+                        })
+                        .map((q: any) => {
+                        let parsed: any = {};
+                        try { parsed = JSON.parse(q?.content || '{}'); } catch {}
+                        const source = parsed?.source === 'resume' || (Array.isArray(parsed?.tags) && parsed.tags.includes('resume')) ? 'resume' : 'jd';
+                        const coding = parsed?.coding === true || String(parsed?.questionFormat||'').toLowerCase() === 'coding';
+                        return (
+                          <TableRow key={q.id}>
+                            <TableCell className="text-[#1D244F]">{q?.skill?.name || '-'}</TableCell>
+                            <TableCell>{parsed?.category || 'Technical'}</TableCell>
+                            <TableCell>{parsed?.questionFormat || 'Scenario'}</TableCell>
+                            <TableCell>
+                              <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${coding ? 'bg-blue-50 text-blue-800 border-blue-200' : 'bg-gray-50 text-gray-800 border-gray-200'}`}>
+                                {coding ? 'Yes' : 'No'}
+                              </span>
+                            </TableCell>
+                            <TableCell className="max-w-[520px]">
+                              <div className="whitespace-normal break-words text-[#1D244F]">
+                                {parsed?.question || '-'}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {source === 'resume' ? (
+                                <Badge variant="secondary" className="bg-[#f7a828]/10 text-[#f7a828] border-[#f7a828]/20">Resume</Badge>
+                              ) : (
+                                <Badge variant="secondary" className="bg-[#2663FF]/10 text-[#2663FF] border-none">JD</Badge>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+                </ScrollArea>
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" className="border-[#2663FF]/30 text-[#2663FF] hover:bg-[#2663FF]/10" onClick={() => setViewRecordId(null)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
     </main>
   );
