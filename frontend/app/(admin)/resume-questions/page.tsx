@@ -52,6 +52,7 @@ interface InterviewQuestion {
   questionFormat: string;
   coding: boolean;
   source: string;
+  originalIndex?: number;
 }
 
 export default function ResumeQuestionsPage() {
@@ -67,6 +68,35 @@ export default function ResumeQuestionsPage() {
   );
   const [questionsPerSkill, setQuestionsPerSkill] = useState(1);
   const [experienceQuestions, setExperienceQuestions] = useState(4);
+  const [jdText, setJdText] = useState<string>("");
+  const [activeTab, setActiveTab] = useState<"tab1" | "tab2" | "tab3">(
+    "tab1"
+  );
+  const [baseJDQuestions, setBaseJDQuestions] = useState<InterviewQuestion[]>(
+    []
+  );
+  const [tab1Questions, setTab1Questions] = useState<InterviewQuestion[]>([]);
+  const [tab2Questions, setTab2Questions] = useState<InterviewQuestion[]>([]);
+  const [tab3Questions, setTab3Questions] = useState<InterviewQuestion[]>([]);
+  const [generatedTabs, setGeneratedTabs] = useState<{
+    tab1: boolean;
+    tab2: boolean;
+    tab3: boolean;
+  }>({ tab1: false, tab2: false, tab3: false });
+
+  // Merge helper: replace JD questions at their originalIndex with modified ones; keep others as-is
+  const mergeModifiedWithJD = (
+    baseJD: InterviewQuestion[],
+    modified: InterviewQuestion[]
+  ): InterviewQuestion[] => {
+    const byIndex = new Map<number, InterviewQuestion>();
+    for (const m of modified) {
+      if (typeof m.originalIndex === "number") {
+        byIndex.set(m.originalIndex, m);
+      }
+    }
+    return baseJD.map((q, i) => byIndex.get(i) || q);
+  };
 
   const handleFileUploaded = (url: string) => {
     setResumeUrl(url);
@@ -106,14 +136,61 @@ export default function ResumeQuestionsPage() {
 
     setIsProcessing(true);
     try {
+      let payload: any = {
+        resumeData,
+        questionsPerSkill,
+        experienceQuestions,
+      };
+
+      if (activeTab === "tab1") {
+        payload.mode = "jd";
+        payload.jdText = jdText;
+        if (!jdText || jdText.trim().length === 0) {
+          throw new Error("Please paste the Job Description for Tab 1 generation.");
+        }
+      } else if (activeTab === "tab2" || activeTab === "tab3") {
+        // Ensure we have base JD questions
+        let base = baseJDQuestions;
+        if (!base || base.length === 0) {
+          // Fetch Tab 1 first
+          const jdResp = await fetch("/api/generate-resume-questions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              resumeData,
+              questionsPerSkill,
+              experienceQuestions,
+              mode: "jd",
+              jdText,
+            }),
+          });
+          const jdData = await jdResp.json();
+          if (!jdResp.ok) {
+            throw new Error(jdData.error || "Failed to generate JD questions");
+          }
+          const onlyJD = (jdData.questions || []).filter(
+            (q: InterviewQuestion) => q.source === "jd"
+          );
+          setBaseJDQuestions(onlyJD);
+          base = onlyJD;
+        }
+
+        payload.mode = activeTab === "tab2" ? "modify_light" : "modify_deep";
+        payload.baseQuestions = base.map((q) => ({
+          question: q.question,
+          answer: q.answer,
+          category: q.category,
+          difficulty: q.difficulty,
+          skillName: q.skillName,
+          questionFormat: q.questionFormat,
+          coding: q.coding,
+        }));
+      }
+
       const response = await fetch("/api/generate-resume-questions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          resumeData,
-          questionsPerSkill,
-          experienceQuestions,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
@@ -122,7 +199,29 @@ export default function ResumeQuestionsPage() {
         throw new Error(data.error || "Failed to generate questions");
       }
 
-      setQuestions(data.questions);
+      // Update per-tab storage and flags
+      if (activeTab === "tab1") {
+        const onlyJD = (data.questions || []).filter(
+          (q: InterviewQuestion) => q.source === "jd"
+        );
+        setBaseJDQuestions(onlyJD);
+        setTab1Questions(data.questions || []);
+        setGeneratedTabs((prev) => ({ ...prev, tab1: true }));
+      } else if (activeTab === "tab2") {
+        // Merge modified with JD list to show unmodified ones as well
+        const merged = mergeModifiedWithJD(baseJDQuestions, data.questions || []);
+        setTab2Questions(merged);
+        setGeneratedTabs((prev) => ({ ...prev, tab2: true }));
+      } else if (activeTab === "tab3") {
+        const merged = mergeModifiedWithJD(baseJDQuestions, data.questions || []);
+        setTab3Questions(merged);
+        setGeneratedTabs((prev) => ({ ...prev, tab3: true }));
+      }
+
+      // Reflect currently active tab
+      if (activeTab === "tab1") setQuestions(tab1Questions);
+      if (activeTab === "tab2") setQuestions(tab2Questions);
+      if (activeTab === "tab3") setQuestions(tab3Questions);
       setStep("questions");
       toast.success(`Generated ${data.totalQuestions} interview questions!`);
     } catch (error) {
@@ -130,6 +229,89 @@ export default function ResumeQuestionsPage() {
       toast.error(
         error instanceof Error ? error.message : "Failed to generate questions"
       );
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const generateAllTabs = async () => {
+    if (!resumeData) return;
+    if (!jdText || jdText.trim().length === 0) {
+      toast.error("Please paste the Job Description to generate all tabs.");
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      // Generate Tab 1 (JD)
+      const resp1 = await fetch("/api/generate-resume-questions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          resumeData,
+          questionsPerSkill,
+          experienceQuestions,
+          mode: "jd",
+          jdText,
+        }),
+      });
+      const data1 = await resp1.json();
+      if (!resp1.ok) throw new Error(data1.error || "Failed to generate JD questions");
+      const onlyJD = (data1.questions || []).filter(
+        (q: InterviewQuestion) => q.source === "jd"
+      );
+      setBaseJDQuestions(onlyJD);
+      setTab1Questions(data1.questions || []);
+      setGeneratedTabs((p) => ({ ...p, tab1: true }));
+
+      // Generate Tab 2 and Tab 3 in parallel using base JD
+      const baseForModify = onlyJD.map((q: InterviewQuestion) => ({
+        question: q.question,
+        answer: q.answer,
+        category: q.category,
+        difficulty: q.difficulty,
+        skillName: q.skillName,
+        questionFormat: q.questionFormat,
+        coding: q.coding,
+      }));
+
+      const [resp2, resp3] = await Promise.all([
+        fetch("/api/generate-resume-questions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            resumeData,
+            mode: "modify_light",
+            baseQuestions: baseForModify,
+          }),
+        }),
+        fetch("/api/generate-resume-questions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            resumeData,
+            mode: "modify_deep",
+            baseQuestions: baseForModify,
+          }),
+        }),
+      ]);
+
+      const [data2, data3] = await Promise.all([resp2.json(), resp3.json()]);
+      if (!resp2.ok) throw new Error(data2.error || "Failed to generate Tab 2");
+      if (!resp3.ok) throw new Error(data3.error || "Failed to generate Tab 3");
+
+      setTab2Questions(mergeModifiedWithJD(onlyJD, data2.questions || []));
+      setGeneratedTabs((p) => ({ ...p, tab2: true }));
+      setTab3Questions(mergeModifiedWithJD(onlyJD, data3.questions || []));
+      setGeneratedTabs((p) => ({ ...p, tab3: true }));
+
+      setActiveTab("tab1");
+      setStep("questions");
+      setQuestions(data1.questions || []);
+      toast.success("Generated all tabs successfully!");
+    } catch (error) {
+      console.error("Error generating all tabs:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to generate all tabs");
     } finally {
       setIsProcessing(false);
     }
@@ -285,6 +467,17 @@ export default function ResumeQuestionsPage() {
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium mb-2">
+                        Paste Job Description (JD)
+                      </label>
+                      <textarea
+                        value={jdText}
+                        onChange={(e) => setJdText(e.target.value)}
+                        className="w-full px-3 py-2 border rounded-md h-32"
+                        placeholder="Paste the JD here to generate JD-based and modified questions"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
                         Questions per skill (top 5-6 skills)
                       </label>
                       <input
@@ -312,6 +505,37 @@ export default function ResumeQuestionsPage() {
                         }
                         className="w-full px-3 py-2 border rounded-md"
                       />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Generation Mode
+                      </label>
+                      <div className="flex gap-2">
+                        <Button
+                          variant={activeTab === "tab1" ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setActiveTab("tab1")}
+                        >
+                          Tab 1: JD
+                        </Button>
+                        <Button
+                          variant={activeTab === "tab2" ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setActiveTab("tab2")}
+                        >
+                          Tab 2: Modify 30–40%
+                        </Button>
+                        <Button
+                          variant={activeTab === "tab3" ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setActiveTab("tab3")}
+                        >
+                          Tab 3: Modify 70–80%
+                        </Button>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">
+                        Skills remain consistent across tabs. Tab 1 generates JD questions and 2–3 resume behavioral questions. Tabs 2 and 3 modify a subset of Tab 1 JD questions using the resume.
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -359,20 +583,13 @@ export default function ResumeQuestionsPage() {
                 </div>
               )}
 
-              <div className="flex gap-4">
+                <div className="flex gap-4">
                 <Button onClick={() => setStep("upload")} variant="outline">
                   Upload Different Resume
                 </Button>
-                <Button onClick={generateQuestions} disabled={isProcessing}>
-                  {isProcessing ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      Generating Questions...
-                    </>
-                  ) : (
-                    "Generate Interview Questions"
-                  )}
-                </Button>
+                  <Button onClick={generateAllTabs} disabled={isProcessing} variant="outline">
+                    Generate All Tabs
+                  </Button>
               </div>
             </CardContent>
           </Card>
@@ -393,7 +610,28 @@ export default function ResumeQuestionsPage() {
                   </CardDescription>
                 </div>
                 <div className="flex gap-2">
-                  <Button onClick={exportQuestions} variant="outline" size="sm">
+                  <Button onClick={() => setActiveTab("tab1")} variant={activeTab === "tab1" ? "default" : "outline"} size="sm">
+                    View Tab 1 (JD)
+                  </Button>
+                  <Button onClick={() => setActiveTab("tab2")} variant={activeTab === "tab2" ? "default" : "outline"} size="sm">
+                    View Tab 2 (30–40% Modified)
+                  </Button>
+                  <Button onClick={() => setActiveTab("tab3")} variant={activeTab === "tab3" ? "default" : "outline"} size="sm">
+                    View Tab 3 (70–80% Modified)
+                  </Button>
+                  <Button onClick={generateAllTabs} variant="outline" size="sm" disabled={isProcessing}>
+                    Generate All Tabs
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      if (activeTab === "tab1") setQuestions(tab1Questions);
+                      if (activeTab === "tab2") setQuestions(tab2Questions);
+                      if (activeTab === "tab3") setQuestions(tab3Questions);
+                      exportQuestions();
+                    }}
+                    variant="outline"
+                    size="sm"
+                  >
                     <Download className="h-4 w-4 mr-2" />
                     Export CSV
                   </Button>
@@ -409,6 +647,48 @@ export default function ResumeQuestionsPage() {
             </CardHeader>
             <CardContent>
               <div className="rounded-md border">
+                {/* Tab switcher controls for generating missing tabs */}
+                <div className="flex items-center gap-2 p-3 border-b bg-gray-50">
+                  <Button
+                    size="sm"
+                    variant={activeTab === "tab1" ? "default" : "outline"}
+                    onClick={() => {
+                      setActiveTab("tab1");
+                      setQuestions(tab1Questions);
+                    }}
+                  >
+                    Tab 1 (JD) {generatedTabs.tab1 ? "" : "• not generated"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={activeTab === "tab2" ? "default" : "outline"}
+                    onClick={async () => {
+                      setActiveTab("tab2");
+                      if (!generatedTabs.tab2) {
+                        await generateQuestions();
+                      } else {
+                        setQuestions(tab2Questions);
+                      }
+                    }}
+                  >
+                    Tab 2 (30–40% Modified) {generatedTabs.tab2 ? "" : "• generate"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={activeTab === "tab3" ? "default" : "outline"}
+                    onClick={async () => {
+                      setActiveTab("tab3");
+                      if (!generatedTabs.tab3) {
+                        await generateQuestions();
+                      } else {
+                        setQuestions(tab3Questions);
+                      }
+                    }}
+                  >
+                    Tab 3 (70–80% Modified) {generatedTabs.tab3 ? "" : "• generate"}
+                  </Button>
+                </div>
+
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -477,7 +757,16 @@ export default function ResumeQuestionsPage() {
                           </span>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline" className="text-xs">
+                          <Badge
+                            variant="outline"
+                            className={`text-xs ${
+                              question.source === "resume"
+                                ? "bg-green-100 text-green-800"
+                                : question.source === "jd"
+                                ? "bg-blue-100 text-blue-800"
+                                : "bg-yellow-100 text-yellow-800"
+                            }`}
+                          >
                             {question.source}
                           </Badge>
                         </TableCell>
