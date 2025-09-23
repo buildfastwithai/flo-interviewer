@@ -54,7 +54,7 @@ import { motion } from "framer-motion";
 const formSchema = z.object({
   jobRole: z.string().min(1, { message: "Job role is required" }),
   customInstructions: z.string().optional(),
-  jobDescriptionFile: z.instanceof(File).optional(),
+  jobDescriptionFile: z.any(),
   jobDescriptionText: z.string().optional(),
   interviewLength: z.coerce
     .number()
